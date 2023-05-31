@@ -27,10 +27,14 @@ def init():
 
     inspector = inspect(engine)
     with engine.connect() as conn:
-        # check if table task has column result and add it if not
         task_columns = inspector.get_columns("task")
+        # add result column
         if not any(col["name"] == "result" for col in task_columns):
             conn.execute(text("ALTER TABLE task ADD COLUMN result TEXT"))
+
+        # add api_task_id column
+        if not any(col["name"] == "api_task_id" for col in task_columns):
+            conn.execute(text("ALTER TABLE task ADD COLUMN api_task_id VARCHAR(64)"))
 
         params_column = next(col for col in task_columns if col["name"] == "params")
         if version > "1" and not isinstance(params_column["type"], Text):

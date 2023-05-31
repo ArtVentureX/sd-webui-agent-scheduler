@@ -1,18 +1,13 @@
-import io
 import sys
 import json
 import time
-import zlib
-import base64
 import pickle
 import inspect
 import traceback
 import threading
-import numpy as np
 
+from pydantic import BaseModel
 from datetime import datetime, timedelta
-from enum import Enum
-from PIL import Image, PngImagePlugin
 from typing import Any, Callable, Union
 from fastapi import FastAPI
 
@@ -20,22 +15,29 @@ from modules import progress, shared, script_callbacks
 from modules.call_queue import queue_lock, wrap_gradio_call
 from modules.txt2img import txt2img
 from modules.img2img import img2img
-from modules.api.api import Api, encode_pil_to_base64
+from modules.api.api import Api
 from modules.api.models import (
     StableDiffusionTxt2ImgProcessingAPI,
     StableDiffusionImg2ImgProcessingAPI,
 )
 
-from scripts.db import TaskStatus, AppStateKey, Task, task_manager, state_manager
+from scripts.db import TaskStatus, Task, task_manager
 from scripts.helpers import log, detect_control_net, get_component_by_elem_id
+from scripts.task_helpers import (
+    serialize_img2img_image_args,
+    deserialize_img2img_image_args,
+    serialize_controlnet_args,
+    deserialize_controlnet_args,
+    map_ui_task_args_list_to_named_args,
+)
 
-img2img_image_args_by_mode: dict[int, list[list[str]]] = {
-    0: [["init_img"]],
-    1: [["sketch"]],
-    2: [["init_img_with_mask", "image"], ["init_img_with_mask", "mask"]],
-    3: [["inpaint_color_sketch"], ["inpaint_color_sketch_orig"]],
-    4: [["init_img_inpaint"], ["init_mask_inpaint"]],
-}
+
+class ParsedTaskArgs(BaseModel):
+    args: list[Any]
+    named_args: dict[str, Any]
+    script_args: list[Any]
+    checkpoint: str
+    is_ui: bool
 
 
 class TaskRunner:
@@ -75,103 +77,22 @@ class TaskRunner:
 
     @property
     def paused(self) -> bool:
-        return state_manager.get_value(AppStateKey.QueueState) == "paused"
-
-    def __serialize_image(self, image):
-        if isinstance(image, np.ndarray):
-            shape = image.shape
-            data = base64.b64encode(zlib.compress(image.tobytes())).decode()
-            return {"shape": shape, "data": data, "cls": "ndarray"}
-        elif isinstance(image, Image.Image):
-            size = image.size
-            mode = image.mode
-            data = base64.b64encode(zlib.compress(image.tobytes())).decode()
-            return {
-                "size": size,
-                "mode": mode,
-                "data": data,
-                "cls": "Image",
-            }
-        else:
-            return image
-
-    def __deserialize_image(self, image_str):
-        if isinstance(image_str, dict) and image_str.get("cls", None):
-            cls = image_str["cls"]
-            data = zlib.decompress(base64.b64decode(image_str["data"]))
-
-            if cls == "ndarray":
-                shape = tuple(image_str["shape"])
-                image = np.frombuffer(data, dtype=np.uint8)
-                return image.reshape(shape)
-            else:
-                size = tuple(image_str["size"])
-                mode = image_str["mode"]
-                return Image.frombytes(mode, size, data)
-        else:
-            return image_str
-
-    def __serialize_img2img_images(self, args: dict, image_args: list):
-        for keys in image_args:
-            if len(keys) == 1:
-                image = args.get(keys[0], None)
-                args[keys[0]] = self.__serialize_image(image)
-            else:
-                value = args.get(keys[0], {})
-                image = value.get(keys[1], None)
-                value[keys[1]] = self.__serialize_image(image)
-                args[keys[0]] = value
-
-    def __deserialize_img2img_images(self, args: dict, image_args: list):
-        for keys in image_args:
-            if len(keys) == 1:
-                image = args.get(keys[0], None)
-                args[keys[0]] = self.__deserialize_image(image)
-            else:
-                value = args.get(keys[0], {})
-                image = value.get(keys[1], None)
-                value[keys[1]] = self.__deserialize_image(image)
-                args[keys[0]] = value
+        return shared.opts.queue_paused
 
     def __serialize_ui_task_args(self, is_img2img: bool, *args, checkpoint: str = None):
-        args_name = []
-        if is_img2img:
-            args_name = inspect.getfullargspec(img2img).args
-        else:
-            args_name = inspect.getfullargspec(txt2img).args
-
-        args = list(args)
-        named_args = dict(zip(args_name, args[0 : len(args_name)]))
-        script_args = args[len(args_name) :]
-        if checkpoint:
-            override_settings_texts = named_args.get("override_settings_texts", [])
-            override_settings_texts.append("Model hash: " + checkpoint)
-            named_args["override_settings_texts"] = override_settings_texts
+        named_args, script_args = map_ui_task_args_list_to_named_args(
+            list(args), is_img2img, checkpoint=checkpoint
+        )
 
         # loop through named_args and serialize images
         if is_img2img:
-            for mode, image_args in img2img_image_args_by_mode.items():
-                if mode == named_args["mode"]:
-                    self.__serialize_img2img_images(named_args, image_args)
-                else:
-                    # set None to unused image args to save space
-                    for keys in image_args:
-                        named_args[keys[0]] = None
+            serialize_img2img_image_args(named_args)
 
         # loop through script_args and serialize controlnets
         if self.UiControlNetUnit is not None:
             for i, a in enumerate(script_args):
                 if isinstance(a, self.UiControlNetUnit):
-                    script_args[i] = a.__dict__
-                    script_args[i]["is_cnet"] = True
-                    for k, v in script_args[i].items():
-                        if k == "image" and v is not None:
-                            script_args[i][k] = {
-                                "image": self.__serialize_image(v["image"]),
-                                "mask": self.__serialize_image(v["mask"]),
-                            }
-                        if isinstance(v, Enum):
-                            script_args[i][k] = v.value
+                    script_args[i] = serialize_controlnet_args(a)
 
         return json.dumps(
             {
@@ -186,6 +107,7 @@ class TaskRunner:
     def __serialize_api_task_args(
         self, is_img2img: bool, script_args: list = [], **named_args
     ):
+        # serialization steps are done in task_helpers.register_api_task
         override_settings = named_args.get("override_settings", {})
         checkpoint = override_settings.get("sd_model_checkpoint", None)
 
@@ -204,21 +126,17 @@ class TaskRunner:
     ):
         # loop through image_args and deserialize images
         if is_img2img:
-            for mode, image_args in img2img_image_args_by_mode.items():
-                if mode == named_args["mode"]:
-                    self.__deserialize_img2img_images(named_args, image_args)
+            deserialize_img2img_image_args(named_args)
 
         # loop through script_args and deserialize controlnets
         if self.UiControlNetUnit is not None:
             for i, arg in enumerate(script_args):
                 if isinstance(arg, dict) and arg.get("is_cnet", False):
-                    arg.pop("is_cnet")
-                    for k, v in arg.items():
-                        if k == "image" and v is not None:
-                            arg[k] = {
-                                "image": self.__deserialize_image(v["image"]),
-                                "mask": self.__deserialize_image(v["mask"]),
-                            }
+                    script_args[i] = deserialize_controlnet_args(arg)
+
+    def __deserialize_api_task_args(self, is_img2img: bool, named_args: dict):
+        # API task use base64 images as input, no need to deserialize
+        pass
 
     def parse_task_args(
         self, params: str, script_params: bytes, deserialization: bool = True
@@ -237,16 +155,18 @@ class TaskRunner:
 
         if is_ui and deserialization:
             self.__deserialize_ui_task_args(is_img2img, named_args, script_args)
+        elif deserialization:
+            self.__deserialize_api_task_args(is_img2img, named_args)
 
         args = list(named_args.values()) + script_args
 
-        return {
-            "args": args,
-            "named_args": named_args,
-            "script_args": script_args,
-            "checkpoint": checkpoint,
-            "is_ui": is_ui,
-        }
+        return ParsedTaskArgs(
+            args=args,
+            named_args=named_args,
+            script_args=script_args,
+            checkpoint=checkpoint,
+            is_ui=is_ui,
+        )
 
     def register_ui_task(
         self, task_id: str, is_img2img: bool, *args, checkpoint: str = None
@@ -263,13 +183,19 @@ class TaskRunner:
         )
         self.__total_pending_tasks += 1
 
-    def register_api_task(self, task_id: str, is_img2img: bool, args: dict):
+    def register_api_task(
+        self, task_id: str, api_task_id: str, is_img2img: bool, args: dict
+    ):
         progress.add_task_to_queue(task_id)
 
+        args = args.copy()
+        args.update({"save_images": True, "send_images": False})
         params = self.__serialize_api_task_args(is_img2img, **args)
 
         task_type = "img2img" if is_img2img else "txt2img"
-        task_manager.add_task(Task(id=task_id, type=task_type, params=params))
+        task_manager.add_task(
+            Task(id=task_id, api_task_id=api_task_id, type=task_type, params=params)
+        )
 
         self.__run_callbacks(
             "task_registered", task_id, is_img2img=is_img2img, is_ui=False, args=params
@@ -279,7 +205,11 @@ class TaskRunner:
     def execute_task(self, task: Task, get_next_task: Callable):
         while True:
             if self.dispose:
-                sys.exit(0)
+                break
+
+            if self.paused:
+                log.info("[AgentScheduler] Runner is paused")
+                break
 
             if progress.current_task is None:
                 task_id = task.id
@@ -290,7 +220,11 @@ class TaskRunner:
                     task.params,
                     task.script_params,
                 )
-                task_meta = {"is_img2img": is_img2img, "is_ui": task_args["is_ui"]}
+                task_meta = {
+                    "is_img2img": is_img2img,
+                    "is_ui": task_args.is_ui,
+                    "api_task_id": task.api_task_id,
+                }
 
                 self.__saved_images_path = []
                 self.__run_callbacks("task_started", task_id, **task_meta)
@@ -333,7 +267,7 @@ class TaskRunner:
 
             task = get_next_task()
             if not task:
-                sys.exit(0)
+                break
 
     def execute_pending_tasks_threading(self):
         if self.paused:
@@ -366,19 +300,19 @@ class TaskRunner:
         return [
             task.id,
             task.type,
-            json.dumps(task_args["named_args"]),
+            json.dumps(task_args.named_args),
             task.created_at.strftime("%Y-%m-%d %H:%M:%S"),
         ]
 
-    def __execute_task(self, task_id: str, is_img2img: bool, task_args: dict):
-        if task_args["is_ui"]:
-            return self.__execute_ui_task(task_id, is_img2img, *task_args["args"])
+    def __execute_task(self, task_id: str, is_img2img: bool, task_args: ParsedTaskArgs):
+        if task_args.is_ui:
+            return self.__execute_ui_task(task_id, is_img2img, *task_args.args)
         else:
             return self.__execute_api_task(
                 task_id,
                 is_img2img,
-                script_args=task_args["script_args"],
-                **task_args["named_args"],
+                script_args=task_args.script_args,
+                **task_args.named_args,
             )
 
     def __execute_ui_task(self, task_id: str, is_img2img: bool, *args):
@@ -483,9 +417,12 @@ class TaskRunner:
 
 def get_instance(block) -> TaskRunner:
     if TaskRunner.instance is None:
-        txt2img_submit_button = get_component_by_elem_id(block, "txt2img_generate")
-        UiControlNetUnit = detect_control_net(block, txt2img_submit_button)
-        TaskRunner(UiControlNetUnit)
+        if block is not None:
+            txt2img_submit_button = get_component_by_elem_id(block, "txt2img_generate")
+            UiControlNetUnit = detect_control_net(block, txt2img_submit_button)
+            TaskRunner(UiControlNetUnit)
+        else:
+            TaskRunner()
 
         def on_before_reload():
             # Tell old instance to stop

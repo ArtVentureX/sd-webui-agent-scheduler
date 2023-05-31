@@ -22,6 +22,7 @@ class Task(TaskModel):
     def __init__(
         self,
         id: str = "",
+        api_task_id: str = None,
         type: str = "unknown",
         params: str = "",
         script_params: bytes = b"",
@@ -35,6 +36,7 @@ class Task(TaskModel):
 
         super().__init__(
             id=id,
+            api_task_id=api_task_id,
             type=type,
             params=params,
             status=status,
@@ -44,6 +46,7 @@ class Task(TaskModel):
             updated_at=created_at,
         )
         self.id: str = id
+        self.api_task_id: str = api_task_id
         self.type: str = type
         self.params: str = params
         self.script_params: bytes = script_params
@@ -60,6 +63,7 @@ class Task(TaskModel):
     def from_table(table: "TaskTable"):
         return Task(
             id=table.id,
+            api_task_id=table.api_task_id,
             type=table.type,
             params=table.params,
             script_params=table.script_params,
@@ -72,6 +76,7 @@ class Task(TaskModel):
     def to_table(self):
         return TaskTable(
             id=self.id,
+            api_task_id=self.api_task_id,
             type=self.type,
             params=self.params,
             script_params=self.script_params,
@@ -84,6 +89,7 @@ class TaskTable(Base):
     __tablename__ = "task"
 
     id = Column(String(64), primary_key=True)
+    api_task_id = Column(String(64), nullable=True)
     type = Column(String(20), nullable=False)  # txt2img or img2txt
     params = Column(Text, nullable=False)  # task args
     script_params = Column(LargeBinary, nullable=False)  # script args

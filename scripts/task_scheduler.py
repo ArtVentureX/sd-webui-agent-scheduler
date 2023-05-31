@@ -6,13 +6,17 @@ from modules.ui import create_refresh_button
 
 from scripts.task_runner import TaskRunner, get_instance
 from scripts.helpers import compare_components_with_ids, get_components_by_ids
-from scripts.db import init, state_manager, AppStateKey
+from scripts.db import init
 
 task_runner: TaskRunner = None
 initialized = False
 
 checkpoint_current = "Current Checkpoint"
 checkpoint_runtime = "Runtime Checkpoint"
+
+placement_above_generate = "Above Generate button"
+placement_under_generate = "Under Generate button"
+placement_between_prompt_and_generate = "Between Prompt and Generate button"
 
 
 class Script(scripts.Script):
@@ -77,10 +81,11 @@ class Script(scripts.Script):
             outputs=fn_block.outputs,
             show_progress=False,
         )
+
+        id_part = "img2img" if is_img2img else "txt2img"
         with root:
-            with generate.parent:
-                id_part = "img2img" if is_img2img else "txt2img"
-                with gr.Row(elem_id=f"{id_part}_enqueue_wrapper"):
+            with gr.Row(elem_id=f"{id_part}_enqueue_wrapper") as row:
+                if not shared.opts.queue_button_hide_checkpoint:
                     checkpoint = gr.Dropdown(
                         choices=get_checkpoint_choices(),
                         value=checkpoint_current,
@@ -93,12 +98,35 @@ class Script(scripts.Script):
                         lambda: {"choices": get_checkpoint_choices()},
                         f"refresh_{id_part}_checkpoint",
                     )
-                    submit = gr.Button(
-                        "Enqueue", elem_id=f"{id_part}_enqueue", variant="primary"
+                    checkpoint.change(
+                        fn=self.on_checkpoint_changed, inputs=[checkpoint]
                     )
 
-                checkpoint.change(fn=self.on_checkpoint_changed, inputs=[checkpoint])
+                submit = gr.Button(
+                    "Enqueue", elem_id=f"{id_part}_enqueue", variant="primary"
+                )
                 submit.click(**args)
+
+        # relocation the enqueue button
+        root.children.pop()
+        if shared.opts.queue_button_placement == placement_between_prompt_and_generate:
+            if is_img2img:
+                # add to the iterrogate div
+                parent = generate.parent.parent.parent.children[1]
+                parent.add(row)
+            else:
+                # insert after the prompts
+                parent = generate.parent.parent.parent
+                row.parent = parent
+                parent.children.insert(1, row)
+        elif shared.opts.queue_button_placement == placement_under_generate:
+            # insert after the tools div
+            parent = generate.parent.parent
+            parent.children.insert(2, row)
+        else:
+            # insert after before the generate button
+            parent = generate.parent.parent
+            parent.children.insert(0, row)
 
         if cnet_dependency is not None:
             cnet_fn_block = next(
@@ -147,10 +175,6 @@ def get_checkpoint_choices():
     return choices
 
 
-def is_queue_paused():
-    return state_manager.get_value(AppStateKey.QueueState) == "paused"
-
-
 def on_ui_tab(**_kwargs):
     global initialized
     if not initialized:
@@ -158,18 +182,25 @@ def on_ui_tab(**_kwargs):
         init()
 
     with gr.Blocks(analytics_enabled=False) as scheduler_tab:
+        gr.Textbox(
+            shared.opts.queue_button_placement,
+            elem_id="agent_scheduler_queue_button_placement",
+            show_label=False,
+            visible=False,
+            interactive=False,
+        )
         with gr.Row(elem_id="agent_scheduler_pending_tasks_wrapper"):
             with gr.Column(scale=1):
                 with gr.Group(elem_id="agent_scheduler_actions"):
-                    paused = is_queue_paused()
+                    paused = shared.opts.queue_paused
 
-                    pause = gr.Button(
+                    gr.Button(
                         "Pause",
                         elem_id="agent_scheduler_action_pause",
                         variant="stop",
                         visible=not paused,
                     )
-                    resume = gr.Button(
+                    gr.Button(
                         "Resume",
                         elem_id="agent_scheduler_action_resume",
                         variant="primary",
@@ -195,11 +226,53 @@ def on_ui_tab(**_kwargs):
     return [(scheduler_tab, "Agent Scheduler", "agent_scheduler")]
 
 
+def on_ui_settings():
+    section = ("agent_scheduler", "Agent Scheduler")
+    shared.opts.add_option(
+        "queue_paused",
+        shared.OptionInfo(
+            False,
+            "Disable queue auto processing",
+            gr.Checkbox,
+            {"interactive": True},
+            section=section,
+        ),
+    )
+    shared.opts.add_option(
+        "queue_button_placement",
+        shared.OptionInfo(
+            placement_above_generate,
+            "Queue button placement",
+            gr.Radio,
+            lambda: {
+                "choices": [
+                    placement_above_generate,
+                    placement_under_generate,
+                    placement_between_prompt_and_generate,
+                ]
+            },
+            section=section,
+        ),
+    )
+    shared.opts.add_option(
+        "queue_button_hide_checkpoint",
+        shared.OptionInfo(
+            True,
+            "Hide the checkpoint dropdown",
+            gr.Checkbox,
+            {},
+            section=section,
+        ),
+    )
+
+
 def on_app_started(block, _):
-    global task_runner
-    task_runner = get_instance(block)
-    task_runner.execute_pending_tasks_threading()
+    if block is not None:
+        global task_runner
+        task_runner = get_instance(block)
+        task_runner.execute_pending_tasks_threading()
 
 
 script_callbacks.on_ui_tabs(on_ui_tab)
+script_callbacks.on_ui_settings(on_ui_settings)
 script_callbacks.on_app_started(on_app_started)

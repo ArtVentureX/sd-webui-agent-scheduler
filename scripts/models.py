@@ -20,6 +20,7 @@ class QueueStatusAPI(BaseModel):
 
 class TaskModel(BaseModel):
     id: str = Field(title="Task Id")
+    api_task_id: Optional[str] = Field(title="API Task Id", default=None)
     type: str = Field(title="Task Type", description="Either txt2img or img2img")
     status: str = Field(title="Task Status", description="Either pending, running, done or failed")
     params: str = Field(title="Task Parameters", description="The parameters of the task in JSON format")
@@ -33,6 +34,7 @@ class TaskModel(BaseModel):
             # custom output conversion for datetime
             datetime: convert_datetime_to_iso_8601_with_z_suffix
         }
+
 
 class QueueStatusResponse(BaseModel):
     current_task_id: Optional[str] = Field(title="Current Task Id", description="The on progress task id")

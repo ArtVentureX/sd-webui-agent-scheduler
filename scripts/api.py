@@ -5,7 +5,7 @@ from gradio.routes import App
 import modules.shared as shared
 from modules import progress, script_callbacks, sd_samplers
 
-from scripts.db import TaskStatus, AppStateKey, task_manager, state_manager
+from scripts.db import TaskStatus, task_manager
 from scripts.models import QueueStatusResponse
 from scripts.task_runner import TaskRunner, get_instance
 from scripts.helpers import log
@@ -29,8 +29,8 @@ def regsiter_apis(app: App):
             task_args = TaskRunner.instance.parse_task_args(
                 task.params, task.script_params, deserialization=False
             )
-            named_args = task_args["named_args"]
-            named_args["checkpoint"] = task_args["checkpoint"]
+            named_args = task_args.named_args
+            named_args["checkpoint"] = task_args.checkpoint
             sampler_index = named_args.get("sampler_index", None)
             if sampler_index is not None:
                 named_args["sampler_name"] = sd_samplers.samplers[
@@ -103,21 +103,24 @@ def regsiter_apis(app: App):
 
     @app.post("/agent-scheduler/v1/pause")
     def pause_queue():
-        state_manager.set_value(AppStateKey.QueueState, "paused")
+        # state_manager.set_value(AppStateKey.QueueState, "paused")
+        shared.opts.queue_paused = True
         return {"success": True, "message": f"Queue is paused"}
 
     @app.post("/agent-scheduler/v1/resume")
     def resume_queue():
-        state_manager.set_value(AppStateKey.QueueState, "running")
+        # state_manager.set_value(AppStateKey.QueueState, "running")
+        shared.opts.queue_paused = False
         TaskRunner.instance.execute_pending_tasks_threading()
         return {"success": True, "message": f"Queue is resumed"}
 
 
 def on_app_started(block, app: App):
-    global task_runner
-    task_runner = get_instance(block)
+    if block is not None:
+        global task_runner
+        task_runner = get_instance(block)
 
-    regsiter_apis(app)
+        regsiter_apis(app)
 
 
 script_callbacks.on_app_started(on_app_started)
