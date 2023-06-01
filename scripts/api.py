@@ -103,13 +103,11 @@ def regsiter_apis(app: App):
 
     @app.post("/agent-scheduler/v1/pause")
     def pause_queue():
-        # state_manager.set_value(AppStateKey.QueueState, "paused")
         shared.opts.queue_paused = True
         return {"success": True, "message": f"Queue is paused"}
 
     @app.post("/agent-scheduler/v1/resume")
     def resume_queue():
-        # state_manager.set_value(AppStateKey.QueueState, "running")
         shared.opts.queue_paused = False
         TaskRunner.instance.execute_pending_tasks_threading()
         return {"success": True, "message": f"Queue is resumed"}

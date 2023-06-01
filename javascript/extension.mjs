@@ -34717,6 +34717,6 @@ function Kw() {
   }, v = gradioApp().querySelector(
     "#agent_scheduler_pending_tasks_grid"
   );
-  document.querySelector(".dark") && (v.className = "ag-theme-alpine-dark"), v.style.height = window.innerHeight - 240 + "px", new ew(v, d), e.refresh();
+  document.querySelector(".dark") && (v.className = "ag-theme-alpine-dark"), v.style.height = "calc(100vh - 250px)", new ew(v, d), e.refresh();
 }
 onUiLoaded(Kw);

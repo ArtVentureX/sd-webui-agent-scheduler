@@ -1,8 +1,6 @@
-import sys
 import json
 import time
 import pickle
-import inspect
 import traceback
 import threading
 
@@ -207,10 +205,6 @@ class TaskRunner:
             if self.dispose:
                 break
 
-            if self.paused:
-                log.info("[AgentScheduler] Runner is paused")
-                break
-
             if progress.current_task is None:
                 task_id = task.id
                 is_img2img = task.type == "img2img"
@@ -363,6 +357,10 @@ class TaskRunner:
         if self.dispose:
             return None
 
+        if self.paused:
+            log.info("[AgentScheduler] Runner is paused")
+            return None
+        
         # delete task that are 7 days old
         task_manager.delete_tasks_before(datetime.now() - timedelta(days=7))
 

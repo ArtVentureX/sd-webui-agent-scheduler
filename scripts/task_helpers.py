@@ -7,8 +7,6 @@ import requests
 import numpy as np
 from enum import Enum
 from PIL import Image, ImageOps, ImageChops, ImageEnhance, ImageFilter
-from typing import Optional, List
-from pydantic import BaseModel, Field
 
 from modules import sd_samplers, scripts
 from modules.generation_parameters_copypaste import create_override_settings_dict
@@ -29,76 +27,6 @@ img2img_image_args_by_mode: dict[int, list[list[str]]] = {
     3: [["inpaint_color_sketch"], ["inpaint_color_sketch_orig"]],
     4: [["init_img_inpaint"], ["init_mask_inpaint"]],
 }
-
-
-class ControlNetImage(BaseModel):
-    image: str  # base64 or url
-    mask: Optional[str] = None  # base64 or url
-
-
-class ControlNetUnit(BaseModel):
-    enabled: Optional[bool] = True
-    module: Optional[str] = "none"
-    model: Optional[str] = None
-    image: ControlNetImage = None
-    weight: Optional[float] = 1.0
-    resize_mode: Optional[str] = None
-    low_vram: Optional[bool] = False
-    processor_res: Optional[int] = 512
-    threshold_a: Optional[float] = 64
-    threshold_b: Optional[float] = 64
-    guidance_start: Optional[float] = 0.0
-    guidance_end: Optional[float] = 1.0
-    pixel_perfect: Optional[bool] = False
-    control_mode: Optional[str] = "Balanced"
-
-
-class BaseApiTaskArgs(BaseModel):
-    task_id: str = Field(exclude=True)
-    model_hash: str = Field(exclude=True)
-    prompt: Optional[str] = ""
-    styles: Optional[List[str]] = []
-    negative_prompt: Optional[str] = ""
-    seed: Optional[int] = -1
-    subseed: Optional[int] = 1
-    subseed_strength: Optional[int] = 0
-    seed_resize_from_h: Optional[int] = -1
-    seed_resize_from_w: Optional[int] = -1
-    sampler_name: Optional[str] = "DPM++ 2M Karras"
-    n_iter: Optional[int] = 1
-    batch_size: Optional[int] = 1
-    steps: Optional[int] = 20
-    cfg_scale: Optional[int] = 7.0
-    restore_faces: Optional[bool] = False
-    tiling: Optional[bool] = False
-    width: Optional[int] = 512
-    height: Optional[int] = 512
-    script_name: Optional[str] = None
-    controlnet_args: Optional[List[ControlNetUnit]] = Field(exclude=True, default=[])
-    override_settings: Optional[dict] = Field(default={})
-
-
-class Txt2ImgApiTaskArgs(BaseApiTaskArgs):
-    enable_hr: Optional[bool] = False
-    denoising_strength: Optional[int] = 0
-    hr_scale: Optional[int] = 1
-    hr_upscaler: Optional[str] = "Latent"
-    hr_second_pass_steps: Optional[int] = 0
-    hr_resize_x: Optional[int] = 0
-    hr_resize_y: Optional[int] = 0
-
-
-class Img2ImgApiTaskArgs(BaseApiTaskArgs):
-    init_images: List[str]
-    mask: Optional[str] = None
-    resize_mode: Optional[int] = 0
-    denoising_strength: Optional[int] = 0.75
-    mask_blur: Optional[int] = 4
-    inpainting_fill: Optional[int] = 0
-    inpaint_full_res: Optional[bool] = True
-    inpaint_full_res_padding: Optional[int] = 0
-    inpainting_mask_invert: Optional[int] = 0
-    initial_noise_multiplier: Optional[float] = 0.0
 
 
 def load_image_from_url(url: str):

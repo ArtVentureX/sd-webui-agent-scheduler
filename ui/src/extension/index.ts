@@ -461,7 +461,7 @@ function initTaskScheduler() {
   if (document.querySelector('.dark')) {
     eGridDiv.className = 'ag-theme-alpine-dark';
   }
-  eGridDiv.style.height = window.innerHeight - 240 + 'px';
+  eGridDiv.style.height = 'calc(100vh - 250px)';
   new Grid(eGridDiv, pendingTasksGridOptions);
 
   store.refresh();

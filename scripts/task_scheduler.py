@@ -14,7 +14,6 @@ initialized = False
 checkpoint_current = "Current Checkpoint"
 checkpoint_runtime = "Runtime Checkpoint"
 
-placement_above_generate = "Above Generate button"
 placement_under_generate = "Under Generate button"
 placement_between_prompt_and_generate = "Between Prompt and Generate button"
 
@@ -119,14 +118,10 @@ class Script(scripts.Script):
                 parent = generate.parent.parent.parent
                 row.parent = parent
                 parent.children.insert(1, row)
-        elif shared.opts.queue_button_placement == placement_under_generate:
+        else:
             # insert after the tools div
             parent = generate.parent.parent
-            parent.children.insert(2, row)
-        else:
-            # insert after before the generate button
-            parent = generate.parent.parent
-            parent.children.insert(0, row)
+            parent.children.insert(1, row)
 
         if cnet_dependency is not None:
             cnet_fn_block = next(
@@ -241,12 +236,11 @@ def on_ui_settings():
     shared.opts.add_option(
         "queue_button_placement",
         shared.OptionInfo(
-            placement_above_generate,
+            placement_under_generate,
             "Queue button placement",
             gr.Radio,
             lambda: {
                 "choices": [
-                    placement_above_generate,
                     placement_under_generate,
                     placement_between_prompt_and_generate,
                 ]
