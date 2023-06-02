@@ -77,7 +77,7 @@ class Script(scripts.Script):
             fn=fn,
             _js="submit_enqueue_img2img" if is_img2img else "submit_enqueue",
             inputs=fn_block.inputs,
-            outputs=fn_block.outputs,
+            outputs=None,
             show_progress=False,
         )
 
@@ -158,8 +158,6 @@ class Script(scripts.Script):
                 task_id, self.is_img2img, *args, checkpoint=checkpoint
             )
             task_runner.execute_pending_tasks_threading()
-
-            return (None, "", "<p>Task queued</p>", "")
 
         return f
 
