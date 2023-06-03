@@ -1,6 +1,6 @@
 from enum import Enum
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Union
 
 from sqlalchemy import Column, String, Text, Integer, DateTime, LargeBinary, text, func
 from sqlalchemy.orm import Session
@@ -115,7 +115,7 @@ class TaskTable(Base):
 
 
 class TaskManager(BaseTableManager):
-    def get_task(self, id: str) -> TaskTable | None:
+    def get_task(self, id: str) -> Union[TaskTable, None]:
         session = Session(self.engine)
         try:
             task = session.get(TaskTable, id)
