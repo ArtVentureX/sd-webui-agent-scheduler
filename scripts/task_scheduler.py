@@ -23,6 +23,7 @@ class Script(scripts.Script):
         super().__init__()
         script_callbacks.on_app_started(lambda block, _: self.on_app_started(block))
         self.checkpoint_override = checkpoint_current
+        self.generate_button
 
     def title(self):
         return "Agent Scheduler"
@@ -40,7 +41,8 @@ class Script(scripts.Script):
             self.generate_button = component
 
     def on_app_started(self, block):
-        self.add_enqueue_button(block, self.generate_button)
+        if self.generate_button is not None:
+          self.add_enqueue_button(block, self.generate_button)
 
     def add_enqueue_button(self, root: gr.Blocks, generate: gr.Button):
         is_img2img = self.is_img2img
