@@ -23,7 +23,7 @@ class Script(scripts.Script):
         super().__init__()
         script_callbacks.on_app_started(lambda block, _: self.on_app_started(block))
         self.checkpoint_override = checkpoint_current
-        self.generate_button
+        self.generate_button = None
 
     def title(self):
         return "Agent Scheduler"
