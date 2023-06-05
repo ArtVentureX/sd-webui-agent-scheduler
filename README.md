@@ -9,6 +9,8 @@ Introducing AgentScheduler, an A1111/Vladmandic Stable Diffusion Web UI extensio
 - [Functionality](#functionality--as-of-current-version-)
   - [Using the built-in extension list](#using-the-built-in-extension-list)
   - [Manual clone](#manual-clone)
+- [Settings](#extension-settings)
+- [API Access](#api-access)
 - [Road Map](#road-map)
 - [Contributing](#contributing)
 - [License](#license)
@@ -28,6 +30,7 @@ This version of AgentScheduler is compatible with latest versions of:
 ## Installation
 
 ### Using Vlad's WebUI Fork
+
 The extension is already included in [Vlad fork](https://github.com/vladmandic/automatic)'s builtin extensions.
 
 ### Using the built-in extension list
@@ -94,6 +97,22 @@ Go to `Settings > Agent Scheduler` to access extension settings.
 By default, queued tasks use the currently loaded checkpoint. However, changing the system checkpoint requires some time to load the checkpoint into memory, and you also cannot change the checkpoint during image generation. You can use this dropdown to quickly queue a task with a custom checkpoint.
 
 **Auto Delete Queue History**: Select a timeframe to keep your queue history. Tasks that are older than the configured value will be automatically deleted. Please note that bookmarked tasks will not be deleted.
+
+## API Access
+
+All the functionality of this extension can be accessed through HTTP APIs. You can access the API documentation via `http://127.0.0.1:7860/docs`. Remember to include `--api` in your startup arguments.
+
+![API docs](https://github.com/ArtVentureX/sd-webui-agent-scheduler/assets/133728487/a1b1f2a6-b631-4a59-b904-d6eb3aa90b7d)
+
+
+The two apis `/agent-scheduler/v1/queue/txt2img` and `/agent-scheduler/v1/queue/img2img` support all the parameters of the original webui apis. These apis response the task id, which can be used to perform updates later.
+
+```json
+{
+  "task_id": "string"
+}
+````
+
 
 ## Road Map
 
