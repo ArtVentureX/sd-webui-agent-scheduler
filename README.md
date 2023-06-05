@@ -6,9 +6,10 @@ Introducing AgentScheduler, an A1111/Vladmandic Stable Diffusion Web UI extensio
 
 - [Compatibility](#compatibility)
 - [Installation](#installation)
-- [Functionality](#functionality--as-of-current-version-)
+  - [Using Vlad Fork](#using-vlads-webui-fork)
   - [Using the built-in extension list](#using-the-built-in-extension-list)
   - [Manual clone](#manual-clone)
+- [Functionality](#functionality-as-of-current-version)
 - [Settings](#extension-settings)
 - [API Access](#api-access)
 - [Road Map](#road-map)
