@@ -1,0 +1,170 @@
+@import './tailwind.css';
+
+/* ========================================================================= */
+
+.ag-theme-alpine,
+.ag-theme-alpine-dark {
+  --ag-row-height: 45px;
+  --ag-header-height: 45px;
+  --ag-cell-horizontal-padding: calc(var(--ag-grid-size) * 2);
+  --body-text-color: 'inherit';
+}
+.cell-span {
+  border-bottom-color: var(--ag-border-color);
+}
+.cell-not-span {
+  opacity: 0;
+}
+.ag-row-hover .ag-cell {
+  background-color: transparent;
+}
+.ag-cell {
+  .ag-input-field-input {
+    background-color: var(--input-background-fill);;
+
+    .dark & {
+      background-color: var(--input-background-fill);
+    }
+  }
+}
+
+.notyf {
+  font-family: var(--font);
+}
+
+
+/* ========================================================================= */
+
+#agent_scheduler_pending_tasks_wrapper,
+#agent_scheduler_history_wrapper {
+  border: none;
+  border-width: 0;
+  box-shadow: none;
+  justify-content: flex-end;
+  gap: var(--layout-gap);
+  padding: 0;
+
+  @media (max-width: 1024px) {
+    flex-wrap: wrap;
+  }
+
+  > div:last-child {
+    width: 100%;
+
+    @media (min-width: 1280px) {
+      min-width: 400px !important;
+      max-width: min(25%, 700px);
+    }
+  }
+
+  > button {
+    flex: 0 0 auto;
+  }
+}
+
+#agent_scheduler_pending_tasks_wrapper {
+  .livePreview {
+    margin: 0;
+    padding-top: 100%;
+
+    img {
+      top: 0;
+      border-radius: 5px;
+    }
+  }
+
+  .progressDiv {
+    height: 42px;
+    line-height: 42px;
+    max-width: 100%;
+    text-align: center;
+    position: static;
+    font-size: var(--button-large-text-size);
+    font-weight: var(--button-large-text-weight);
+
+    .progress {
+      height: 42px;
+      line-height: 42px;
+    }
+
+    + .livePreview {
+      margin-top: calc(40px + var(--layout-gap));
+    }
+  }
+}
+
+#agent_scheduler_current_task_images,
+#agent_scheduler_history_gallery {
+  width: 100%;
+  padding-top: calc(100%);
+  position: relative;
+  box-sizing: content-box;
+
+  > div {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+}
+
+#agent_scheduler_history_gallery {
+  @media screen and (min-width: 1280px) {
+    .fixed-height {
+      min-height: 400px;
+    }
+  }
+}
+
+#agent_scheduler_pending_tasks_actions,
+#agent_scheduler_history_actions {
+  display: flex;
+  gap: var(--layout-gap);
+
+  > button {
+    border-radius: var(--radius-lg) !important;
+  }
+}
+
+#agent_scheduler_history_actions {
+  .form {
+    width: var(--size-32);
+    margin-left: auto;
+  }
+
+  .gradio-html {
+    width: var(--size-64);
+  }
+}
+
+#txt2img_enqueue_wrapper,
+#img2img_enqueue_wrapper {
+  min-width: 210px;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--layout-gap) / 2);
+
+  > div:first-child {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    flex: 0 0 auto;
+  }
+
+  .gradio-button,
+  .gradio-dropdown .wrap-inner {
+    min-height: 36px;
+    max-height: 42px;
+  }
+}
+
+#img2img_toprow .interrogate-col.has-queue-button {
+  min-width: unset !important;
+  flex-direction: row !important;
+  gap: calc(var(--layout-gap) / 2) !important;
+
+  button {
+    margin: 0;
+  }
+}

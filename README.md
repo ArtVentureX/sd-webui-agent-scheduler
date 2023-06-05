@@ -5,8 +5,8 @@ Introducing AgentScheduler, an A1111/Vladmandic Stable Diffusion Web UI extensio
 ## Table of Content
 
 - [Compatibility](#compatibility)
-- [Functionality](#functionality--as-of-current-version-)
 - [Installation](#installation)
+- [Functionality](#functionality--as-of-current-version-)
   - [Using the built-in extension list](#using-the-built-in-extension-list)
   - [Manual clone](#manual-clone)
 - [Road Map](#road-map)
@@ -18,41 +18,17 @@ Introducing AgentScheduler, an A1111/Vladmandic Stable Diffusion Web UI extensio
 
 ## Compatibility
 
-This version of AgentScheduler is compatible with:
+This version of AgentScheduler is compatible with latest versions of:
 
-- A1111: [commit 5ab7f213](https://github.com/AUTOMATIC1111/stable-diffusion-webui/commit/5ab7f213bec2f816f9c5644becb32eb72c8ffb89)
-- Vladmandic: [commit 0a46f8ad](https://github.com/vladmandic/automatic/commit/0a46f8ada7751ee993c565198ec4c3327ff43c04)
+- A1111: [commit baf6946](https://github.com/AUTOMATIC1111/stable-diffusion-webui/commit/baf6946e06249c5af9851c60171692c44ef633e0)
+- Vladmandic: [commit 9726b4d](https://github.com/vladmandic/automatic/commit/9726b4d23cb63779964e1d4edff49dd2c9c11e51)
 
 > Older versions may not working properly.
 
-## Functionality [as of current version]
-
-![Extension Walkthrough](https://user-images.githubusercontent.com/90659883/236373779-43bb9625-d5d9-4450-abc5-93e7af7251fd.jpg)
-
-1️⃣ Input your usual Prompts & Settings. **Enqueue** to send your current prompts, settings, controlnets to **AgentScheduler**.
-
-2️⃣ **AgentScheduler** Tab Navigation.
-
-3️⃣ **Pause** function to stop auto generation. **Refresh** to update.
-
-4️⃣ See all queued tasks, current image being generated and tasks' associated information.
-
-5️⃣ **Delete** tasks that you no longer want. Press ▶️ to prioritize selected task.
-
-6️⃣ **Show/Hide** Column of Information that you want.
-
-7️⃣ **Drag and Drop** to reorder columns.
-
-https://github.com/ArtVentureX/sd-webui-agent-scheduler/assets/133728487/50c74922-b85f-493c-9be8-b8e78f0cd061
-
-## Road Map
-
-To list possible feature upgrades for this extension
-
-- Sync with GenAI Management Platform **ArtVenture**
-- See history of completed jobs (Logs)
-
 ## Installation
+
+### Using Vlad's WebUI Fork
+The extension is already included in [Vlad fork](https://github.com/vladmandic/automatic)'s builtin extensions.
 
 ### Using the built-in extension list
 
@@ -61,7 +37,7 @@ To list possible feature upgrades for this extension
 3. Paste the repo url: https://github.com/ArtVentureX/sd-webui-agent-scheduler.git
 4. Click "Install"
 
-![Install](/docs/images/install.png)
+![Install](https://github.com/ArtVentureX/sd-webui-agent-scheduler/assets/133728487/f0fa740b-392a-4dd6-abe1-49c770ea60da)
 
 ### Manual clone
 
@@ -70,6 +46,61 @@ git clone "https://github.com/ArtVentureX/sd-webui-agent-scheduler.git" extensio
 ```
 
 (The second argument specifies the name of the folder, you can choose whatever you like).
+
+## Functionality [as of current version]
+
+![Extension Walkthrough 1](https://github.com/ArtVentureX/sd-webui-agent-scheduler/assets/133728487/a5a039a7-d98b-4186-9131-6775f0812c39)
+
+1️⃣ Input your usual Prompts & Settings. **Enqueue** to send your current prompts, settings, controlnets to **AgentScheduler**.
+
+![Extension Walkthrough 2](https://github.com/ArtVentureX/sd-webui-agent-scheduler/assets/133728487/734176b4-7ee3-40e5-bb92-35608fabfc4b)
+
+2️⃣ **AgentScheduler** Extension Tab.
+
+3️⃣ See all queued tasks, current image being generated and tasks' associated information. **Drag and drop** the handle in the begining of each row to reaggrange the generation order.
+
+4️⃣ **Pause** to stop queue auto generation. **Resume** to start.
+
+5️⃣ Press ▶️ to prioritize selected task, or to start a single task when queue is paused. **Delete** tasks that you no longer want.
+
+![ Extension Walkthrough 3](https://github.com/ArtVentureX/sd-webui-agent-scheduler/assets/133728487/23109761-2633-4b24-bbb3-091628367047)
+
+6️⃣ Show queue history.
+
+7️⃣ **Filter** task status or search by text.
+
+8️⃣ **Bookmark** task to easier filtering.
+
+9️⃣ Double click the task id to **rename**. Click ↩️ to **Requeue** old task.
+
+🔟 Click on each task to **view** the generation results.
+
+https://github.com/ArtVentureX/sd-webui-agent-scheduler/assets/133728487/50c74922-b85f-493c-9be8-b8e78f0cd061
+
+## Extension Settings
+
+Go to `Settings > Agent Scheduler` to access extension settings.
+
+![Settings](https://github.com/ArtVentureX/sd-webui-agent-scheduler/assets/133728487/b0377ccd-f9bf-486e-8393-c06fe26aa117)
+
+**Disable Queue Auto-Processing**: Check this option to disable queue auto-processing on start-up. You can also temporarily pause or resume the queue from the Extension tab.
+
+**Queue Button Placement**: Change the placement of the queue button on the UI.
+
+**Hide the Checkpoint Dropdown**: The Extension provides a custom checkpoint dropdown.
+
+![Custom Checkpoint](https://github.com/ArtVentureX/sd-webui-agent-scheduler/assets/133728487/d110d314-a208-4eec-bb54-9f8c73cb450b)
+
+By default, queued tasks use the currently loaded checkpoint. However, changing the system checkpoint requires some time to load the checkpoint into memory, and you also cannot change the checkpoint during image generation. You can use this dropdown to quickly queue a task with a custom checkpoint.
+
+**Auto Delete Queue History**: Select a timeframe to keep your queue history. Tasks that are older than the configured value will be automatically deleted. Please note that bookmarked tasks will not be deleted.
+
+## Road Map
+
+To list possible feature upgrades for this extension
+
+- Connect multiple SD webui nodes to run task.
+- Sync with GenAI Management Platform **ArtVenture**
 
 ## Contributing
 

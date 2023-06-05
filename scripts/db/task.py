@@ -2,7 +2,17 @@ from enum import Enum
 from datetime import datetime
 from typing import Optional, Union
 
-from sqlalchemy import Column, String, Text, Integer, DateTime, LargeBinary, text, func
+from sqlalchemy import (
+    Column,
+    String,
+    Text,
+    Integer,
+    DateTime,
+    LargeBinary,
+    Boolean,
+    text,
+    func,
+)
 from sqlalchemy.orm import Session
 
 from .base import BaseTableManager, Base
@@ -14,21 +24,24 @@ class TaskStatus(str, Enum):
     RUNNING = "running"
     DONE = "done"
     FAILED = "failed"
+    INTERRUPTED = "interrupted"
 
 
 class Task(TaskModel):
     script_params: bytes = None
+    params: str
 
     def __init__(
         self,
         id: str = "",
         api_task_id: str = None,
+        name: str = None,
         type: str = "unknown",
         params: str = "",
-        script_params: bytes = b"",
         priority: int = None,
         status: str = TaskStatus.PENDING.value,
         result: str = None,
+        bookmarked: bool = False,
         created_at: Optional[datetime] = None,
         updated_at: Optional[datetime] = None,
     ):
@@ -37,24 +50,16 @@ class Task(TaskModel):
         super().__init__(
             id=id,
             api_task_id=api_task_id,
+            name=name,
             type=type,
             params=params,
             status=status,
             priority=priority,
             result=result,
+            bookmarked=bookmarked,
             created_at=created_at,
-            updated_at=created_at,
+            updated_at=updated_at,
         )
-        self.id: str = id
-        self.api_task_id: str = api_task_id
-        self.type: str = type
-        self.params: str = params
-        self.script_params: bytes = script_params
-        self.priority: int = priority
-        self.status: str = status
-        self.result: str = result
-        self.created_at: datetime = created_at
-        self.updated_at: datetime = updated_at
 
     class Config(TaskModel.__config__):
         exclude = ["script_params"]
@@ -64,11 +69,13 @@ class Task(TaskModel):
         return Task(
             id=table.id,
             api_task_id=table.api_task_id,
+            name=table.name,
             type=table.type,
             params=table.params,
-            script_params=table.script_params,
             priority=table.priority,
             status=table.status,
+            result=table.result,
+            bookmarked=table.bookmarked,
             created_at=table.created_at,
             updated_at=table.updated_at,
         )
@@ -77,11 +84,14 @@ class Task(TaskModel):
         return TaskTable(
             id=self.id,
             api_task_id=self.api_task_id,
+            name=self.name,
             type=self.type,
             params=self.params,
-            script_params=self.script_params,
+            script_params=b"",
             priority=self.priority,
             status=self.status,
+            result=self.result,
+            bookmarked=self.bookmarked,
         )
 
 
@@ -90,6 +100,7 @@ class TaskTable(Base):
 
     id = Column(String(64), primary_key=True)
     api_task_id = Column(String(64), nullable=True)
+    name = Column(String(255), nullable=True)
     type = Column(String(20), nullable=False)  # txt2img or img2txt
     params = Column(Text, nullable=False)  # task args
     script_params = Column(LargeBinary, nullable=False)  # script args
@@ -98,6 +109,7 @@ class TaskTable(Base):
         String(20), nullable=False, default="pending"
     )  # pending, running, done, failed
     result = Column(Text)  # task result
+    bookmarked = Column(Boolean, nullable=True, default=False)
     created_at = Column(
         DateTime,
         nullable=False,
@@ -130,9 +142,11 @@ class TaskManager(BaseTableManager):
     def get_tasks(
         self,
         type: str = None,
-        status: str = None,
+        status: Union[str, list[str]] = None,
+        bookmarked: bool = None,
         limit: int = None,
         offset: int = None,
+        order: str = "asc",
     ) -> list[TaskTable]:
         session = Session(self.engine)
         try:
@@ -140,11 +154,21 @@ class TaskManager(BaseTableManager):
             if type:
                 query = query.filter(TaskTable.type == type)
 
-            if status:
-                query = query.filter(TaskTable.status == status)
+            if status is not None:
+                if isinstance(status, list):
+                    query = query.filter(TaskTable.status.in_(status))
+                else:
+                    query = query.filter(TaskTable.status == status)
 
-            query = query.order_by(TaskTable.priority.asc()).order_by(
-                TaskTable.created_at.asc()
+            if bookmarked == True:
+                query = query.filter(TaskTable.bookmarked == bookmarked)
+            else:
+                query = query.order_by(TaskTable.bookmarked.asc())
+
+            query = query.order_by(
+                TaskTable.priority.asc()
+                if order == "asc"
+                else TaskTable.priority.desc()
             )
 
             if limit:
@@ -164,7 +188,7 @@ class TaskManager(BaseTableManager):
     def count_tasks(
         self,
         type: str = None,
-        status: str = None,
+        status: Union[str, list[str]] = None,
     ) -> int:
         session = Session(self.engine)
         try:
@@ -172,8 +196,11 @@ class TaskManager(BaseTableManager):
             if type:
                 query = query.filter(TaskTable.type == type)
 
-            if status:
-                query = query.filter(TaskTable.status == status)
+            if status is not None:
+                if isinstance(status, list):
+                    query = query.filter(TaskTable.status.in_(status))
+                else:
+                    query = query.filter(TaskTable.status == status)
 
             return query.count()
         except Exception as e:
@@ -195,17 +222,32 @@ class TaskManager(BaseTableManager):
         finally:
             session.close()
 
-    def update_task(self, id: str, status: str, result=None) -> TaskTable:
+    def update_task(
+        self,
+        id: str,
+        name: str = None,
+        status: str = None,
+        result: str = None,
+        bookmarked: bool = None,
+    ) -> TaskTable:
         session = Session(self.engine)
         try:
             task = session.get(TaskTable, id)
-            if task:
-                task.status = status
-                task.result = result
-                session.commit()
-                return task
-            else:
+            if task is None:
                 raise Exception(f"Task with id {id} not found")
+
+            if name is not None:
+                task.name = name
+            if status is not None:
+                task.status = status
+            if result is not None:
+                task.result = result
+            if bookmarked is not None:
+                task.bookmarked = bookmarked
+
+            session.commit()
+            return task
+
         except Exception as e:
             print(f"Exception updating task in database: {e}")
             raise e
@@ -259,11 +301,15 @@ class TaskManager(BaseTableManager):
             query = session.query(TaskTable).filter(TaskTable.created_at < before)
             if not all:
                 query = query.filter(
-                    TaskTable.status.in_([TaskStatus.DONE, TaskStatus.FAILED])
-                )
+                    TaskTable.status.in_(
+                        [TaskStatus.DONE, TaskStatus.FAILED, TaskStatus.INTERRUPTED]
+                    )
+                ).filter(TaskTable.bookmarked == False)
 
-            query.delete()
+            deleted_rows = query.delete()
             session.commit()
+
+            return deleted_rows
         except Exception as e:
             print(f"Exception deleting tasks from database: {e}")
             raise e

@@ -1,12 +1,20 @@
+import os
+import json
 import gradio as gr
+from PIL import Image
 
 from modules import shared, script_callbacks, scripts
 from modules.shared import list_checkpoint_tiles, refresh_checkpoints
 from modules.ui import create_refresh_button
+from modules.generation_parameters_copypaste import (
+    create_buttons,
+    register_paste_params_button,
+    ParamBinding,
+)
 
-from scripts.task_runner import TaskRunner, get_instance
-from scripts.helpers import compare_components_with_ids, get_components_by_ids
-from scripts.db import init
+from scripts.task_runner import TaskRunner, get_instance, task_history_retenion_map
+from scripts.helpers import log, compare_components_with_ids, get_components_by_ids
+from scripts.db import init, task_manager, TaskStatus
 
 task_runner: TaskRunner = None
 initialized = False
@@ -16,6 +24,8 @@ checkpoint_runtime = "Runtime Checkpoint"
 
 placement_under_generate = "Under Generate button"
 placement_between_prompt_and_generate = "Between Prompt and Generate button"
+
+task_filter_choices = ["All", "Bookmarked", "Done", "Failed", "Interrupted"]
 
 
 class Script(scripts.Script):
@@ -42,7 +52,7 @@ class Script(scripts.Script):
 
     def on_app_started(self, block):
         if self.generate_button is not None:
-          self.add_enqueue_button(block, self.generate_button)
+            self.add_enqueue_button(block, self.generate_button)
 
     def add_enqueue_button(self, root: gr.Blocks, generate: gr.Button):
         is_img2img = self.is_img2img
@@ -121,7 +131,7 @@ class Script(scripts.Script):
                 row.parent = parent
                 parent.children.insert(1, row)
         else:
-            # insert after the tools div
+            # insert after the generate button
             parent = generate.parent.parent
             parent.children.insert(1, row)
 
@@ -170,6 +180,45 @@ def get_checkpoint_choices():
     return choices
 
 
+def get_task_results(task_id: str, image_idx: int = None):
+    task = task_manager.get_task(task_id)
+
+    galerry = None
+    infotexts = None
+    if task is None:
+        pass
+    elif task.status != TaskStatus.DONE:
+        infotexts = f"Status: {task.status}"
+        if task.status == TaskStatus.FAILED and task.result:
+            infotexts += f"\nError: {task.result}"
+    elif task.status == TaskStatus.DONE:
+        try:
+            result: dict = json.loads(task.result)
+            images = result.get("images", [])
+            infos = result.get("infotexts", [])
+            galerry = (
+                [Image.open(i) for i in images if os.path.exists(i)]
+                if image_idx is None
+                else gr.update()
+            )
+            idx = image_idx if image_idx is not None else 0
+            if len(infos) == len(images):
+                infotexts = infos[idx]
+            else:
+                infotexts = "\n".join(infos).split("Prompt: ")[1:][idx]
+
+        except Exception as e:
+            log.error(f"[AgentScheduler] Failed to load task result")
+            log.error(e)
+            infotexts = f"Failed to load task result: {str(e)}"
+
+    res = (
+        gr.Textbox.update(infotexts, visible=infotexts is not None),
+        gr.Row.update(visible=galerry is not None),
+    )
+    return res if image_idx is not None else (galerry,) + res
+
+
 def on_ui_tab(**_kwargs):
     global initialized
     if not initialized:
@@ -177,46 +226,127 @@ def on_ui_tab(**_kwargs):
         init()
 
     with gr.Blocks(analytics_enabled=False) as scheduler_tab:
-        gr.Textbox(
-            shared.opts.queue_button_placement,
-            elem_id="agent_scheduler_queue_button_placement",
-            show_label=False,
-            visible=False,
-            interactive=False,
-        )
-        with gr.Row(elem_id="agent_scheduler_pending_tasks_wrapper"):
-            with gr.Column(scale=1):
-                with gr.Group(elem_id="agent_scheduler_actions"):
-                    paused = shared.opts.queue_paused
+        with gr.Tabs(elem_id="agent_scheduler_tabs"):
+            with gr.Tab(
+                "Task Queue", id=0, elem_id="agent_scheduler_pending_tasks_tab"
+            ):
+                with gr.Row(elem_id="agent_scheduler_pending_tasks_wrapper"):
+                    with gr.Column(scale=1):
+                        with gr.Group(elem_id="agent_scheduler_pending_tasks_actions"):
+                            paused = shared.opts.queue_paused
 
-                    gr.Button(
-                        "Pause",
-                        elem_id="agent_scheduler_action_pause",
-                        variant="stop",
-                        visible=not paused,
+                            gr.Button(
+                                "Pause",
+                                elem_id="agent_scheduler_action_pause",
+                                variant="stop",
+                                visible=not paused,
+                            )
+                            gr.Button(
+                                "Resume",
+                                elem_id="agent_scheduler_action_resume",
+                                variant="primary",
+                                visible=paused,
+                            )
+                            gr.Button(
+                                "Refresh",
+                                elem_id="agent_scheduler_action_refresh",
+                                elem_classes="agent_scheduler_action_refresh",
+                                variant="secondary",
+                            )
+                            gr.HTML('<div id="agent_scheduler_action_search"></div>')
+                        gr.HTML(
+                            '<div id="agent_scheduler_pending_tasks_grid" class="ag-theme-alpine"></div>'
+                        )
+                    with gr.Column(scale=1):
+                        gr.Gallery(
+                            elem_id="agent_scheduler_current_task_images",
+                            label="Output",
+                            show_label=False,
+                        ).style(columns=2, object_fit="contain")
+            with gr.Tab("Task History", id=1, elem_id="agent_scheduler_history_tab"):
+                with gr.Row(elem_id="agent_scheduler_history_wrapper"):
+                    with gr.Column(scale=1):
+                        with gr.Group(elem_id="agent_scheduler_history_actions"):
+                            gr.Button(
+                                "Refresh",
+                                elem_id="agent_scheduler_action_refresh_history",
+                                elem_classes="agent_scheduler_action_refresh",
+                                variant="secondary",
+                            )
+                            status = gr.Dropdown(
+                                elem_id="agent_scheduler_status_filter",
+                                choices=task_filter_choices,
+                                value="All",
+                                show_label=False,
+                            )
+                            gr.HTML(
+                                '<div id="agent_scheduler_action_search_history"></div>'
+                            )
+                        gr.HTML(
+                            '<div id="agent_scheduler_history_tasks_grid" class="ag-theme-alpine"></div>'
+                        )
+                    with gr.Column(scale=1, elem_id="agent_scheduler_history_results"):
+                        galerry = gr.Gallery(
+                            elem_id="agent_scheduler_history_gallery",
+                            label="Output",
+                            show_label=False,
+                        ).style(columns=2, object_fit="contain", preview=True)
+                        gen_info = gr.Textbox(
+                            label="Generation Info",
+                            elem_id=f"agent_scheduler_history_gen_info",
+                            interactive=False,
+                            visible=True,
+                            lines=3,
+                        )
+                        with gr.Row(
+                            elem_id="agent_scheduler_history_result_actions",
+                            visible=False,
+                        ) as result_actions:
+                            try:
+                                send_to_buttons = create_buttons(
+                                    ["txt2img", "img2img", "inpaint", "extras"]
+                                )
+                            except:
+                                pass
+                        selected_task = gr.Textbox(
+                            elem_id="agent_scheduler_history_selected_task",
+                            visible=False,
+                            show_label=False,
+                        )
+                        selected_task_id = gr.Textbox(
+                            elem_id="agent_scheduler_history_selected_image",
+                            visible=False,
+                            show_label=False,
+                        )
+
+        # register event handlers
+        status.change(
+            fn=lambda x: None,
+            _js="agent_scheduler_status_filter_changed",
+            inputs=[status],
+        )
+        selected_task.change(
+            fn=get_task_results,
+            inputs=[selected_task],
+            outputs=[galerry, gen_info, result_actions],
+        )
+        selected_task_id.change(
+            fn=lambda x, y: get_task_results(x, image_idx=int(y)),
+            inputs=[selected_task, selected_task_id],
+            outputs=[gen_info, result_actions],
+        )
+        try:
+            for paste_tabname, paste_button in send_to_buttons.items():
+                register_paste_params_button(
+                    ParamBinding(
+                        paste_button=paste_button,
+                        tabname=paste_tabname,
+                        source_text_component=gen_info,
+                        source_image_component=galerry,
                     )
-                    gr.Button(
-                        "Resume",
-                        elem_id="agent_scheduler_action_resume",
-                        variant="primary",
-                        visible=paused,
-                    )
-                    gr.Button(
-                        "Refresh",
-                        elem_id="agent_scheduler_action_refresh",
-                        variant="secondary",
-                    )
-                    gr.HTML('<div id="agent_scheduler_action_search"></div>')
-                gr.HTML(
-                    '<div id="agent_scheduler_pending_tasks_grid" class="ag-theme-alpine"></div>'
                 )
-            with gr.Column(scale=1):
-                with gr.Group(elem_id="agent_scheduler_current_task_progress"):
-                    gr.Gallery(
-                        elem_id="agent_scheduler_current_task_images",
-                        label="Output",
-                        show_label=False,
-                    ).style(grid=4)
+        except:
+            pass
 
     return [(scheduler_tab, "Agent Scheduler", "agent_scheduler")]
 
@@ -227,7 +357,7 @@ def on_ui_settings():
         "queue_paused",
         shared.OptionInfo(
             False,
-            "Disable queue auto processing",
+            "Disable queue auto-processing",
             gr.Checkbox,
             {"interactive": True},
             section=section,
@@ -255,6 +385,18 @@ def on_ui_settings():
             "Hide the checkpoint dropdown",
             gr.Checkbox,
             {},
+            section=section,
+        ),
+    )
+    shared.opts.add_option(
+        "queue_history_retention_days",
+        shared.OptionInfo(
+            "30 days",
+            "Auto delete queue history (bookmarked tasks excluded)",
+            gr.Radio,
+            lambda: {
+                "choices": list(task_history_retenion_map.keys()),
+            },
             section=section,
         ),
     )

@@ -6,7 +6,7 @@ export default defineConfig({
     outDir: '../',
     copyPublicDir: false,
     lib: {
-      name: 'agent-scheduler',
+      name: 'agentScheduler',
       entry: 'src/extension/index.ts',
       fileName: 'javascript/extension',
       formats: ['es']

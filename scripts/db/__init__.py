@@ -36,6 +36,14 @@ def init():
         if not any(col["name"] == "api_task_id" for col in task_columns):
             conn.execute(text("ALTER TABLE task ADD COLUMN api_task_id VARCHAR(64)"))
 
+        # add name column
+        if not any(col["name"] == "name" for col in task_columns):
+            conn.execute(text("ALTER TABLE task ADD COLUMN name VARCHAR(255)"))
+
+        # add bookmarked column
+        if not any(col["name"] == "bookmarked" for col in task_columns):
+            conn.execute(text("ALTER TABLE task ADD COLUMN bookmarked BOOLEAN DEFAULT FALSE"))
+
         params_column = next(col for col in task_columns if col["name"] == "params")
         if version > "1" and not isinstance(params_column["type"], Text):
             transaction = conn.begin()

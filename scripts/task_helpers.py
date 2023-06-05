@@ -193,10 +193,41 @@ def map_ui_task_args_list_to_named_args(
         override_settings_texts.append("Model hash: " + checkpoint)
         named_args["override_settings_texts"] = override_settings_texts
 
+    sampler_index = named_args.get("sampler_index", None)
+    if sampler_index is not None:
+        sampler_name = sd_samplers.samplers[named_args["sampler_index"]].name
+        named_args["sampler_name"] = sampler_name
+        log.debug(f"serialize sampler index: {str(sampler_index)} as {sampler_name}")
+
     return (
         named_args,
         script_args,
     )
+
+
+def map_named_args_to_ui_task_args_list(
+    named_args: dict, script_args: list, is_img2img: bool
+):
+    args_name = []
+    if is_img2img:
+        args_name = inspect.getfullargspec(img2img).args
+    else:
+        args_name = inspect.getfullargspec(txt2img).args
+
+    sampler_name = named_args.get("sampler_name", None)
+    if sampler_name is not None:
+        available_samplers = (
+            sd_samplers.samplers_for_img2img if is_img2img else sd_samplers.samplers
+        )
+        sampler_index = next(
+            (i for i, x in enumerate(available_samplers) if x.name == sampler_name), 0
+        )
+        named_args["sampler_index"] = sampler_index
+
+    args = [named_args.get(name, None) for name in args_name]
+    args.extend(script_args)
+
+    return args
 
 
 def map_ui_task_args_to_api_task_args(
@@ -301,11 +332,12 @@ def map_ui_task_args_to_api_task_args(
     return api_task_args
 
 
-def serialize_api_task_args(params: dict, is_img2img: bool):
-    # pop out custom params
-    model_hash = params.pop("model_hash", None)
-    controlnet_args = params.pop("controlnet_args", None)
-
+def serialize_api_task_args(
+    params: dict,
+    is_img2img: bool,
+    checkpoint: str = None,
+    controlnet_args: list[dict] = None,
+):
     args = (
         StableDiffusionImg2ImgProcessingAPI(**params)
         if is_img2img
@@ -315,18 +347,14 @@ def serialize_api_task_args(params: dict, is_img2img: bool):
     if args.override_settings is None:
         args.override_settings = {}
 
-    if model_hash is None:
-        model_hash = args.override_settings.get("sd_model_checkpoint", None)
-
-    if model_hash is None:
-        log.error("[AgentScheduler] API task must supply model hash")
-        return
-
-    checkpoint: CheckpointInfo = get_closet_checkpoint_match(model_hash)
-    if not checkpoint:
-        log.warn(f"[AgentScheduler] No checkpoint found for model hash {model_hash}")
-        return
-    args.override_settings["sd_model_checkpoint"] = checkpoint.title
+    if checkpoint is not None:
+        checkpoint_info: CheckpointInfo = get_closet_checkpoint_match(checkpoint)
+        if not checkpoint_info:
+            log.warn(
+                f"[AgentScheduler] No checkpoint found for model hash {checkpoint}"
+            )
+            return
+        args.override_settings["sd_model_checkpoint"] = checkpoint_info.title
 
     # load images from url or file if needed
     if is_img2img:

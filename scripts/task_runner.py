@@ -1,12 +1,11 @@
 import json
 import time
-import pickle
 import traceback
 import threading
 
 from pydantic import BaseModel
 from datetime import datetime, timedelta
-from typing import Any, Callable, Union
+from typing import Any, Callable, Union, Optional
 from fastapi import FastAPI
 
 from modules import progress, shared, script_callbacks
@@ -27,15 +26,24 @@ from scripts.task_helpers import (
     serialize_controlnet_args,
     deserialize_controlnet_args,
     map_ui_task_args_list_to_named_args,
+    map_named_args_to_ui_task_args_list,
 )
+
+task_history_retenion_map = {
+    "7 days": 7,
+    "14 days": 14,
+    "30 days": 30,
+    "90 days": 90,
+    "Keep forever": 0,
+}
 
 
 class ParsedTaskArgs(BaseModel):
-    args: list[Any]
+    is_ui: bool
+    ui_args: list[Any]
     named_args: dict[str, Any]
     script_args: list[Any]
-    checkpoint: str
-    is_ui: bool
+    checkpoint: Optional[str] = None
 
 
 class TaskRunner:
@@ -48,7 +56,7 @@ class TaskRunner:
         self.__current_thread: threading.Thread = None
         self.__api = Api(FastAPI(), queue_lock)
 
-        self.__saved_images_path: list[str] = []
+        self.__saved_images_path: list[tuple[str, str]] = []
         script_callbacks.on_image_saved(self.__on_image_saved)
 
         self.script_callbacks = {
@@ -60,6 +68,7 @@ class TaskRunner:
 
         # Mark this to True when reload UI
         self.dispose = False
+        self.interrupted = None
 
         if TaskRunner.instance is not None:
             raise Exception("TaskRunner instance already exists")
@@ -137,7 +146,7 @@ class TaskRunner:
         pass
 
     def parse_task_args(
-        self, params: str, script_params: bytes, deserialization: bool = True
+        self, params: str, script_params: bytes = None, deserialization: bool = True
     ):
         parsed: dict[str, Any] = json.loads(params)
 
@@ -145,25 +154,25 @@ class TaskRunner:
         is_img2img = parsed.get("is_img2img", None)
         checkpoint = parsed.get("checkpoint", None)
         named_args: dict[str, Any] = parsed["args"]
-        script_args: list[Any] = (
-            parsed["script_args"]
-            if "script_args" in parsed
-            else pickle.loads(script_params)
-        )
+        script_args: list[Any] = parsed.get("script_args", [])
 
         if is_ui and deserialization:
             self.__deserialize_ui_task_args(is_img2img, named_args, script_args)
         elif deserialization:
             self.__deserialize_api_task_args(is_img2img, named_args)
 
-        args = list(named_args.values()) + script_args
+        ui_args = (
+            map_named_args_to_ui_task_args_list(named_args, script_args, is_img2img)
+            if is_ui
+            else []
+        )
 
         return ParsedTaskArgs(
-            args=args,
+            is_ui=is_ui,
+            ui_args=ui_args,
             named_args=named_args,
             script_args=script_args,
             checkpoint=checkpoint,
-            is_ui=is_ui,
         )
 
     def register_ui_task(
@@ -220,39 +229,54 @@ class TaskRunner:
                     "api_task_id": task.api_task_id,
                 }
 
+                self.interrupted = None
                 self.__saved_images_path = []
                 self.__run_callbacks("task_started", task_id, **task_meta)
                 res = self.__execute_task(task_id, is_img2img, task_args)
                 if not res or isinstance(res, Exception):
-                    task_manager.update_task(id=task_id, status=TaskStatus.FAILED)
+                    task_manager.update_task(
+                        id=task_id,
+                        status=TaskStatus.FAILED,
+                        result=str(res) if res else None,
+                    )
                     self.__run_callbacks(
                         "task_finished", task_id, status=TaskStatus.FAILED, **task_meta
                     )
                 else:
-                    res = json.loads(res)
-                    log.info(f"\n[AgentScheduler] Task {task.id} done")
-                    infotexts = []
-                    for line in res["infotexts"]:
-                        infotexts.extend(line.split("\n"))
-                    infotexts[0] = f"Prompt: {infotexts[0]}"
-                    log.info("\n".join(["** " + text for text in infotexts]))
+                    is_interrupted = self.interrupted == task_id
+                    if is_interrupted:
+                        log.info(f"\n[AgentScheduler] Task {task.id} interrupted")
+                        task_manager.update_task(
+                            id=task_id,
+                            status=TaskStatus.INTERRUPTED,
+                        )
+                        self.__run_callbacks(
+                            "task_finished",
+                            task_id,
+                            status=TaskStatus.INTERRUPTED,
+                            **task_meta,
+                        )
+                    else:
+                        result = {
+                            "images": [],
+                            "infotexts": [],
+                        }
+                        for filename, pnginfo in self.__saved_images_path:
+                            result["images"].append(filename)
+                            result["infotexts"].append(pnginfo)
 
-                    result = {
-                        "images": self.__saved_images_path.copy(),
-                        "infotexts": infotexts,
-                    }
-                    task_manager.update_task(
-                        id=task_id,
-                        status=TaskStatus.DONE,
-                        result=json.dumps(result),
-                    )
-                    self.__run_callbacks(
-                        "task_finished",
-                        task_id,
-                        status=TaskStatus.DONE,
-                        result=result,
-                        **task_meta,
-                    )
+                        task_manager.update_task(
+                            id=task_id,
+                            status=TaskStatus.DONE,
+                            result=json.dumps(result),
+                        )
+                        self.__run_callbacks(
+                            "task_finished",
+                            task_id,
+                            status=TaskStatus.DONE,
+                            result=result,
+                            **task_meta,
+                        )
 
                 self.__saved_images_path = []
             else:
@@ -285,22 +309,9 @@ class TaskRunner:
             self.__current_thread.daemon = True
             self.__current_thread.start()
 
-    def get_task_info(self, task: Task) -> list[Any]:
-        task_args = self.parse_task_args(
-            task.params,
-            task.script_params,
-        )
-
-        return [
-            task.id,
-            task.type,
-            json.dumps(task_args.named_args),
-            task.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-        ]
-
     def __execute_task(self, task_id: str, is_img2img: bool, task_args: ParsedTaskArgs):
         if task_args.is_ui:
-            return self.__execute_ui_task(task_id, is_img2img, *task_args.args)
+            return self.__execute_ui_task(task_id, is_img2img, *task_args.ui_args)
         else:
             return self.__execute_api_task(
                 task_id,
@@ -360,9 +371,25 @@ class TaskRunner:
         if self.paused:
             log.info("[AgentScheduler] Runner is paused")
             return None
-        
-        # delete task that are 7 days old
-        task_manager.delete_tasks_before(datetime.now() - timedelta(days=7))
+
+        # delete task that are too old
+        retention_days = 30
+        if (
+            shared.opts.queue_history_retention_days
+            and shared.opts.queue_history_retention_days in task_history_retenion_map
+        ):
+            retention_days = task_history_retenion_map[
+                shared.opts.queue_history_retention_days
+            ]
+
+        if retention_days > 0:
+            deleted_rows = task_manager.delete_tasks_before(
+                datetime.now() - timedelta(days=retention_days)
+            )
+            if deleted_rows > 0:
+                log.debug(
+                    f"[AgentScheduler] Deleted {deleted_rows} tasks older than {retention_days} days"
+                )
 
         self.__total_pending_tasks = task_manager.count_tasks(status="pending")
 
@@ -379,7 +406,7 @@ class TaskRunner:
             self.__run_callbacks("task_cleared")
 
     def __on_image_saved(self, data: script_callbacks.ImageSaveParams):
-        self.__saved_images_path.append(data.filename)
+        self.__saved_images_path.append((data.filename, data.pnginfo["parameters"]))
 
     def on_task_registered(self, callback: Callable):
         """Callback when a task is registered
