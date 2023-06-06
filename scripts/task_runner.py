@@ -29,6 +29,13 @@ from scripts.task_helpers import (
     map_named_args_to_ui_task_args_list,
 )
 
+
+class OutOfMemoryError(Exception):
+    def __init__(self, message="CUDA out of memory") -> None:
+        self.message = message
+        super().__init__(message)
+
+
 task_history_retenion_map = {
     "7 days": 7,
     "14 days": 14,
@@ -232,8 +239,26 @@ class TaskRunner:
                 self.interrupted = None
                 self.__saved_images_path = []
                 self.__run_callbacks("task_started", task_id, **task_meta)
+
+                # enable image saving
+                samples_save = shared.opts.samples_save
+                shared.opts.samples_save = True
+
                 res = self.__execute_task(task_id, is_img2img, task_args)
+
+                # disable image saving
+                shared.opts.samples_save = samples_save
+
                 if not res or isinstance(res, Exception):
+                    if isinstance(res, OutOfMemoryError):
+                        log.error(
+                            f"[AgentScheduler] Task {task_id} failed: CUDA OOM. Queue will be paused."
+                        )
+                        shared.opts.queue_paused = True
+                    else:
+                        log.error(f"[AgentScheduler] Task {task_id} failed: {res}")
+                        log.debug(traceback.format_exc())
+
                     task_manager.update_task(
                         id=task_id,
                         status=TaskStatus.FAILED,
@@ -330,10 +355,17 @@ class TaskRunner:
             res = None
             try:
                 result = func(*args)
-                res = result[1]
+                if (
+                    result[0] is None
+                    and hasattr(shared.state, "oom")
+                    and shared.state.oom
+                ):
+                    res = OutOfMemoryError()
+                elif "CUDA out of memory" in result[2]:
+                    res = OutOfMemoryError()
+                else:
+                    res = result[1]
             except Exception as e:
-                log.error(f"[AgentScheduler] Task {task_id} failed: {e}")
-                log.error(traceback.format_exc())
                 res = e
             finally:
                 progress.finish_task(task_id)
@@ -356,9 +388,10 @@ class TaskRunner:
             )
             res = result.info
         except Exception as e:
-            log.error(f"[AgentScheduler] Task {task_id} failed: {e}")
-            log.error(traceback.format_exc())
-            res = e
+            if "CUDA out of memory" in str(e):
+                res = OutOfMemoryError()
+            else:
+                res = e
         finally:
             progress.finish_task(task_id)
 

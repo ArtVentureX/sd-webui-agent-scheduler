@@ -105,15 +105,13 @@ All the functionality of this extension can be accessed through HTTP APIs. You c
 
 ![API docs](https://github.com/ArtVentureX/sd-webui-agent-scheduler/assets/133728487/a1b1f2a6-b631-4a59-b904-d6eb3aa90b7d)
 
-
 The two apis `/agent-scheduler/v1/queue/txt2img` and `/agent-scheduler/v1/queue/img2img` support all the parameters of the original webui apis. These apis response the task id, which can be used to perform updates later.
 
 ```json
 {
   "task_id": "string"
 }
-````
-
+```
 
 ## Road Map
 
