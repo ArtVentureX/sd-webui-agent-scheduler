@@ -2,10 +2,10 @@ import threading
 from uuid import uuid4
 from gradio.routes import App
 
-from modules import shared, progress, script_callbacks
+from modules import shared, progress
 
-from scripts.db import TaskStatus, task_manager
-from scripts.models import (
+from .db import TaskStatus, task_manager
+from .models import (
     Txt2ImgApiTaskArgs,
     Img2ImgApiTaskArgs,
     QueueTaskResponse,
@@ -13,14 +13,12 @@ from scripts.models import (
     HistoryResponse,
     TaskModel,
 )
-from scripts.task_runner import TaskRunner, get_instance
-from scripts.helpers import log
-from scripts.task_helpers import serialize_api_task_args
-
-task_runner: TaskRunner = None
+from .task_runner import TaskRunner
+from .helpers import log
+from .task_helpers import serialize_api_task_args
 
 
-def regsiter_apis(app: App):
+def regsiter_apis(app: App, task_runner: TaskRunner):
     log.info("[AgentScheduler] Registering APIs")
 
     @app.post("/agent-scheduler/v1/queue/txt2img", response_model=QueueTaskResponse)
@@ -232,13 +230,3 @@ def regsiter_apis(app: App):
         shared.opts.queue_paused = False
         TaskRunner.instance.execute_pending_tasks_threading()
         return {"success": True, "message": f"Queue is resumed"}
-
-
-def on_app_started(block, app: App):
-    global task_runner
-    task_runner = get_instance(block)
-
-    regsiter_apis(app)
-
-
-script_callbacks.on_app_started(on_app_started)

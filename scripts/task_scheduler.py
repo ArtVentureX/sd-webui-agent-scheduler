@@ -12,9 +12,18 @@ from modules.generation_parameters_copypaste import (
     ParamBinding,
 )
 
-from scripts.task_runner import TaskRunner, get_instance, task_history_retenion_map
-from scripts.helpers import log, compare_components_with_ids, get_components_by_ids
-from scripts.db import init, task_manager, TaskStatus
+from agent_scheduler.task_runner import (
+    TaskRunner,
+    get_instance,
+    task_history_retenion_map,
+)
+from agent_scheduler.helpers import (
+    log,
+    compare_components_with_ids,
+    get_components_by_ids,
+)
+from agent_scheduler.db import init, task_manager, TaskStatus
+from agent_scheduler.api import regsiter_apis
 
 task_runner: TaskRunner = None
 initialized = False
@@ -402,11 +411,11 @@ def on_ui_settings():
     )
 
 
-def on_app_started(block, _):
-    if block is not None:
-        global task_runner
-        task_runner = get_instance(block)
-        task_runner.execute_pending_tasks_threading()
+def on_app_started(block, app):
+    global task_runner
+    task_runner = get_instance(block)
+    task_runner.execute_pending_tasks_threading()
+    regsiter_apis(app, task_runner)
 
 
 script_callbacks.on_ui_tabs(on_ui_tab)

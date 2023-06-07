@@ -18,9 +18,9 @@ from modules.api.models import (
     StableDiffusionImg2ImgProcessingAPI,
 )
 
-from scripts.db import TaskStatus, Task, task_manager
-from scripts.helpers import log, detect_control_net, get_component_by_elem_id
-from scripts.task_helpers import (
+from .db import TaskStatus, Task, task_manager
+from .helpers import log, detect_control_net, get_component_by_elem_id
+from .task_helpers import (
     serialize_img2img_image_args,
     deserialize_img2img_image_args,
     serialize_controlnet_args,

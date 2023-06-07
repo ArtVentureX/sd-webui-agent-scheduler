@@ -556,10 +556,8 @@ function initHistoryTab() {
           btnRun.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            api.showLoadingOverlay();
-            pendingStore.requeueTask(value).then((res) => {
+            store.requeueTask(value).then((res) => {
               notify(res);
-              api.hideOverlay();
             });
           });
 
@@ -617,8 +615,17 @@ function initHistoryTab() {
   new Grid(eGridDiv, gridOptions);
 }
 
-onUiLoaded(() => {
+let agentSchedulerInitialized = false;
+
+onUiLoaded(function initAgentScheduler() {
+  // delay ui init until dom is available
+  if (!document.getElementById('tab_agent_scheduler')) {
+    setTimeout(initAgentScheduler, 500);
+    return;
+  }
+  if (agentSchedulerInitialized) return;
   initTabChangeHandler();
   initPendingTab();
   initHistoryTab();
+  agentSchedulerInitialized = true;
 });

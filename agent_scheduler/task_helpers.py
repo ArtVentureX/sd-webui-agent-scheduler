@@ -18,7 +18,7 @@ from modules.api.models import (
     StableDiffusionImg2ImgProcessingAPI,
 )
 
-from scripts.helpers import log
+from .helpers import log
 
 img2img_image_args_by_mode: dict[int, list[list[str]]] = {
     0: [["init_img"]],
