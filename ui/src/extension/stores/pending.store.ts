@@ -14,7 +14,6 @@ type PendingTasksActions = {
   pauseQueue: () => Promise<ResponseStatus>;
   resumeQueue: () => Promise<ResponseStatus>;
   runTask: (id: string) => Promise<ResponseStatus>;
-  requeueTask: (id: string) => Promise<ResponseStatus>;
   moveTask: (id: string, overId: string) => Promise<ResponseStatus>;
   deleteTask: (id: string) => Promise<ResponseStatus>;
 };
@@ -51,14 +50,6 @@ export const createPendingTasksStore = (initialState: PendingTasksState) => {
     },
     runTask: async (id: string) => {
       return fetch(`/agent-scheduler/v1/run/${id}`, { method: 'POST' })
-        .then((response) => response.json())
-        .then((data) => {
-          actions.refresh();
-          return data;
-        });
-    },
-    requeueTask: async (id: string) => {
-      return fetch(`/agent-scheduler/v1/requeue/${id}`, { method: 'POST' })
         .then((response) => response.json())
         .then((data) => {
           actions.refresh();
