@@ -439,7 +439,7 @@ class TaskRunner:
             self.__run_callbacks("task_cleared")
 
     def __on_image_saved(self, data: script_callbacks.ImageSaveParams):
-        self.__saved_images_path.append((data.filename, data.pnginfo["parameters"]))
+        self.__saved_images_path.append((data.filename, data.pnginfo.get("parameters", "")))
 
     def on_task_registered(self, callback: Callable):
         """Callback when a task is registered
