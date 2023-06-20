@@ -21,7 +21,7 @@ from .models import (
 )
 from .task_runner import TaskRunner
 from .helpers import log
-from .task_helpers import encode_image_to_base64
+from .task_helpers import encode_image_to_base64, img2img_image_args_by_mode
 
 
 def regsiter_apis(app: App, task_runner: TaskRunner):
@@ -67,6 +67,9 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
         named_args.pop("alwayson_scripts", None)
         named_args.pop("script_args", None)
         named_args.pop("init_images", None)
+        for image_args in img2img_image_args_by_mode.values():
+            for keys in image_args:
+                named_args.pop(keys[0], None)
         return named_args
 
     @app.get("/agent-scheduler/v1/queue", response_model=QueueStatusResponse)
