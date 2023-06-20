@@ -103,7 +103,9 @@ By default, queued tasks use the currently loaded checkpoint. However, changing 
 
 All the functionality of this extension can be accessed through HTTP APIs. You can access the API documentation via `http://127.0.0.1:7860/docs`. Remember to include `--api` in your startup arguments.
 
-![API docs](https://github.com/ArtVentureX/sd-webui-agent-scheduler/assets/133728487/a1b1f2a6-b631-4a59-b904-d6eb3aa90b7d)
+![API docs](https://github.com/ArtVentureX/sd-webui-agent-scheduler/assets/133728487/012ab2cc-b41f-4c68-8fa5-7ab4e49aa91d)
+
+#### Queue Task
 
 The two apis `/agent-scheduler/v1/queue/txt2img` and `/agent-scheduler/v1/queue/img2img` support all the parameters of the original webui apis. These apis response the task id, which can be used to perform updates later.
 
@@ -112,6 +114,30 @@ The two apis `/agent-scheduler/v1/queue/txt2img` and `/agent-scheduler/v1/queue/
   "task_id": "string"
 }
 ```
+
+#### Download Results
+
+Use api `/agent-scheduler/v1/results/{id}` to get the generated images. The api supports two response format:
+
+- json with base64 encoded
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "image": "data:image/png;base64,iVBORw0KGgoAAAAN...",
+      "infotext": "1girl\nNegative prompt: EasyNegative, badhandv4..."
+    },
+    {
+      "image": "data:image/png;base64,iVBORw0KGgoAAAAN...",
+      "infotext": "1girl\nNegative prompt: EasyNegative, badhandv4..."
+    }
+  ]
+}
+```
+
+- zip file with querystring `zip=true`
 
 ## Road Map
 

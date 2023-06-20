@@ -1,34 +1,36 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+
 import { Grid, GridOptions } from 'ag-grid-community';
 import { Notyf } from 'notyf';
+
+import bookmark from '../assets/icons/bookmark.svg?raw';
+import bookmarked from '../assets/icons/bookmark-filled.svg?raw';
+import cancelIcon from '../assets/icons/cancel.svg?raw';
+import deleteIcon from '../assets/icons/delete.svg?raw';
+import playIcon from '../assets/icons/play.svg?raw';
+import rotateIcon from '../assets/icons/rotate.svg?raw';
+import searchIcon from '../assets/icons/search.svg?raw';
+import { debounce } from '../utils/debounce';
+import { extractArgs } from '../utils/extract-args';
+import { formatDate } from '../utils/format-date';
+
+import { createHistoryTasksStore } from './stores/history.store';
+import { createPendingTasksStore } from './stores/pending.store';
+import { createSharedStore } from './stores/shared.store';
+import { ProgressResponse, ResponseStatus, Task, TaskStatus } from './types';
 
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
 import 'notyf/notyf.min.css';
 import './index.scss';
 
-import { createPendingTasksStore } from './stores/pending.store';
-import { ProgressResponse, ResponseStatus, Task, TaskStatus } from './types';
-import { debounce } from '../utils/debounce';
-import { extractArgs } from '../utils/extract-args';
-import { createHistoryTasksStore } from './stores/history.store';
-import { createSharedStore } from './stores/shared.store';
-
-import deleteIcon from '../assets/icons/delete.svg?raw';
-import cancelIcon from '../assets/icons/cancel.svg?raw';
-import searchIcon from '../assets/icons/search.svg?raw';
-import playIcon from '../assets/icons/play.svg?raw';
-import rotateIcon from '../assets/icons/rotate.svg?raw';
-import bookmark from '../assets/icons/bookmark.svg?raw';
-import bookmarked from '../assets/icons/bookmark-filled.svg?raw';
-
 const notyf = new Notyf();
 
 declare global {
-  var country: string;
   function gradioApp(): HTMLElement;
   function randomId(): string;
   function get_tab_index(name: string): number;
-  function create_submit_args(args: IArguments): any[];
+  function create_submit_args(args: any[]): any[];
   function requestProgress(
     id: string,
     progressContainer: HTMLElement,
@@ -37,12 +39,16 @@ declare global {
     onProgress?: (res: ProgressResponse) => void,
   ): void;
   function onUiLoaded(callback: () => void): void;
-  function submit_enqueue(): any[];
-  function submit_enqueue_img2img(): any[];
+  function notify(response: ResponseStatus): void;
+  function submit(...args: any[]): any[];
+  function submit_img2img(...args: any[]): any[];
+  function submit_enqueue(...args: any[]): any[];
+  function submit_enqueue_img2img(...args: any[]): any[];
   function agent_scheduler_status_filter_changed(value: string): void;
 }
 
 const sharedStore = createSharedStore({
+  uiAsTab: true,
   selectedTab: 'pending',
 });
 
@@ -98,7 +104,8 @@ const sharedGridOptions: GridOptions<Task> = {
         {
           field: 'params.prompt',
           headerName: 'Prompt',
-          minWidth: 400,
+          minWidth: 200,
+          maxWidth: 400,
           autoHeight: true,
           wrapText: true,
           cellStyle: { 'line-height': '24px', 'padding-top': '8px', 'padding-bottom': '8px' },
@@ -106,7 +113,8 @@ const sharedGridOptions: GridOptions<Task> = {
         {
           field: 'params.negative_prompt',
           headerName: 'Negative Prompt',
-          minWidth: 400,
+          minWidth: 200,
+          maxWidth: 400,
           autoHeight: true,
           wrapText: true,
           cellStyle: { 'line-height': '24px', 'padding-top': '8px', 'padding-bottom': '8px' },
@@ -143,7 +151,8 @@ const sharedGridOptions: GridOptions<Task> = {
           headerName: 'Size',
           minWidth: 110,
           maxWidth: 110,
-          valueGetter: ({ data }) => (data ? `${data.params.width}x${data.params.height}` : ''),
+          valueGetter: ({ data }) =>
+            data?.params?.width ? `${data.params.width}x${data.params.height}` : '',
         },
         {
           field: 'params.batch',
@@ -151,11 +160,22 @@ const sharedGridOptions: GridOptions<Task> = {
           minWidth: 100,
           maxWidth: 100,
           valueGetter: ({ data }) =>
-            data ? `${data.params.n_iter}x${data.params.batch_size}` : '1x1',
+            data?.params?.n_iter ? `${data.params.n_iter}x${data.params.batch_size}` : '1x1',
         },
       ],
     },
-    { field: 'created_at', headerName: 'Date', minWidth: 200 },
+    {
+      field: 'created_at',
+      headerName: 'Queued At',
+      minWidth: 170,
+      valueFormatter: ({ value }) => value && formatDate(new Date(value)),
+    },
+    {
+      field: 'updated_at',
+      headerName: 'Updated At',
+      minWidth: 170,
+      valueFormatter: ({ value }) => value && formatDate(new Date(value)),
+    },
   ],
 
   getRowId: ({ data }) => data.id,
@@ -209,6 +229,8 @@ function notify(response: ResponseStatus) {
   }
 }
 
+window.notify = notify;
+
 function showTaskProgress(task_id: string, callback: () => void) {
   const args = extractArgs(requestProgress);
 
@@ -246,6 +268,16 @@ function showTaskProgress(task_id: string, callback: () => void) {
 }
 
 function initTabChangeHandler() {
+  sharedStore.subscribe((curr, prev) => {
+    if (!curr.uiAsTab || curr.selectedTab !== prev.selectedTab) {
+      if (curr.selectedTab === 'pending') {
+        pendingStore.refresh();
+      } else {
+        historyStore.refresh();
+      }
+    }
+  });
+
   // watch for tab activation
   const observer = new MutationObserver(function (mutationsList) {
     mutationsList.forEach((styleChange) => {
@@ -260,15 +292,19 @@ function initTabChangeHandler() {
           historyStore.refresh();
         }
       } else if (tab.id === 'agent_scheduler_pending_tasks_tab') {
-        sharedStore.selectSelectedTab('pending');
-        pendingStore.refresh();
+        sharedStore.setSelectedTab('pending');
       } else if (tab.id === 'agent_scheduler_history_tab') {
-        sharedStore.selectSelectedTab('history');
-        historyStore.refresh();
+        sharedStore.setSelectedTab('history');
       }
     });
   });
-  observer.observe(document.getElementById('tab_agent_scheduler')!, { attributeFilter: ['style'] });
+  if (document.getElementById('tab_agent_scheduler')) {
+    observer.observe(document.getElementById('tab_agent_scheduler')!, {
+      attributeFilter: ['style'],
+    });
+  } else {
+    sharedStore.setState({ uiAsTab: false });
+  }
   observer.observe(document.getElementById('agent_scheduler_pending_tasks_tab')!, {
     attributeFilter: ['style'],
   });
@@ -280,33 +316,38 @@ function initTabChangeHandler() {
 function initPendingTab() {
   const store = pendingStore;
 
-  window.submit_enqueue = function submit_enqueue() {
-    var id = randomId();
-    var res = create_submit_args(arguments);
-    res[0] = id;
+  window.submit_enqueue = function submit_enqueue(...args) {
+    const res = window.submit(...args);
 
     const btnEnqueue = document.querySelector('#txt2img_enqueue');
     if (btnEnqueue) {
       btnEnqueue.innerHTML = 'Queued';
       setTimeout(() => {
         btnEnqueue.innerHTML = 'Enqueue';
+        if (!sharedStore.getState().uiAsTab) {
+          if (sharedStore.getState().selectedTab === 'pending') {
+            pendingStore.refresh();
+          }
+        }
       }, 1000);
     }
 
     return res;
   };
 
-  window.submit_enqueue_img2img = function submit_enqueue_img2img() {
-    var id = randomId();
-    var res = create_submit_args(arguments);
-    res[0] = id;
-    res[1] = get_tab_index('mode_img2img');
+  window.submit_enqueue_img2img = function submit_enqueue_img2img(...args) {
+    const res = window.submit_img2img(...args);
 
     const btnEnqueue = document.querySelector('#img2img_enqueue');
     if (btnEnqueue) {
       btnEnqueue.innerHTML = 'Queued';
       setTimeout(() => {
         btnEnqueue.innerHTML = 'Enqueue';
+        if (!sharedStore.getState().uiAsTab) {
+          if (sharedStore.getState().selectedTab === 'pending') {
+            pendingStore.refresh();
+          }
+        }
       }, 1000);
     }
 
@@ -406,7 +447,22 @@ function initPendingTab() {
         },
       },
     ],
-    onGridReady: ({ api }) => {
+    onColumnMoved({ columnApi }) {
+      const colState = columnApi.getColumnState();
+      const colStateStr = JSON.stringify(colState);
+      localStorage.setItem('agent_scheduler:queue_col_state', colStateStr);
+    },
+    onSortChanged({ columnApi }) {
+      const colState = columnApi.getColumnState();
+      const colStateStr = JSON.stringify(colState);
+      localStorage.setItem('agent_scheduler:queue_col_state', colStateStr);
+    },
+    onColumnResized({ columnApi }) {
+      const colState = columnApi.getColumnState();
+      const colStateStr = JSON.stringify(colState);
+      localStorage.setItem('agent_scheduler:queue_col_state', colStateStr);
+    },
+    onGridReady: ({ api, columnApi }) => {
       // init quick search input
       const searchContainer = initSearchInput('#agent_scheduler_action_search');
       const searchInput: HTMLInputElement = searchContainer.querySelector('input.ts-search-input')!;
@@ -427,8 +483,15 @@ function initPendingTab() {
           }
         }
 
-        api.sizeColumnsToFit();
+        columnApi.autoSizeAllColumns();
       });
+
+      // restore col state
+      const colStateStr = localStorage.getItem('agent_scheduler:queue_col_state');
+      if (colStateStr) {
+        const colState = JSON.parse(colStateStr);
+        columnApi.applyColumnState({ state: colState, applyOrder: true });
+      }
     },
     onRowDragEnd: ({ api, node, overNode }) => {
       const id = node.data?.id;
@@ -581,7 +644,22 @@ function initHistoryTab() {
     ],
     rowSelection: 'single',
     suppressRowDeselection: true,
-    onGridReady: ({ api }) => {
+    onColumnMoved({ columnApi }) {
+      const colState = columnApi.getColumnState();
+      const colStateStr = JSON.stringify(colState);
+      localStorage.setItem('agent_scheduler:history_col_state', colStateStr);
+    },
+    onSortChanged({ columnApi }) {
+      const colState = columnApi.getColumnState();
+      const colStateStr = JSON.stringify(colState);
+      localStorage.setItem('agent_scheduler:history_col_state', colStateStr);
+    },
+    onColumnResized({ columnApi }) {
+      const colState = columnApi.getColumnState();
+      const colStateStr = JSON.stringify(colState);
+      localStorage.setItem('agent_scheduler:history_col_state', colStateStr);
+    },
+    onGridReady: ({ api, columnApi }) => {
       // init quick search input
       const searchContainer = initSearchInput('#agent_scheduler_action_search_history');
       const searchInput: HTMLInputElement = searchContainer.querySelector('input.ts-search-input')!;
@@ -594,8 +672,15 @@ function initHistoryTab() {
 
       store.subscribe((state) => {
         api.setRowData(state.tasks);
-        api.sizeColumnsToFit();
+        columnApi.autoSizeAllColumns();
       });
+
+      // restore col state
+      const colStateStr = localStorage.getItem('agent_scheduler:history_col_state');
+      if (colStateStr) {
+        const colState = JSON.parse(colStateStr);
+        columnApi.applyColumnState({ state: colState, applyOrder: true });
+      }
     },
     onSelectionChanged: (e) => {
       const [selected] = e.api.getSelectedRows();
@@ -619,7 +704,7 @@ let agentSchedulerInitialized = false;
 
 onUiLoaded(function initAgentScheduler() {
   // delay ui init until dom is available
-  if (!document.getElementById('tab_agent_scheduler')) {
+  if (!document.getElementById('agent_scheduler_tabs')) {
     setTimeout(initAgentScheduler, 500);
     return;
   }

@@ -31,35 +31,8 @@ class Task(TaskModel):
     script_params: bytes = None
     params: str
 
-    def __init__(
-        self,
-        id: str = "",
-        api_task_id: str = None,
-        name: str = None,
-        type: str = "unknown",
-        params: str = "",
-        priority: int = None,
-        status: str = TaskStatus.PENDING.value,
-        result: str = None,
-        bookmarked: bool = False,
-        created_at: Optional[datetime] = None,
-        updated_at: Optional[datetime] = None,
-    ):
-        priority = priority if priority else int(datetime.utcnow().timestamp() * 1000)
-
-        super().__init__(
-            id=id,
-            api_task_id=api_task_id,
-            name=name,
-            type=type,
-            params=params,
-            status=status,
-            priority=priority,
-            result=result,
-            bookmarked=bookmarked,
-            created_at=created_at,
-            updated_at=updated_at,
-        )
+    def __init__(self, priority=int(datetime.utcnow().timestamp() * 1000), **kwargs):
+        super().__init__(priority=priority, **kwargs)
 
     class Config(TaskModel.__config__):
         exclude = ["script_params"]
@@ -104,7 +77,7 @@ class TaskTable(Base):
     type = Column(String(20), nullable=False)  # txt2img or img2txt
     params = Column(Text, nullable=False)  # task args
     script_params = Column(LargeBinary, nullable=False)  # script args
-    priority = Column(Integer, nullable=False, default=datetime.now)
+    priority = Column(Integer, nullable=False)
     status = Column(
         String(20), nullable=False, default="pending"
     )  # pending, running, done, failed
@@ -144,6 +117,7 @@ class TaskManager(BaseTableManager):
         type: str = None,
         status: Union[str, list[str]] = None,
         bookmarked: bool = None,
+        api_task_id: str = None,
         limit: int = None,
         offset: int = None,
         order: str = "asc",
@@ -159,6 +133,9 @@ class TaskManager(BaseTableManager):
                     query = query.filter(TaskTable.status.in_(status))
                 else:
                     query = query.filter(TaskTable.status == status)
+
+            if api_task_id:
+                query = query.filter(TaskTable.api_task_id == api_task_id)
 
             if bookmarked == True:
                 query = query.filter(TaskTable.bookmarked == bookmarked)
@@ -189,6 +166,7 @@ class TaskManager(BaseTableManager):
         self,
         type: str = None,
         status: Union[str, list[str]] = None,
+        api_task_id: str = None,
     ) -> int:
         session = Session(self.engine)
         try:
@@ -201,6 +179,9 @@ class TaskManager(BaseTableManager):
                     query = query.filter(TaskTable.status.in_(status))
                 else:
                     query = query.filter(TaskTable.status == status)
+
+            if api_task_id:
+                query = query.filter(TaskTable.api_task_id == api_task_id)
 
             return query.count()
         except Exception as e:
@@ -262,7 +243,7 @@ class TaskManager(BaseTableManager):
             result = session.get(TaskTable, id)
             if result:
                 if priority == 0:
-                    result.priority = self.__get_min_priority() - 1
+                    result.priority = self.__get_min_priority(status=TaskStatus.PENDING) - 1
                 elif priority == -1:
                     result.priority = int(datetime.utcnow().timestamp() * 1000)
                 else:
@@ -316,10 +297,14 @@ class TaskManager(BaseTableManager):
         finally:
             session.close()
 
-    def __get_min_priority(self) -> int:
+    def __get_min_priority(self, status: str = None) -> int:
         session = Session(self.engine)
         try:
-            min_priority = session.query(func.min(TaskTable.priority)).scalar()
+            query = session.query(func.min(TaskTable.priority))
+            if status is not None:
+                query = query.filter(TaskTable.status == status)
+
+            min_priority = query.scalar()
             return min_priority if min_priority else 0
         except Exception as e:
             print(f"Exception getting min priority from database: {e}")

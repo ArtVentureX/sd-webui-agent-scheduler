@@ -6,7 +6,7 @@ from gradio.blocks import Block, BlockContext
 
 if not logging.getLogger().hasHandlers():
     # Logging is not set up
-    logging.basicConfig(level=logging.INFO, format='%(message)s')
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
 
 log = logging.getLogger("sd")
 
@@ -78,3 +78,43 @@ def detect_control_net(root: gr.Blocks, submit: gr.Button):
                 UiControlNetUnit = type(output.value)
 
     return UiControlNetUnit
+
+
+def get_dict_attribute(dict_inst: dict, name_string: str, default=None):
+    nested_keys = name_string.split(".")
+    value = dict_inst
+
+    for key in nested_keys:
+        value = value.get(key, None)
+
+        if value is None:
+            return default
+
+    return value
+
+
+def set_dict_attribute(dict_inst: dict, name_string: str, value):
+    """
+    Set an attribute to a dictionary using dot notation.
+    If the attribute does not already exist, it will create a nested dictionary.
+
+    Parameters:
+        - dict_inst: the dictionary instance to set the attribute
+        - name_string: the attribute name in dot notation (ex: 'attribute.name')
+        - value: the value to set for the attribute
+
+    Returns:
+        None
+    """
+    # Split the attribute names by dot
+    name_list = name_string.split(".")
+
+    # Traverse the dictionary and create a nested dictionary if necessary
+    current_dict = dict_inst
+    for name in name_list[:-1]:
+        if name not in current_dict:
+            current_dict[name] = {}
+        current_dict = current_dict[name]
+
+    # Set the final attribute to its value
+    current_dict[name_list[-1]] = value

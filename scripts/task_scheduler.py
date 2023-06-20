@@ -31,6 +31,9 @@ initialized = False
 checkpoint_current = "Current Checkpoint"
 checkpoint_runtime = "Runtime Checkpoint"
 
+ui_placement_as_tab = "As a tab"
+ui_placement_append_to_main = "Append to main UI"
+
 placement_under_generate = "Under Generate button"
 placement_between_prompt_and_generate = "Between Prompt and Generate button"
 
@@ -48,7 +51,7 @@ class Script(scripts.Script):
         return "Agent Scheduler"
 
     def show(self, is_img2img):
-        return True
+        return scripts.AlwaysVisible
 
     def on_checkpoint_changed(self, checkpoint):
         self.checkpoint_override = checkpoint
@@ -409,15 +412,39 @@ def on_ui_settings():
             section=section,
         ),
     )
+    shared.opts.add_option(
+        "queue_ui_placement",
+        shared.OptionInfo(
+            ui_placement_as_tab,
+            "Task queue UI placement",
+            gr.Radio,
+            lambda: {
+                "choices": [
+                    ui_placement_as_tab,
+                    ui_placement_append_to_main,
+                ]
+            },
+            section=section,
+        ),
+    )
 
 
-def on_app_started(block, app):
+def on_app_started(block: gr.Blocks, app):
     global task_runner
     task_runner = get_instance(block)
     task_runner.execute_pending_tasks_threading()
     regsiter_apis(app, task_runner)
 
+    if (
+        getattr(shared.opts, "queue_ui_placement", "") == ui_placement_append_to_main
+        and block
+    ):
+        with block:
+            with block.children[1]:
+                on_ui_tab()
 
-script_callbacks.on_ui_tabs(on_ui_tab)
+if getattr(shared.opts, "queue_ui_placement", "") != ui_placement_append_to_main:
+    script_callbacks.on_ui_tabs(on_ui_tab)
+
 script_callbacks.on_ui_settings(on_ui_settings)
 script_callbacks.on_app_started(on_app_started)

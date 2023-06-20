@@ -35,20 +35,16 @@
     }
   }
 
-  .ag-cell.task-running .ag-cell-wrapper {
+  .ag-cell.task-running {
     @apply !text-blue-500;
     animation: 1s blink ease infinite;
   }
 
-  /* .ag-cell.task-done .ag-cell-wrapper {
-    @apply !text-green-500;
-  } */
-
-  .ag-cell.task-failed .ag-cell-wrapper {
+  .ag-cell.task-failed {
     @apply !text-red-500;
   }
 
-  .ag-cell.task-interrupted .ag-cell-wrapper {
+  .ag-cell.task-interrupted {
     @apply !text-gray-400;
   }
 }

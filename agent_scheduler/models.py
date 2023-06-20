@@ -32,12 +32,14 @@ class TaskModel(BaseModel):
     name: Optional[str] = Field(title="Task Name")
     type: str = Field(title="Task Type", description="Either txt2img or img2img")
     status: str = Field(
-        title="Task Status", description="Either pending, running, done or failed"
+        "pending",
+        title="Task Status",
+        description="Either pending, running, done or failed",
     )
     params: dict[str, Any] = Field(
         title="Task Parameters", description="The parameters of the task in JSON format"
     )
-    priority: int = Field(title="Task Priority")
+    priority: Optional[int] = Field(title="Task Priority")
     result: Optional[str] = Field(
         title="Task Result", description="The result of the task in JSON format"
     )
@@ -53,12 +55,6 @@ class TaskModel(BaseModel):
         default=None,
     )
 
-    class Config:
-        json_encoders = {
-            # custom output conversion for datetime
-            datetime: convert_datetime_to_iso_8601_with_z_suffix
-        }
-
 
 class Txt2ImgApiTaskArgs(StableDiffusionTxt2ImgProcessingAPI):
     checkpoint: Optional[str] = Field(
@@ -67,9 +63,7 @@ class Txt2ImgApiTaskArgs(StableDiffusionTxt2ImgProcessingAPI):
         description="Custom checkpoint hash. If not specified, the latest checkpoint will be used.",
     )
     sampler_index: Optional[str] = Field(
-        sd_samplers.samplers[0].name,
-        title="Sampler name",
-        alias="sampler_name"
+        sd_samplers.samplers[0].name, title="Sampler name", alias="sampler_name"
     )
 
     class Config(StableDiffusionTxt2ImgProcessingAPI.__config__):
@@ -87,9 +81,7 @@ class Img2ImgApiTaskArgs(StableDiffusionImg2ImgProcessingAPI):
         description="Custom checkpoint hash. If not specified, the latest checkpoint will be used.",
     )
     sampler_index: Optional[str] = Field(
-        sd_samplers.samplers[0].name,
-        title="Sampler name",
-        alias="sampler_name"
+        sd_samplers.samplers[0].name, title="Sampler name", alias="sampler_name"
     )
 
     class Config(StableDiffusionImg2ImgProcessingAPI.__config__):
@@ -116,7 +108,13 @@ class QueueStatusResponse(BaseModel):
     )
     paused: bool = Field(title="Paused", description="Whether the queue is paused")
 
+    class Config:
+        json_encoders = {datetime: lambda dt: int(dt.timestamp() * 1e3)}
+
 
 class HistoryResponse(BaseModel):
     tasks: List[TaskModel] = Field(title="Tasks")
     total: int = Field(title="Task count")
+
+    class Config:
+        json_encoders = {datetime: lambda dt: int(dt.timestamp() * 1e3)}

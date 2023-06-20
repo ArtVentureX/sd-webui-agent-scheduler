@@ -35,6 +35,10 @@
 
 /* ========================================================================= */
 
+#tabs > #agent_scheduler_tabs {
+  margin-top: var(--layout-gap);
+}
+
 #agent_scheduler_pending_tasks_wrapper,
 #agent_scheduler_history_wrapper {
   border: none;

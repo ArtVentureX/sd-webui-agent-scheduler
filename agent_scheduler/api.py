@@ -1,6 +1,12 @@
+import io
+import json
 import threading
 from uuid import uuid4
+from zipfile import ZipFile
+from pathlib import Path
+from typing import Optional
 from gradio.routes import App
+from fastapi.responses import StreamingResponse
 
 from modules import shared, progress
 
@@ -15,7 +21,7 @@ from .models import (
 )
 from .task_runner import TaskRunner
 from .helpers import log
-from .task_helpers import serialize_api_task_args
+from .task_helpers import encode_image_to_base64
 
 
 def regsiter_apis(app: App, task_runner: TaskRunner):
@@ -23,16 +29,15 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
 
     @app.post("/agent-scheduler/v1/queue/txt2img", response_model=QueueTaskResponse)
     def queue_txt2img(body: Txt2ImgApiTaskArgs):
-        params = body.dict()
         task_id = str(uuid4())
-        checkpoint = params.pop("model_hash", None)
-        task_args = serialize_api_task_args(
-            params,
-            is_img2img=False,
-            checkpoint=checkpoint,
-        )
+        args = body.dict()
+        checkpoint = args.pop("model_hash", None)
         task_runner.register_api_task(
-            task_id, api_task_id=False, is_img2img=False, args=task_args
+            task_id,
+            api_task_id=None,
+            is_img2img=False,
+            args=args,
+            checkpoint=checkpoint,
         )
         task_runner.execute_pending_tasks_threading()
 
@@ -40,20 +45,29 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
 
     @app.post("/agent-scheduler/v1/queue/img2img", response_model=QueueTaskResponse)
     def queue_img2img(body: Img2ImgApiTaskArgs):
-        params = body.dict()
         task_id = str(uuid4())
-        checkpoint = params.pop("model_hash", None)
-        task_args = serialize_api_task_args(
-            params,
-            is_img2img=True,
-            checkpoint=checkpoint,
-        )
+        args = body.dict()
+        checkpoint = args.pop("model_hash", None)
         task_runner.register_api_task(
-            task_id, api_task_id=False, is_img2img=True, args=task_args
+            task_id,
+            api_task_id=None,
+            is_img2img=True,
+            args=args,
+            checkpoint=checkpoint,
         )
         task_runner.execute_pending_tasks_threading()
 
         return QueueTaskResponse(task_id=task_id)
+
+    def format_task_args(task):
+        task_args = TaskRunner.instance.parse_task_args(task, deserialization=False)
+        named_args = task_args.named_args
+        named_args["checkpoint"] = task_args.checkpoint
+        # remove unused args to reduce payload size
+        named_args.pop("alwayson_scripts", None)
+        named_args.pop("script_args", None)
+        named_args.pop("init_images", None)
+        return named_args
 
     @app.get("/agent-scheduler/v1/queue", response_model=QueueStatusResponse)
     def queue_status_api(limit: int = 20, offset: int = 0):
@@ -64,14 +78,9 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
         )
         parsed_tasks = []
         for task in pending_tasks:
-            task_args = TaskRunner.instance.parse_task_args(
-                task.params, task.script_params, deserialization=False
-            )
-            named_args = task_args.named_args
-            named_args["checkpoint"] = task_args.checkpoint
-
+            params = format_task_args(task)
             task_data = task.dict()
-            task_data["params"] = named_args
+            task_data["params"] = params
             if task.id == current_task_id:
                 task_data["status"] = "running"
 
@@ -104,14 +113,9 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
         )
         parsed_tasks = []
         for task in tasks:
-            task_args = TaskRunner.instance.parse_task_args(
-                task.params, task.script_params, deserialization=False
-            )
-            named_args = task_args.named_args
-            named_args["checkpoint"] = task_args.checkpoint
-
+            params = format_task_args(task)
             task_data = task.dict()
-            task_data["params"] = named_args
+            task_data["params"] = params
             parsed_tasks.append(TaskModel(**task_data))
 
         return HistoryResponse(
@@ -219,6 +223,50 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
 
         task_manager.update_task(id, name=name)
         return {"success": True, "message": f"Task {id} is renamed"}
+
+    @app.get("/agent-scheduler/v1/results/{id}")
+    def get_task_results(id: str, zip: Optional[bool] = False):
+        task = task_manager.get_task(id)
+        if task is None:
+            return {"success": False, "message": f"Task not found"}
+
+        if task.status != TaskStatus.DONE:
+            return {"success": False, "message": f"Task is {task.status.value}"}
+
+        if task.result is None:
+            return {"success": False, "message": f"Task result is not available"}
+
+        result: dict = json.loads(task.result)
+        infotexts = result["infotexts"]
+
+        if zip:
+            zip_buffer = io.BytesIO()
+
+            # Create a new zip file in the in-memory buffer
+            with ZipFile(zip_buffer, "w") as zip_file:
+                # Loop through the files in the directory and add them to the zip file
+                for image in result["images"]:
+                    if Path(image).is_file():
+                        zip_file.write(Path(image), Path(image).name)
+
+            # Reset the buffer position to the beginning to avoid truncation issues
+            zip_buffer.seek(0)
+
+            # Return the in-memory buffer as a streaming response with the appropriate headers
+            return StreamingResponse(
+                zip_buffer,
+                media_type="application/zip",
+                headers={
+                    "Content-Disposition": f"attachment; filename=results-{id}.zip"
+                },
+            )
+        else:
+            data = [
+                {"image": encode_image_to_base64(image), "infotext": infotexts[i]}
+                for i, image in enumerate(result["images"])
+            ]
+
+            return {"success": True, "data": data}
 
     @app.post("/agent-scheduler/v1/pause")
     def pause_queue():

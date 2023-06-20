@@ -1,3 +1,4 @@
+import os
 import json
 import time
 import traceback
@@ -7,6 +8,7 @@ from pydantic import BaseModel
 from datetime import datetime, timedelta
 from typing import Any, Callable, Union, Optional
 from fastapi import FastAPI
+from PIL import Image
 
 from modules import progress, shared, script_callbacks
 from modules.call_queue import queue_lock, wrap_gradio_call
@@ -19,12 +21,19 @@ from modules.api.models import (
 )
 
 from .db import TaskStatus, Task, task_manager
-from .helpers import log, detect_control_net, get_component_by_elem_id
+from .helpers import (
+    log,
+    detect_control_net,
+    get_component_by_elem_id,
+    get_dict_attribute,
+)
 from .task_helpers import (
+    encode_image_to_base64,
     serialize_img2img_image_args,
     deserialize_img2img_image_args,
     serialize_controlnet_args,
     deserialize_controlnet_args,
+    serialize_api_task_args,
     map_ui_task_args_list_to_named_args,
     map_named_args_to_ui_task_args_list,
 )
@@ -119,11 +128,18 @@ class TaskRunner:
         )
 
     def __serialize_api_task_args(
-        self, is_img2img: bool, script_args: list = [], **named_args
+        self,
+        is_img2img: bool,
+        script_args: list = [],
+        checkpoint: str = None,
+        **api_args,
     ):
-        # serialization steps are done in task_helpers.register_api_task
-        override_settings = named_args.get("override_settings", {})
-        checkpoint = override_settings.get("sd_model_checkpoint", None)
+        named_args = serialize_api_task_args(
+            api_args, is_img2img, checkpoint=checkpoint
+        )
+        checkpoint = get_dict_attribute(
+            named_args, "override_settings.sd_model_checkpoint", None
+        )
 
         return json.dumps(
             {
@@ -149,13 +165,19 @@ class TaskRunner:
                     script_args[i] = deserialize_controlnet_args(arg)
 
     def __deserialize_api_task_args(self, is_img2img: bool, named_args: dict):
-        # API task use base64 images as input, no need to deserialize
-        pass
+        # load images from disk
+        if is_img2img:
+            init_images = named_args.get("init_images")
+            for i, img in enumerate(init_images):
+                if isinstance(img, str) and os.path.isfile(img):
+                    print("loading image", img)
+                    image = Image.open(img)
+                    init_images[i] = encode_image_to_base64(image)
 
-    def parse_task_args(
-        self, params: str, script_params: bytes = None, deserialization: bool = True
-    ):
-        parsed: dict[str, Any] = json.loads(params)
+        named_args.update({"save_images": True, "send_images": False})
+
+    def parse_task_args(self, task: Task, deserialization: bool = True):
+        parsed: dict[str, Any] = json.loads(task.params)
 
         is_ui = parsed.get("is_ui", True)
         is_img2img = parsed.get("is_img2img", None)
@@ -198,13 +220,18 @@ class TaskRunner:
         self.__total_pending_tasks += 1
 
     def register_api_task(
-        self, task_id: str, api_task_id: str, is_img2img: bool, args: dict
+        self,
+        task_id: str,
+        api_task_id: str,
+        is_img2img: bool,
+        args: dict,
+        checkpoint: str = None,
     ):
         progress.add_task_to_queue(task_id)
 
-        args = args.copy()
-        args.update({"save_images": True, "send_images": False})
-        params = self.__serialize_api_task_args(is_img2img, **args)
+        params = self.__serialize_api_task_args(
+            is_img2img, checkpoint=checkpoint, **args
+        )
 
         task_type = "img2img" if is_img2img else "txt2img"
         task_manager.add_task(
@@ -216,7 +243,7 @@ class TaskRunner:
         )
         self.__total_pending_tasks += 1
 
-    def execute_task(self, task: Task, get_next_task: Callable):
+    def execute_task(self, task: Task, get_next_task: Callable[[], Task]):
         while True:
             if self.dispose:
                 break
@@ -226,10 +253,7 @@ class TaskRunner:
                 is_img2img = task.type == "img2img"
                 log.info(f"[AgentScheduler] Executing task {task_id}")
 
-                task_args = self.parse_task_args(
-                    task.params,
-                    task.script_params,
-                )
+                task_args = self.parse_task_args(task)
                 task_meta = {
                     "is_img2img": is_img2img,
                     "is_ui": task_args.is_ui,
@@ -439,7 +463,9 @@ class TaskRunner:
             self.__run_callbacks("task_cleared")
 
     def __on_image_saved(self, data: script_callbacks.ImageSaveParams):
-        self.__saved_images_path.append((data.filename, data.pnginfo.get("parameters", "")))
+        self.__saved_images_path.append(
+            (data.filename, data.pnginfo.get("parameters", ""))
+        )
 
     def on_task_registered(self, callback: Callable):
         """Callback when a task is registered

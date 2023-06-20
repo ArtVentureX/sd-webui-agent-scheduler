@@ -1,4 +1,4 @@
-export const extractArgs = (func: Function) => {
+export const extractArgs = (func: (...args: any[]) => any) => {
   return (func + '')
     .replace(/[/][/].*$/gm, '') // strip single-line comments
     .replace(/\s+/g, '') // strip white space

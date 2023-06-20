@@ -3,11 +3,12 @@ import { createStore } from 'zustand/vanilla';
 type SelectedTab = 'history' | 'pending';
 
 type SharedState = {
+  uiAsTab: boolean;
   selectedTab: SelectedTab;
 };
 
 type SharedActions = {
-  selectSelectedTab: (tab: SelectedTab) => void;
+  setSelectedTab: (tab: SelectedTab) => void;
 };
 
 export const createSharedStore = (initialState: SharedState) => {
@@ -15,7 +16,7 @@ export const createSharedStore = (initialState: SharedState) => {
   const { getState, setState, subscribe } = store;
 
   const actions: SharedActions = {
-    selectSelectedTab: (tab: SelectedTab) => {
+    setSelectedTab: (tab: SelectedTab) => {
       setState({ selectedTab: tab });
     },
   };
