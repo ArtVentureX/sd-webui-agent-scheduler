@@ -6,6 +6,7 @@ from zipfile import ZipFile
 from pathlib import Path
 from typing import Optional
 from gradio.routes import App
+from PIL import Image
 from fastapi.responses import StreamingResponse
 
 from modules import shared, progress
@@ -265,8 +266,12 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
             )
         else:
             data = [
-                {"image": encode_image_to_base64(image), "infotext": infotexts[i]}
+                {
+                    "image": encode_image_to_base64(Image.open(image)),
+                    "infotext": infotexts[i],
+                }
                 for i, image in enumerate(result["images"])
+                if Path(image).is_file()
             ]
 
             return {"success": True, "data": data}
