@@ -1,6 +1,9 @@
 # Change Logs
 
----
+## 2023/06/21
+
+- Add enqueue keyboard shortcut
+- Bugs fixing
 
 ## 2023/06/20
 
