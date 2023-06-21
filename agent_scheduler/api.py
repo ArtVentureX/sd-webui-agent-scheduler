@@ -31,7 +31,7 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
     def queue_txt2img(body: Txt2ImgApiTaskArgs):
         task_id = str(uuid4())
         args = body.dict()
-        checkpoint = args.pop("model_hash", None)
+        checkpoint = args.pop("checkpoint", None)
         task_runner.register_api_task(
             task_id,
             api_task_id=None,
@@ -47,7 +47,7 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
     def queue_img2img(body: Img2ImgApiTaskArgs):
         task_id = str(uuid4())
         args = body.dict()
-        checkpoint = args.pop("model_hash", None)
+        checkpoint = args.pop("checkpoint", None)
         task_runner.register_api_task(
             task_id,
             api_task_id=None,

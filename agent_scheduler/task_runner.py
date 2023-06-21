@@ -365,7 +365,6 @@ class TaskRunner:
             return self.__execute_api_task(
                 task_id,
                 is_img2img,
-                script_args=task_args.script_args,
                 **task_args.named_args,
             )
 
