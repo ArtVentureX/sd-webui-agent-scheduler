@@ -433,10 +433,6 @@ def on_ui_settings():
         return "+".join(sorted(modifiers) + [enqueue_key_codes[key_code]])
 
     def enqueue_keyboard_shortcut_ui(**_kwargs):
-        print(_kwargs)
-
-        is_macos = platform.system() == "Darwin"
-
         with gr.Group(elem_id="enqueue_keyboard_shortcut_wrapper"):
             modifiers = gr.CheckboxGroup(
                 enqueue_key_modifiers,
