@@ -444,7 +444,7 @@ def on_ui_settings():
                 choices=list(enqueue_key_codes.keys()),
                 value="E",
                 elem_id="enqueue_keyboard_shortcut_key",
-                show_label=False,
+                label="Key",
             )
             shortcut = gr.Textbox(**_kwargs)
 
@@ -469,7 +469,6 @@ def on_ui_settings():
             enqueue_keyboard_shortcut_ui,
             {
                 "interactive": False,
-                "visible": False,
             },
             section=section,
         ),
