@@ -267,6 +267,78 @@ function showTaskProgress(task_id: string, callback: () => void) {
   }
 }
 
+function initQueueHandler() {
+  window.submit_enqueue = function submit_enqueue(...args) {
+    const res = window.submit(...args);
+
+    const btnEnqueue = document.querySelector('#txt2img_enqueue');
+    if (btnEnqueue) {
+      btnEnqueue.innerHTML = 'Queued';
+      setTimeout(() => {
+        btnEnqueue.innerHTML = 'Enqueue';
+        if (!sharedStore.getState().uiAsTab) {
+          if (sharedStore.getState().selectedTab === 'pending') {
+            pendingStore.refresh();
+          }
+        }
+      }, 1000);
+    }
+
+    return res;
+  };
+
+  window.submit_enqueue_img2img = function submit_enqueue_img2img(...args) {
+    const res = window.submit_img2img(...args);
+
+    const btnEnqueue = document.querySelector('#img2img_enqueue');
+    if (btnEnqueue) {
+      btnEnqueue.innerHTML = 'Queued';
+      setTimeout(() => {
+        btnEnqueue.innerHTML = 'Enqueue';
+        if (!sharedStore.getState().uiAsTab) {
+          if (sharedStore.getState().selectedTab === 'pending') {
+            pendingStore.refresh();
+          }
+        }
+      }, 1000);
+    }
+
+    return res;
+  };
+
+  // detect queue button placement
+  const interrogateCol: HTMLDivElement = gradioApp().querySelector('.interrogate-col')!;
+  if (interrogateCol.childElementCount > 2) {
+    interrogateCol.classList.add('has-queue-button');
+  }
+
+  // setup keyboard shortcut
+  const setting = gradioApp().querySelector(
+    '#setting_queue_keyboard_shortcut textarea',
+  ) as HTMLTextAreaElement;
+  if (setting?.value) {
+    const parts = setting.value.split('+');
+    const code = parts.pop();
+
+    window.addEventListener('keypress', (e) => {
+      if (e.code !== code) return;
+      if (parts.includes('Shift') && !e.shiftKey) return;
+      if (parts.includes('Alt') && !e.altKey) return;
+      if (parts.includes('Command') && !e.metaKey) return;
+      if ((parts.includes('Control') || parts.includes('Ctrl')) && !e.ctrlKey) return;
+
+      const activeTab = get_tab_index('tabs');
+      if (activeTab === 0) {
+        const btn = gradioApp().querySelector('#txt2img_enqueue') as HTMLButtonElement;
+        btn?.click();
+      } else if (activeTab === 1) {
+        const btn = gradioApp().querySelector('#img2img_enqueue') as HTMLButtonElement;
+        btn?.click();
+      }
+    });
+  }
+}
+
 function initTabChangeHandler() {
   sharedStore.subscribe((curr, prev) => {
     if (!curr.uiAsTab || curr.selectedTab !== prev.selectedTab) {
@@ -315,50 +387,6 @@ function initTabChangeHandler() {
 
 function initPendingTab() {
   const store = pendingStore;
-
-  window.submit_enqueue = function submit_enqueue(...args) {
-    const res = window.submit(...args);
-
-    const btnEnqueue = document.querySelector('#txt2img_enqueue');
-    if (btnEnqueue) {
-      btnEnqueue.innerHTML = 'Queued';
-      setTimeout(() => {
-        btnEnqueue.innerHTML = 'Enqueue';
-        if (!sharedStore.getState().uiAsTab) {
-          if (sharedStore.getState().selectedTab === 'pending') {
-            pendingStore.refresh();
-          }
-        }
-      }, 1000);
-    }
-
-    return res;
-  };
-
-  window.submit_enqueue_img2img = function submit_enqueue_img2img(...args) {
-    const res = window.submit_img2img(...args);
-
-    const btnEnqueue = document.querySelector('#img2img_enqueue');
-    if (btnEnqueue) {
-      btnEnqueue.innerHTML = 'Queued';
-      setTimeout(() => {
-        btnEnqueue.innerHTML = 'Enqueue';
-        if (!sharedStore.getState().uiAsTab) {
-          if (sharedStore.getState().selectedTab === 'pending') {
-            pendingStore.refresh();
-          }
-        }
-      }, 1000);
-    }
-
-    return res;
-  };
-
-  // detect queue button placement
-  const interrogateCol: HTMLDivElement = gradioApp().querySelector('.interrogate-col')!;
-  if (interrogateCol.childElementCount > 2) {
-    interrogateCol.classList.add('has-queue-button');
-  }
 
   // init actions
   const refreshButton = gradioApp().querySelector('#agent_scheduler_action_refresh')!;
@@ -709,6 +737,7 @@ onUiLoaded(function initAgentScheduler() {
     return;
   }
   if (agentSchedulerInitialized) return;
+  initQueueHandler();
   initTabChangeHandler();
   initPendingTab();
   initHistoryTab();

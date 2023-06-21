@@ -1397,7 +1397,7 @@ var bu = /* @__PURE__ */ Object.freeze({
  * @license MIT
  */
 var Pa = "__ag_Grid_Stop_Propagation", Pu = ["touchstart", "touchend", "touchmove", "touchcancel", "scroll"], ui = {};
-function Zt(n) {
+function Jt(n) {
   n[Pa] = !0;
 }
 function Ze(n) {
@@ -1447,7 +1447,7 @@ function Fa(n, t, e, r) {
 }
 var Du = /* @__PURE__ */ Object.freeze({
   __proto__: null,
-  stopPropagationForAgGrid: Zt,
+  stopPropagationForAgGrid: Jt,
   isStopPropagationForAgGrid: Ze,
   isEventSupported: Dn,
   getCtrlForEventTarget: Ao,
@@ -5118,7 +5118,7 @@ function qa(n, t) {
 function Qa(n) {
   Fn(n, "sort");
 }
-function er(n, t) {
+function Zt(n, t) {
   ut(n, "selected", t);
 }
 function Xa(n, t) {
@@ -5151,7 +5151,7 @@ var dc = /* @__PURE__ */ Object.freeze({
   setAriaColSpan: Ya,
   setAriaSort: qa,
   removeAriaSort: Qa,
-  setAriaSelected: er,
+  setAriaSelected: Zt,
   setAriaChecked: Xa
 });
 /**
@@ -5511,7 +5511,7 @@ function nl(n, t, e) {
   var r = e.skipAriaHidden;
   n.classList.toggle("ag-invisible", !t), r || ei(n, !t);
 }
-function tr(n, t) {
+function er(n, t) {
   var e = "disabled", r = t ? function(o) {
     return o.setAttribute(e, "");
   } : function(o) {
@@ -5716,7 +5716,7 @@ var Ac = /* @__PURE__ */ Object.freeze({
   isFocusableFormField: kn,
   setDisplayed: k,
   setVisible: nl,
-  setDisabled: tr,
+  setDisabled: er,
   isElementChildOfClass: Ft,
   getElementSize: Gt,
   getInnerHeight: jr,
@@ -6111,7 +6111,7 @@ var ie = function() {
  * @link https://www.ag-grid.com/
  * @license MIT
  */
-var rr = (
+var tr = (
   /** @class */
   function() {
     function n(t, e) {
@@ -6401,7 +6401,7 @@ var $c = function() {
     for (var a = n.length - 1; a >= 0; a--)
       (s = n[a]) && (i = (o < 3 ? s(i) : o > 3 ? s(t, e, i) : s(t, e)) || i);
   return o > 3 && i && Object.defineProperty(t, e, i), i;
-}, Yc = new rr(), W = (
+}, Yc = new tr(), W = (
   /** @class */
   function(n) {
     $c(t, n);
@@ -6869,7 +6869,7 @@ var ep = function() {
       this.addManagedListener(e, "keydown", function(o) {
         if (!(o.defaultPrevented || Ze(o))) {
           if (r.callbacks.shouldStopEventPropagation(o)) {
-            Zt(o);
+            Jt(o);
             return;
           }
           o.key === _.TAB ? r.callbacks.onTabKeyDown(o) : r.callbacks.handleKeyDown && r.callbacks.handleKeyDown(o);
@@ -7421,7 +7421,7 @@ var op = function() {
     }, t.prototype.onUiChanged = function(e, r) {
       if (e === void 0 && (e = !1), this.updateUiVisibility(), this.providedFilterParams.filterModifiedCallback(), this.applyActive && !this.isReadOnly()) {
         var o = this.isModelValid(this.getModelFromUi());
-        tr(this.getRefElement("applyFilterButton"), !o);
+        er(this.getRefElement("applyFilterButton"), !o);
       }
       e && !r || r === "immediately" ? this.onBtApply(e) : (!this.applyActive && !r || r === "debounce") && this.onBtApplyDebounce();
     }, t.prototype.afterGuiAttached = function(e) {
@@ -7530,7 +7530,7 @@ var ip = function() {
     }, t.prototype.setDisabled = function(e) {
       e = !!e;
       var r = this.getGui();
-      return tr(r, e), r.classList.toggle("ag-disabled", e), this.disabled = e, this;
+      return er(r, e), r.classList.toggle("ag-disabled", e), this.disabled = e, this;
     }, t.prototype.isDisabled = function() {
       return !!this.disabled;
     }, np([
@@ -7560,7 +7560,7 @@ var sp = function() {
     }
     t.prototype = e === null ? Object.create(e) : (r.prototype = e.prototype, new r());
   };
-}(), or = (
+}(), rr = (
   /** @class */
   function(n) {
     sp(t, n);
@@ -7689,7 +7689,7 @@ var ap = function() {
     ], t.prototype, "eDisplayField", void 0), Jr([
       P("eIcon")
     ], t.prototype, "eIcon", void 0), t;
-  }(or)
+  }(rr)
 );
 /**
  * @ag-grid-community/core - Advanced Data Grid / Data Table supporting Javascript / Typescript / React / Angular / Vue
@@ -7810,11 +7810,11 @@ var up = function() {
     }, t.prototype.reset = function() {
       this.value = null, this.displayValue = null, this.clearHighlighted(), this.fireChangeEvent();
     }, t.prototype.highlightItem = function(e) {
-      e.offsetParent && (this.clearHighlighted(), this.highlightedEl = e, this.highlightedEl.classList.add(t.ACTIVE_CLASS), er(this.highlightedEl, !0), this.highlightedEl.focus());
+      e.offsetParent && (this.clearHighlighted(), this.highlightedEl = e, this.highlightedEl.classList.add(t.ACTIVE_CLASS), Zt(this.highlightedEl, !0), this.highlightedEl.focus());
     }, t.prototype.clearHighlighted = function() {
-      !this.highlightedEl || !this.highlightedEl.offsetParent || (this.highlightedEl.classList.remove(t.ACTIVE_CLASS), er(this.highlightedEl, !1), this.highlightedEl = null);
+      !this.highlightedEl || !this.highlightedEl.offsetParent || (this.highlightedEl.classList.remove(t.ACTIVE_CLASS), Zt(this.highlightedEl, !1), this.highlightedEl = null);
     }, t.prototype.fireChangeEvent = function() {
-      this.dispatchEvent({ type: or.EVENT_CHANGED }), this.fireItemSelected();
+      this.dispatchEvent({ type: rr.EVENT_CHANGED }), this.fireItemSelected();
     }, t.prototype.fireItemSelected = function() {
       this.dispatchEvent({ type: t.EVENT_ITEM_SELECTED });
     }, t.EVENT_ITEM_SELECTED = "selectedItem", t.ACTIVE_CLASS = "ag-active-item", cp([
@@ -7863,7 +7863,7 @@ var pp = function() {
       var e = this;
       this.listComponent = this.createBean(new ms("select")), this.listComponent.setParentComponent(this), this.eWrapper.tabIndex = 0, this.listComponent.addManagedListener(this.listComponent, ms.EVENT_ITEM_SELECTED, function() {
         e.hideList && e.hideList(), e.dispatchEvent({ type: t.EVENT_ITEM_SELECTED });
-      }), this.listComponent.addManagedListener(this.listComponent, or.EVENT_CHANGED, function() {
+      }), this.listComponent.addManagedListener(this.listComponent, rr.EVENT_CHANGED, function() {
         e.setValue(e.listComponent.getValue(), !1, !0), e.hideList && e.hideList();
       });
     }, t.prototype.showPicker = function() {
@@ -7989,7 +7989,7 @@ var dp = function() {
     }, t.prototype.setInputAriaLabel = function(e) {
       return Nt(this.eInput, e), this;
     }, t.prototype.setDisabled = function(e) {
-      return tr(this.eInput, e), n.prototype.setDisabled.call(this, e);
+      return er(this.eInput, e), n.prototype.setDisabled.call(this, e);
     }, Ri([
       P("eLabel")
     ], t.prototype, "eLabel", void 0), Ri([
@@ -7997,7 +7997,7 @@ var dp = function() {
     ], t.prototype, "eWrapper", void 0), Ri([
       P("eInput")
     ], t.prototype, "eInput", void 0), t;
-  }(or)
+  }(rr)
 );
 /**
  * @ag-grid-community/core - Advanced Data Grid / Data Table supporting Javascript / Typescript / React / Angular / Vue
@@ -8382,7 +8382,7 @@ var vp = function() {
       this.eTypes.forEach(function(s, a) {
         var l = o.isConditionDisabled(a, e), u = a === 1 ? [s, o.eJoinOperatorPanels[0], o.eJoinOperatorsAnd[0], o.eJoinOperatorsOr[0]] : [s];
         u.forEach(function(c) {
-          c instanceof nt || c instanceof No ? c.setDisabled(l) : tr(c, l);
+          c instanceof nt || c instanceof No ? c.setDisabled(l) : er(c, l);
         });
       }), this.eConditionBodies.forEach(function(s, a) {
         k(s, o.isConditionBodyVisible(a));
@@ -8460,7 +8460,7 @@ var vp = function() {
     }, t.prototype.setElementDisplayed = function(e, r) {
       e instanceof W && k(e.getGui(), r);
     }, t.prototype.setElementDisabled = function(e, r) {
-      e instanceof W && tr(e.getGui(), r);
+      e instanceof W && er(e.getGui(), r);
     }, t.prototype.attachElementOnChange = function(e, r) {
       e instanceof nt && e.onValueChange(r);
     }, t.prototype.forEachInput = function(e) {
@@ -10091,7 +10091,7 @@ var xp = function() {
       };
       this.addTouchAndClickListeners(this.eCloseIcon, r), this.addTouchAndClickListeners(this.eOpenIcon, r);
       var o = function(s) {
-        Zt(s);
+        Jt(s);
       };
       this.addManagedListener(this.eCloseIcon, "dblclick", o), this.addManagedListener(this.eOpenIcon, "dblclick", o), this.addManagedListener(this.getGui(), "dblclick", r), this.updateIconVisibility();
       var i = this.params.columnGroup.getProvidedColumnGroup();
@@ -10921,9 +10921,9 @@ var Zp = function() {
     }, t.prototype.init = function(e) {
       var r = this;
       this.rowNode = e.rowNode, this.column = e.column, this.overrides = e.overrides, this.onSelectionChanged(), this.addManagedListener(this.eCheckbox.getInputElement(), "dblclick", function(a) {
-        Zt(a);
+        Jt(a);
       }), this.addManagedListener(this.eCheckbox.getInputElement(), "click", function(a) {
-        Zt(a);
+        Jt(a);
         var l = r.eCheckbox.getValue();
         l ? r.onCheckedClicked(a) : r.onUncheckedClicked(a || {});
       }), this.addManagedListener(this.rowNode, j.EVENT_ROW_SELECTED, this.onSelectionChanged.bind(this)), this.addManagedListener(this.rowNode, j.EVENT_DATA_CHANGED, this.onDataChanged.bind(this)), this.addManagedListener(this.rowNode, j.EVENT_SELECTABLE_CHANGED, this.onSelectableChanged.bind(this));
@@ -11006,10 +11006,10 @@ var ed = function() {
 (function(n) {
   n[n.ToolPanel = 0] = "ToolPanel", n[n.HeaderCell = 1] = "HeaderCell", n[n.RowDrag = 2] = "RowDrag", n[n.ChartPanel = 3] = "ChartPanel";
 })(me || (me = {}));
-var ir;
+var or;
 (function(n) {
   n[n.Up = 0] = "Up", n[n.Down = 1] = "Down";
-})(ir || (ir = {}));
+})(or || (or = {}));
 var Qe;
 (function(n) {
   n[n.Left = 0] = "Left", n[n.Right = 1] = "Right";
@@ -11188,7 +11188,7 @@ var pe = (
       return o === i ? null : o > i ? Qe.Left : Qe.Right;
     }, t.prototype.getVerticalDirection = function(r) {
       var o = this.eventLastTime && this.eventLastTime.clientY, i = r.clientY;
-      return o === i ? null : o > i ? ir.Up : ir.Down;
+      return o === i ? null : o > i ? or.Up : or.Down;
     }, t.prototype.createDropTargetEvent = function(r, o, i, s, a) {
       var l = r.getContainer(), u = l.getBoundingClientRect(), c = this, p = c.gridApi, d = c.columnApi, f = c.dragItem, g = c.dragSource, y = o.clientX - u.left, C = o.clientY - u.top;
       return { event: o, x: y, y: C, vDirection: s, hDirection: i, dragSource: g, fromNudge: a, dragItem: f, api: p, columnApi: d, dropZoneTarget: l };
@@ -11619,7 +11619,7 @@ var od = function() {
       var l = this.onRowNodeIsExpandableChanged.bind(this);
       this.addManagedListener(this.displayedGroupNode, j.EVENT_ALL_CHILDREN_COUNT_CHANGED, l), this.addManagedListener(this.displayedGroupNode, j.EVENT_MASTER_CHANGED, l), this.addManagedListener(this.displayedGroupNode, j.EVENT_GROUP_CHANGED, l), this.addManagedListener(this.displayedGroupNode, j.EVENT_HAS_CHILDREN_CHANGED, l);
     }, t.prototype.onExpandClicked = function(e) {
-      Ze(e) || (Zt(e), this.onExpandOrContract(e));
+      Ze(e) || (Jt(e), this.onExpandOrContract(e));
     }, t.prototype.onExpandOrContract = function(e) {
       var r = this.displayedGroupNode, o = !r.expanded;
       !o && r.sticky && this.scrollToStickyNode(r), r.setExpanded(o, e);
@@ -14589,10 +14589,10 @@ var Yd = function() {
       i || (s = this.rowModel.getRowIndexAtPixel(o), a = this.rowModel.getRow(s));
       var l;
       switch (r.vDirection) {
-        case ir.Down:
+        case or.Down:
           l = "down";
           break;
-        case ir.Up:
+        case or.Up:
           l = "up";
           break;
         default:
@@ -14681,10 +14681,10 @@ var Jd = function() {
     for (var a = n.length - 1; a >= 0; a--)
       (s = n[a]) && (i = (o < 3 ? s(i) : o > 3 ? s(t, e, i) : s(t, e)) || i);
   return o > 3 && i && Object.defineProperty(t, e, i), i;
-}, nr;
+}, ir;
 (function(n) {
   n.ANIMATION_ON = "ag-row-animation", n.ANIMATION_OFF = "ag-row-no-animation";
-})(nr || (nr = {}));
+})(ir || (ir = {}));
 var Vl = "ag-selectable", Bl = "ag-force-vertical-scroll", Zd = "ag-column-moving", eh = (
   /** @class */
   function(n) {
@@ -14773,7 +14773,7 @@ var Vl = "ag-selectable", Bl = "ag-force-vertical-scroll", Zd = "ag-column-movin
       return this.comp.setAlwaysVerticalScrollClass(r, e), e || o && ll(this.eBodyViewport);
     }, t.prototype.setupRowAnimationCssClass = function() {
       var e = this, r = function() {
-        var o = e.gridOptionsService.isAnimateRows() && !e.rowContainerHeightService.isStretching(), i = o ? nr.ANIMATION_ON : nr.ANIMATION_OFF;
+        var o = e.gridOptionsService.isAnimateRows() && !e.rowContainerHeightService.isStretching(), i = o ? ir.ANIMATION_ON : ir.ANIMATION_OFF;
         e.comp.setRowAnimationCssOnBodyViewport(i, o);
       };
       r(), this.addManagedListener(this.eventService, v.EVENT_HEIGHT_SCALE_CHANGED, r), this.addManagedPropertyListener("animateRows", r);
@@ -14920,7 +14920,7 @@ var hr = "ag-cell-range-selected", th = "ag-cell-range-chart", rh = "ag-cell-ran
     return n.prototype.setComp = function(t, e) {
       this.cellComp = t, this.eGui = e, this.onRangeSelectionChanged();
     }, n.prototype.onRangeSelectionChanged = function() {
-      this.cellComp && (this.rangeCount = this.beans.rangeService.getCellRangeCount(this.cellCtrl.getCellPosition()), this.hasChartRange = this.getHasChartRange(), this.cellComp.addOrRemoveCssClass(hr, this.rangeCount !== 0), this.cellComp.addOrRemoveCssClass(hr + "-1", this.rangeCount === 1), this.cellComp.addOrRemoveCssClass(hr + "-2", this.rangeCount === 2), this.cellComp.addOrRemoveCssClass(hr + "-3", this.rangeCount === 3), this.cellComp.addOrRemoveCssClass(hr + "-4", this.rangeCount >= 4), this.cellComp.addOrRemoveCssClass(th, this.hasChartRange), er(this.eGui, this.rangeCount > 0 ? !0 : void 0), this.cellComp.addOrRemoveCssClass(rh, this.isSingleCell()), this.updateRangeBorders(), this.refreshHandle());
+      this.cellComp && (this.rangeCount = this.beans.rangeService.getCellRangeCount(this.cellCtrl.getCellPosition()), this.hasChartRange = this.getHasChartRange(), this.cellComp.addOrRemoveCssClass(hr, this.rangeCount !== 0), this.cellComp.addOrRemoveCssClass(hr + "-1", this.rangeCount === 1), this.cellComp.addOrRemoveCssClass(hr + "-2", this.rangeCount === 2), this.cellComp.addOrRemoveCssClass(hr + "-3", this.rangeCount === 3), this.cellComp.addOrRemoveCssClass(hr + "-4", this.rangeCount >= 4), this.cellComp.addOrRemoveCssClass(th, this.hasChartRange), Zt(this.eGui, this.rangeCount > 0 ? !0 : void 0), this.cellComp.addOrRemoveCssClass(rh, this.isSingleCell()), this.updateRangeBorders(), this.refreshHandle());
     }, n.prototype.updateRangeBorders = function() {
       var t = this.getRangeBorders(), e = this.isSingleCell(), r = !e && t.top, o = !e && t.right, i = !e && t.bottom, s = !e && t.left;
       this.cellComp.addOrRemoveCssClass(nh, r), this.cellComp.addOrRemoveCssClass(sh, o), this.cellComp.addOrRemoveCssClass(ah, i), this.cellComp.addOrRemoveCssClass(lh, s);
@@ -16780,7 +16780,7 @@ var Gh = 0, It = (
     }, t.prototype.onRowSelected = function(e) {
       var r = this, o = !!this.rowNode.isSelected();
       this.forEachGui(e, function(i) {
-        i.rowComp.addOrRemoveCssClass("ag-row-selected", o), er(i.element, o ? !0 : void 0);
+        i.rowComp.addOrRemoveCssClass("ag-row-selected", o), Zt(i.element, o ? !0 : void 0);
         var s = r.createAriaLabel();
         Nt(i.element, s ?? "");
       });
@@ -18030,7 +18030,7 @@ var nf = function() {
       this.ctrl = this.createManagedBean(new eh()), this.ctrl.setComp(o, this.getGui(), this.eBodyViewport, this.eTop, this.eBottom, this.eStickyTop), (this.rangeService || this.gridOptionsService.get("rowSelection") === "multiple") && za(this.getGui(), !0);
     }, t.prototype.setRowAnimationCssOnBodyViewport = function(e, r) {
       var o = this.eBodyViewport.classList;
-      o.toggle(nr.ANIMATION_ON, r), o.toggle(nr.ANIMATION_OFF, !r);
+      o.toggle(ir.ANIMATION_ON, r), o.toggle(ir.ANIMATION_OFF, !r);
     }, t.prototype.getFloatingTopBottom = function() {
       return [this.eTop, this.eBottom];
     }, Ue([
@@ -18199,7 +18199,7 @@ var cf = function() {
       return { x: s, y: a };
     };
     var e;
-    return t.gridInstanceSequence = new rr(), t.GRID_DOM_KEY = "__ag_grid_instance", Ms([
+    return t.gridInstanceSequence = new tr(), t.GRID_DOM_KEY = "__ag_grid_instance", Ms([
       h("ctrlsService")
     ], t.prototype, "ctrlsService", void 0), t = e = Ms([
       A("mouseEventService")
@@ -21477,7 +21477,7 @@ var nv = function() {
     }, t.prototype.refresh = function(e) {
       var r = this;
       e === void 0 && (e = !1);
-      var o = new rr(), i = this.focusService.getFocusHeaderToUseAfterRefresh(), s = function() {
+      var o = new tr(), i = this.focusService.getFocusHeaderToUseAfterRefresh(), s = function() {
         var c = r.columnModel.getHeaderRowCount() - 1;
         r.groupsRowCtrls = r.destroyBeans(r.groupsRowCtrls);
         for (var p = 0; p < c; p++) {
@@ -24270,7 +24270,7 @@ var ng = function() {
     return t.prototype.init = function() {
       this.eSlider.addCssClass("ag-slider-field");
     }, t.prototype.onValueChange = function(e) {
-      var r = this, o = or.EVENT_CHANGED;
+      var r = this, o = rr.EVENT_CHANGED;
       return this.addManagedListener(this.eText, o, function() {
         var i = parseFloat(r.eText.getValue());
         r.eSlider.setValue(i.toString(), !0), e(i || 0);
@@ -24289,7 +24289,7 @@ var ng = function() {
     }, t.prototype.getValue = function() {
       return this.eText.getValue();
     }, t.prototype.setValue = function(e) {
-      return this.getValue() === e ? this : (this.eText.setValue(e, !0), this.eSlider.setValue(e, !0), this.dispatchEvent({ type: or.EVENT_CHANGED }), this);
+      return this.getValue() === e ? this : (this.eText.setValue(e, !0), this.eSlider.setValue(e, !0), this.dispatchEvent({ type: rr.EVENT_CHANGED }), this);
     }, t.prototype.setStep = function(e) {
       return this.eSlider.setStep(e), this.eText.setStep(e), this;
     }, t.TEMPLATE = `<div class="ag-slider">
@@ -26165,7 +26165,7 @@ var Lg = function() {
     var r = this, o = this.model.getRow(e), i = document.createElement("div");
     if (i.classList.add("ag-virtual-list-item", "ag-" + this.cssIdentifier + "-virtual-list-item"), le(i, this.ariaRole === "tree" ? "treeitem" : "option"), In(i, this.model.getRowCount()), xn(i, e + 1), i.setAttribute("tabindex", "-1"), typeof this.model.isRowSelected == "function") {
       var s = this.model.isRowSelected(e);
-      er(i, !!s), Xa(i, s);
+      Zt(i, !!s), Xa(i, s);
     }
     i.style.height = this.rowHeight + "px", i.style.top = this.rowHeight * e + "px";
     var a = this.componentCreator(o, i);
@@ -32346,7 +32346,7 @@ var xC = (
     }, t.prototype.setRowCount = function(e, r) {
       this.rowCount = e, G.exists(r) && (this.lastRowIndexKnown = r), this.lastRowIndexKnown || this.rowCount % this.params.blockSize === 0 && this.rowCount++, this.onCacheUpdated();
     }, t.prototype.forEachNodeDeep = function(e) {
-      var r = this, o = new rr();
+      var r = this, o = new tr();
       this.getBlocksInOrder().forEach(function(i) {
         return i.forEachNode(e, o, r.rowCount);
       });
@@ -32379,7 +32379,7 @@ var xC = (
         return e.removeBlockFromCache(r);
       }), this.lastRowIndexKnown = !1, this.rowCount === 0 && (this.rowCount = this.params.initialRowCount), this.onCacheUpdated();
     }, t.prototype.getRowNodesInRange = function(e, r) {
-      var o = this, i = [], s = -1, a = !1, l = new rr();
+      var o = this, i = [], s = -1, a = !1, l = new tr();
       G.missing(e) && (a = !0);
       var u = !1;
       this.getBlocksInOrder().forEach(function(p) {
@@ -32520,7 +32520,7 @@ var xC = (
         blockSize: this.defaultIfInvalid(this.gridOptionsService.getNum("cacheBlockSize"), 100),
         // the cache could create this, however it is also used by the pages, so handy to create it
         // here as the settings are also passed to the pages
-        lastAccessedSequence: new rr()
+        lastAccessedSequence: new tr()
       }, this.infiniteCache = this.createBean(new em(this.cacheParams));
     }, t.prototype.defaultIfInvalid = function(e, r) {
       return e > 0 ? e : r;
@@ -33117,10 +33117,10 @@ var xe = function() {
       });
     }, n;
   }()
-), sr;
+), nr;
 (function(n) {
   n[n.Add = 0] = "Add", n[n.Remove = 1] = "Remove";
-})(sr || (sr = {}));
+})(nr || (nr = {}));
 var Cm = (
   /** @class */
   function() {
@@ -33128,10 +33128,10 @@ var Cm = (
       this.notifications = [];
     }
     return n.prototype.push = function(t) {
-      this.notifications.push(t), this.updateFn(t, sr.Add, this.notifications);
+      this.notifications.push(t), this.updateFn(t, nr.Add, this.notifications);
     }, n.prototype.splice = function(t, e) {
       var r = this.notifications.splice(t, e)[0];
-      return this.updateFn(r, sr.Remove, this.notifications), r;
+      return this.updateFn(r, nr.Remove, this.notifications), r;
     }, n.prototype.indexOf = function(t) {
       return this.notifications.indexOf(t);
     }, n.prototype.onUpdate = function(t) {
@@ -33190,7 +33190,7 @@ var ua = {
       var r;
       this.events = xe(xe({}, this.events), (r = {}, r[t] = e, r));
     }, n.prototype.update = function(t, e) {
-      e === sr.Add ? this.addNotification(t) : e === sr.Remove && this.removeNotification(t);
+      e === nr.Add ? this.addNotification(t) : e === nr.Remove && this.removeNotification(t);
     }, n.prototype.removeNotification = function(t) {
       var e = this, r = this._popRenderedNotification(t), o;
       if (r) {
@@ -33451,7 +33451,7 @@ const pa = (n) => {
 const da = new wm(), st = Am({
   uiAsTab: !0,
   selectedTab: "pending"
-}), Jt = Dm({
+}), sr = Dm({
   current_task_id: null,
   total_pending_tasks: 0,
   pending_tasks: [],
@@ -33639,13 +33639,46 @@ function Fm(n, t) {
   }
 }
 function Lm() {
+  window.submit_enqueue = function(...r) {
+    const o = window.submit(...r), i = document.querySelector("#txt2img_enqueue");
+    return i && (i.innerHTML = "Queued", setTimeout(() => {
+      i.innerHTML = "Enqueue", st.getState().uiAsTab || st.getState().selectedTab === "pending" && sr.refresh();
+    }, 1e3)), o;
+  }, window.submit_enqueue_img2img = function(...r) {
+    const o = window.submit_img2img(...r), i = document.querySelector("#img2img_enqueue");
+    return i && (i.innerHTML = "Queued", setTimeout(() => {
+      i.innerHTML = "Enqueue", st.getState().uiAsTab || st.getState().selectedTab === "pending" && sr.refresh();
+    }, 1e3)), o;
+  };
+  const n = gradioApp().querySelector(".interrogate-col");
+  n.childElementCount > 2 && n.classList.add("has-queue-button");
+  const t = gradioApp().querySelector(
+    "#setting_queue_keyboard_shortcut textarea"
+  );
+  if (t != null && t.value) {
+    const e = t.value.split("+"), r = e.pop();
+    window.addEventListener("keypress", (o) => {
+      if (o.code !== r || e.includes("Shift") && !o.shiftKey || e.includes("Alt") && !o.altKey || e.includes("Command") && !o.metaKey || (e.includes("Control") || e.includes("Ctrl")) && !o.ctrlKey)
+        return;
+      const i = get_tab_index("tabs");
+      if (i === 0) {
+        const s = gradioApp().querySelector("#txt2img_enqueue");
+        s == null || s.click();
+      } else if (i === 1) {
+        const s = gradioApp().querySelector("#img2img_enqueue");
+        s == null || s.click();
+      }
+    });
+  }
+}
+function Mm() {
   st.subscribe((t, e) => {
-    (!t.uiAsTab || t.selectedTab !== e.selectedTab) && (t.selectedTab === "pending" ? Jt.refresh() : Xo.refresh());
+    (!t.uiAsTab || t.selectedTab !== e.selectedTab) && (t.selectedTab === "pending" ? sr.refresh() : Xo.refresh());
   });
   const n = new MutationObserver(function(t) {
     t.forEach((e) => {
       const r = e.target;
-      r.style.display === "block" && (r.id === "tab_agent_scheduler" ? st.getState().selectedTab === "pending" ? Jt.refresh() : Xo.refresh() : r.id === "agent_scheduler_pending_tasks_tab" ? st.setSelectedTab("pending") : r.id === "agent_scheduler_history_tab" && st.setSelectedTab("history"));
+      r.style.display === "block" && (r.id === "tab_agent_scheduler" ? st.getState().selectedTab === "pending" ? sr.refresh() : Xo.refresh() : r.id === "agent_scheduler_pending_tasks_tab" ? st.setSelectedTab("pending") : r.id === "agent_scheduler_history_tab" && st.setSelectedTab("history"));
     });
   });
   document.getElementById("tab_agent_scheduler") ? n.observe(document.getElementById("tab_agent_scheduler"), {
@@ -33656,30 +33689,16 @@ function Lm() {
     attributeFilter: ["style"]
   });
 }
-function Mm() {
-  const n = Jt;
-  window.submit_enqueue = function(...u) {
-    const c = window.submit(...u), p = document.querySelector("#txt2img_enqueue");
-    return p && (p.innerHTML = "Queued", setTimeout(() => {
-      p.innerHTML = "Enqueue", st.getState().uiAsTab || st.getState().selectedTab === "pending" && Jt.refresh();
-    }, 1e3)), c;
-  }, window.submit_enqueue_img2img = function(...u) {
-    const c = window.submit_img2img(...u), p = document.querySelector("#img2img_enqueue");
-    return p && (p.innerHTML = "Queued", setTimeout(() => {
-      p.innerHTML = "Enqueue", st.getState().uiAsTab || st.getState().selectedTab === "pending" && Jt.refresh();
-    }, 1e3)), c;
+function Im() {
+  const n = sr, t = gradioApp().querySelector("#agent_scheduler_action_refresh"), e = gradioApp().querySelector("#agent_scheduler_action_pause"), r = gradioApp().querySelector("#agent_scheduler_action_resume");
+  t.addEventListener("click", n.refresh), e.addEventListener("click", () => n.pauseQueue().then(wt)), r.addEventListener("click", () => n.resumeQueue().then(wt));
+  const o = (a) => {
+    a && Fm(a, n.refresh);
   };
-  const t = gradioApp().querySelector(".interrogate-col");
-  t.childElementCount > 2 && t.classList.add("has-queue-button");
-  const e = gradioApp().querySelector("#agent_scheduler_action_refresh"), r = gradioApp().querySelector("#agent_scheduler_action_pause"), o = gradioApp().querySelector("#agent_scheduler_action_resume");
-  e.addEventListener("click", n.refresh), r.addEventListener("click", () => n.pauseQueue().then(wt)), o.addEventListener("click", () => n.resumeQueue().then(wt));
-  const i = (l) => {
-    l && Fm(l, n.refresh);
-  };
-  n.subscribe((l, u) => {
-    u.current_task_id !== l.current_task_id && i(l.current_task_id), l.paused ? (r.classList.add("hide"), o.classList.remove("hide")) : (r.classList.remove("hide"), o.classList.add("hide"));
+  n.subscribe((a, l) => {
+    l.current_task_id !== a.current_task_id && o(a.current_task_id), a.paused ? (e.classList.add("hide"), r.classList.remove("hide")) : (e.classList.remove("hide"), r.classList.add("hide"));
   });
-  const s = {
+  const i = {
     ...Yt,
     // each entry here represents one column
     columnDefs: [
@@ -33695,76 +33714,76 @@ function Mm() {
         minWidth: 110,
         maxWidth: 110,
         resizable: !1,
-        valueGetter: ({ data: l }) => l == null ? void 0 : l.id,
-        cellRenderer: ({ api: l, value: u, data: c }) => {
-          if (!c)
+        valueGetter: ({ data: a }) => a == null ? void 0 : a.id,
+        cellRenderer: ({ api: a, value: l, data: u }) => {
+          if (!u)
             return;
-          const p = `
+          const c = `
             <div class="inline-flex rounded-md shadow-sm mt-1.5" role="group">
-              <button type="button" title="Run" ${c.status === "running" ? "disabled" : ""} class="ts-btn-action ts-btn-run">
+              <button type="button" title="Run" ${u.status === "running" ? "disabled" : ""} class="ts-btn-action ts-btn-run">
                 ${Rm}
               </button>
               <button type="button" title="Delete" class="ts-btn-action ts-btn-delete">
-                ${c.status === "pending" ? Yl : _m}
+                ${u.status === "pending" ? Yl : _m}
               </button>
             </div>
-            `, d = document.createElement("div");
-          d.innerHTML = p;
-          const f = d.firstElementChild;
-          return f.querySelector("button.ts-btn-run").addEventListener("click", () => {
-            l.showLoadingOverlay(), n.runTask(u).then(() => l.hideOverlay());
-          }), f.querySelector("button.ts-btn-delete").addEventListener("click", () => {
-            l.showLoadingOverlay(), n.deleteTask(u).then((C) => {
-              wt(C), l.applyTransaction({
-                remove: [c]
-              }), l.hideOverlay();
+            `, p = document.createElement("div");
+          p.innerHTML = c;
+          const d = p.firstElementChild;
+          return d.querySelector("button.ts-btn-run").addEventListener("click", () => {
+            a.showLoadingOverlay(), n.runTask(l).then(() => a.hideOverlay());
+          }), d.querySelector("button.ts-btn-delete").addEventListener("click", () => {
+            a.showLoadingOverlay(), n.deleteTask(l).then((y) => {
+              wt(y), a.applyTransaction({
+                remove: [u]
+              }), a.hideOverlay();
             });
-          }), f;
+          }), d;
         }
       }
     ],
-    onColumnMoved({ columnApi: l }) {
-      const u = l.getColumnState(), c = JSON.stringify(u);
-      localStorage.setItem("agent_scheduler:queue_col_state", c);
+    onColumnMoved({ columnApi: a }) {
+      const l = a.getColumnState(), u = JSON.stringify(l);
+      localStorage.setItem("agent_scheduler:queue_col_state", u);
     },
-    onSortChanged({ columnApi: l }) {
-      const u = l.getColumnState(), c = JSON.stringify(u);
-      localStorage.setItem("agent_scheduler:queue_col_state", c);
+    onSortChanged({ columnApi: a }) {
+      const l = a.getColumnState(), u = JSON.stringify(l);
+      localStorage.setItem("agent_scheduler:queue_col_state", u);
     },
-    onColumnResized({ columnApi: l }) {
-      const u = l.getColumnState(), c = JSON.stringify(u);
-      localStorage.setItem("agent_scheduler:queue_col_state", c);
+    onColumnResized({ columnApi: a }) {
+      const l = a.getColumnState(), u = JSON.stringify(l);
+      localStorage.setItem("agent_scheduler:queue_col_state", u);
     },
-    onGridReady: ({ api: l, columnApi: u }) => {
+    onGridReady: ({ api: a, columnApi: l }) => {
       Ql("#agent_scheduler_action_search").querySelector("input.ts-search-input").addEventListener(
         "keyup",
-        ql((f) => {
-          l.setQuickFilter(f.target.value);
+        ql((d) => {
+          a.setQuickFilter(d.target.value);
         }, 200)
-      ), n.subscribe((f) => {
-        if (l.setRowData(f.pending_tasks), f.current_task_id) {
-          const g = l.getRowNode(f.current_task_id);
-          g && l.refreshCells({ rowNodes: [g], force: !0 });
+      ), n.subscribe((d) => {
+        if (a.setRowData(d.pending_tasks), d.current_task_id) {
+          const f = a.getRowNode(d.current_task_id);
+          f && a.refreshCells({ rowNodes: [f], force: !0 });
         }
-        u.autoSizeAllColumns();
+        l.autoSizeAllColumns();
       });
-      const d = localStorage.getItem("agent_scheduler:queue_col_state");
-      if (d) {
-        const f = JSON.parse(d);
-        u.applyColumnState({ state: f, applyOrder: !0 });
+      const p = localStorage.getItem("agent_scheduler:queue_col_state");
+      if (p) {
+        const d = JSON.parse(p);
+        l.applyColumnState({ state: d, applyOrder: !0 });
       }
     },
-    onRowDragEnd: ({ api: l, node: u, overNode: c }) => {
-      var f, g;
-      const p = (f = u.data) == null ? void 0 : f.id, d = (g = c == null ? void 0 : c.data) == null ? void 0 : g.id;
-      p && d && p !== d && (l.showLoadingOverlay(), n.moveTask(p, d).then(() => l.hideOverlay()));
+    onRowDragEnd: ({ api: a, node: l, overNode: u }) => {
+      var d, f;
+      const c = (d = l.data) == null ? void 0 : d.id, p = (f = u == null ? void 0 : u.data) == null ? void 0 : f.id;
+      c && p && c !== p && (a.showLoadingOverlay(), n.moveTask(c, p).then(() => a.hideOverlay()));
     }
-  }, a = gradioApp().querySelector(
+  }, s = gradioApp().querySelector(
     "#agent_scheduler_pending_tasks_grid"
   );
-  document.querySelector(".dark") && (a.className = "ag-theme-alpine-dark"), a.style.height = "calc(100vh - 300px)", new $l(a, s);
+  document.querySelector(".dark") && (s.className = "ag-theme-alpine-dark"), s.style.height = "calc(100vh - 300px)", new $l(s, i);
 }
-function Im() {
+function xm() {
   const n = Xo;
   gradioApp().querySelector("#agent_scheduler_action_refresh_history").addEventListener("click", () => {
     n.refresh();
@@ -33854,7 +33873,7 @@ function Im() {
               wt(C);
             });
           }), d.querySelector("button.ts-btn-delete").addEventListener("click", (y) => {
-            y.preventDefault(), y.stopPropagation(), a.showLoadingOverlay(), Jt.deleteTask(u).then((C) => {
+            y.preventDefault(), y.stopPropagation(), a.showLoadingOverlay(), sr.deleteTask(u).then((C) => {
               wt(C), a.applyTransaction({
                 remove: [l]
               }), a.hideOverlay();
@@ -33907,5 +33926,5 @@ onUiLoaded(function n() {
     setTimeout(n, 500);
     return;
   }
-  ha || (Lm(), Mm(), Im(), ha = !0);
+  ha || (Lm(), Mm(), Im(), xm(), ha = !0);
 });

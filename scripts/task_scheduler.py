@@ -1,5 +1,6 @@
 import os
 import json
+import platform
 import gradio as gr
 from PIL import Image
 
@@ -38,6 +39,21 @@ placement_under_generate = "Under Generate button"
 placement_between_prompt_and_generate = "Between Prompt and Generate button"
 
 task_filter_choices = ["All", "Bookmarked", "Done", "Failed", "Interrupted"]
+
+is_macos = platform.system() == "Darwin"
+enqueue_key_modifiers = [
+    "Command" if is_macos else "Ctrl",
+    "Control" if is_macos else "Alt",
+    "Shift",
+]
+enqueue_key_codes = {}
+enqueue_key_codes.update(
+    {chr(i): "Key" + chr(i) for i in range(ord("A"), ord("Z") + 1)}
+)
+enqueue_key_codes.update(
+    {chr(i): "Digit" + chr(i) for i in range(ord("0"), ord("9") + 1)}
+)
+enqueue_key_codes.update({"`": "Backquote"})
 
 
 class Script(scripts.Script):
@@ -412,6 +428,57 @@ def on_ui_settings():
             section=section,
         ),
     )
+
+    def enqueue_keyboard_shortcut(modifiers: list[str], key_code: str):
+        return "+".join(sorted(modifiers) + [enqueue_key_codes[key_code]])
+
+    def enqueue_keyboard_shortcut_ui(**_kwargs):
+        print(_kwargs)
+
+        is_macos = platform.system() == "Darwin"
+
+        with gr.Group(elem_id="enqueue_keyboard_shortcut_wrapper"):
+            modifiers = gr.CheckboxGroup(
+                enqueue_key_modifiers,
+                value=["Shift"],
+                label="Enqueue keyboard shortcut",
+                elem_id="enqueue_keyboard_shortcut_modifiers",
+            )
+            key_code = gr.Dropdown(
+                choices=list(enqueue_key_codes.keys()),
+                value="E",
+                elem_id="enqueue_keyboard_shortcut_key",
+                show_label=False,
+            )
+            shortcut = gr.Textbox(**_kwargs)
+
+        modifiers.change(
+            fn=enqueue_keyboard_shortcut,
+            inputs=[modifiers, key_code],
+            outputs=[shortcut],
+        )
+        key_code.change(
+            fn=enqueue_keyboard_shortcut,
+            inputs=[modifiers, key_code],
+            outputs=[shortcut],
+        )
+
+        return shortcut
+
+    shared.opts.add_option(
+        "queue_keyboard_shortcut",
+        shared.OptionInfo(
+            "Shift+KeyE",
+            "Enqueue keyboard shortcut",
+            enqueue_keyboard_shortcut_ui,
+            {
+                "interactive": False,
+                "visible": False,
+            },
+            section=section,
+        ),
+    )
+
     shared.opts.add_option(
         "queue_ui_placement",
         shared.OptionInfo(
@@ -442,6 +509,7 @@ def on_app_started(block: gr.Blocks, app):
         with block:
             with block.children[1]:
                 on_ui_tab()
+
 
 if getattr(shared.opts, "queue_ui_placement", "") != ui_placement_append_to_main:
     script_callbacks.on_ui_tabs(on_ui_tab)

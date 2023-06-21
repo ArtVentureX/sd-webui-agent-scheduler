@@ -170,7 +170,6 @@ class TaskRunner:
             init_images = named_args.get("init_images")
             for i, img in enumerate(init_images):
                 if isinstance(img, str) and os.path.isfile(img):
-                    print("loading image", img)
                     image = Image.open(img)
                     init_images[i] = encode_image_to_base64(image)
 

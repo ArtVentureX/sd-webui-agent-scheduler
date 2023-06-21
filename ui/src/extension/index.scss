@@ -20,7 +20,7 @@
 }
 .ag-cell {
   .ag-input-field-input {
-    background-color: var(--input-background-fill);;
+    background-color: var(--input-background-fill);
 
     .dark & {
       background-color: var(--input-background-fill);
@@ -31,7 +31,6 @@
 .notyf {
   font-family: var(--font);
 }
-
 
 /* ========================================================================= */
 
@@ -170,5 +169,24 @@
 
   button {
     margin: 0;
+  }
+}
+
+#enqueue_keyboard_shortcut_wrapper > .form {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+
+  > div,
+  fieldset {
+    flex: 0 0 auto;
+    width: auto;
+  }
+
+  #enqueue_keyboard_shortcut_key {
+    width: 100px;
+  }
+  #setting_queue_keyboard_shortcut {
+    width: 200px;
   }
 }
