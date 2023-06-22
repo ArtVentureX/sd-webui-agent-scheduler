@@ -131,13 +131,13 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
     def run_task(id: str):
         if progress.current_task is not None:
             if progress.current_task == id:
-                return {"success": False, "message": f"Task {id} is already running"}
+                return {"success": False, "message": "Task is running"}
             else:
                 # move task up in queue
                 task_manager.prioritize_task(id, 0)
                 return {
                     "success": True,
-                    "message": f"Task {id} is scheduled to run next",
+                    "message": "Task is scheduled to run next",
                 }
         else:
             # run task
@@ -152,13 +152,13 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
             current_thread.daemon = True
             current_thread.start()
 
-            return {"success": True, "message": f"Task {id} is executing"}
+            return {"success": True, "message": "Task is executing"}
 
     @app.post("/agent-scheduler/v1/requeue/{id}")
     def requeue_task(id: str):
         task = task_manager.get_task(id)
         if task is None:
-            return {"success": False, "message": f"Task {id} not found"}
+            return {"success": False, "message": "Task not found"}
 
         task.id = str(uuid4())
         task.result = None
@@ -168,77 +168,77 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
         task_manager.add_task(task)
         task_runner.execute_pending_tasks_threading()
 
-        return {"success": True, "message": f"Task {id} is requeued"}
+        return {"success": True, "message": "Task requeued"}
 
     @app.post("/agent-scheduler/v1/delete/{id}")
     def delete_task(id: str):
         if progress.current_task == id:
             shared.state.interrupt()
             task_runner.interrupted = id
-            return {"success": True, "message": f"Task {id} is interrupted"}
+            return {"success": True, "message": "Task interrupted"}
 
         task_manager.delete_task(id)
-        return {"success": True, "message": f"Task {id} is deleted"}
+        return {"success": True, "message": "Task deleted"}
 
     @app.post("/agent-scheduler/v1/move/{id}/{over_id}")
     def move_task(id: str, over_id: str):
         task = task_manager.get_task(id)
         if task is None:
-            return {"success": False, "message": f"Task {id} not found"}
+            return {"success": False, "message": "Task not found"}
 
         if over_id == "top":
             task_manager.prioritize_task(id, 0)
-            return {"success": True, "message": f"Task {id} is moved to top"}
+            return {"success": True, "message": "Task moved to top"}
         elif over_id == "bottom":
             task_manager.prioritize_task(id, -1)
-            return {"success": True, "message": f"Task {id} is moved to bottom"}
+            return {"success": True, "message": "Task moved to bottom"}
         else:
             over_task = task_manager.get_task(over_id)
             if over_task is None:
-                return {"success": False, "message": f"Task {over_id} not found"}
+                return {"success": False, "message": "Task not found"}
 
             task_manager.prioritize_task(id, over_task.priority)
-            return {"success": True, "message": f"Task {id} is moved"}
+            return {"success": True, "message": "Task moved"}
 
     @app.post("/agent-scheduler/v1/bookmark/{id}")
     def pin_task(id: str):
         task = task_manager.get_task(id)
         if task is None:
-            return {"success": False, "message": f"Task {id} not found"}
+            return {"success": False, "message": "Task not found"}
 
         task.bookmarked = True
         task_manager.update_task(id, bookmarked=True)
-        return {"success": True, "message": f"Task {id} is bookmarked"}
+        return {"success": True, "message": "Task bookmarked"}
 
     @app.post("/agent-scheduler/v1/unbookmark/{id}")
     def unpin_task(id: str):
         task = task_manager.get_task(id)
         if task is None:
-            return {"success": False, "message": f"Task {id} not found"}
+            return {"success": False, "message": "Task not found"}
 
         task_manager.update_task(id, bookmarked=False)
-        return {"success": True, "message": f"Task {id} is unbookmarked"}
+        return {"success": True, "message": "Task unbookmarked"}
 
     @app.post("/agent-scheduler/v1/rename/{id}")
     def rename_task(id: str, name: str):
         task = task_manager.get_task(id)
         if task is None:
-            return {"success": False, "message": f"Task {id} not found"}
+            return {"success": False, "message": "Task not found"}
 
         task_manager.update_task(id, name=name)
-        return {"success": True, "message": f"Task {id} is renamed"}
+        return {"success": True, "message": "Task renamed."}
 
     @app.get("/agent-scheduler/v1/results/{id}")
     def get_task_results(id: str, zip: Optional[bool] = False):
         task = task_manager.get_task(id)
         if task is None:
-            return {"success": False, "message": f"Task not found"}
+            return {"success": False, "message": "Task not found"}
 
         if task.status != TaskStatus.DONE:
             return {"success": False, "message": f"Task is {task.status.value}"}
 
         if task.result is None:
-            return {"success": False, "message": f"Task result is not available"}
+            return {"success": False, "message": "Task result is not available"}
 
         result: dict = json.loads(task.result)
         infotexts = result["infotexts"]
@@ -279,10 +279,10 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
     @app.post("/agent-scheduler/v1/pause")
     def pause_queue():
         shared.opts.queue_paused = True
-        return {"success": True, "message": f"Queue is paused"}
+        return {"success": True, "message": "Queue paused."}
 
     @app.post("/agent-scheduler/v1/resume")
     def resume_queue():
         shared.opts.queue_paused = False
         TaskRunner.instance.execute_pending_tasks_threading()
-        return {"success": True, "message": f"Queue is resumed"}
+        return {"success": True, "message": "Queue resumed."}

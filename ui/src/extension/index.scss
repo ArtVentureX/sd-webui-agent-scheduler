@@ -30,6 +30,23 @@
 
 .notyf {
   font-family: var(--font);
+
+  .notyf__toast {
+    padding: 0 16px;
+    border-radius: 6px;
+
+    &.notyf__toast--success .notyf__ripple {
+      background-color: #38a169 !important;
+    }
+
+    &.notyf__toast--error .notyf__ripple {
+      background-color: #e53e3e !important;
+    }
+  }
+
+  .notyf__wrapper {
+    padding: 12px 0;
+  }
 }
 
 /* ========================================================================= */
