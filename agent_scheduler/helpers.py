@@ -1,14 +1,23 @@
+import sys
 import abc
 import logging
 
 import gradio as gr
 from gradio.blocks import Block, BlockContext
 
-if not logging.getLogger().hasHandlers():
-    # Logging is not set up
-    logging.basicConfig(level=logging.INFO, format="%(message)s")
+if logging.getLogger().hasHandlers():
+    log = logging.getLogger("agent_scheduler")
+else:
 
-log = logging.getLogger("sd")
+    class Log:
+        info = print
+        debug = print
+        warning: print
+
+        def error(*args, **kwargs):
+            print(*args, **kwargs, file=sys.stderr)
+
+    log = Log()
 
 
 class Singleton(abc.ABCMeta, type):
