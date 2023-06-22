@@ -336,7 +336,7 @@ function initQueueHandler() {
   const setting = gradioApp().querySelector(
     '#setting_queue_keyboard_shortcut textarea',
   ) as HTMLTextAreaElement;
-  if (setting?.value && setting.value !== 'Disabled') {
+  if (setting?.value && !setting.value.includes('Disabled')) {
     const parts = setting.value.split('+');
     const code = parts.pop();
 

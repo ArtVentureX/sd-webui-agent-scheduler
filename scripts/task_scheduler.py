@@ -430,11 +430,10 @@ def on_ui_settings():
     )
 
     def enqueue_keyboard_shortcut(disabled: bool, modifiers: list[str], key_code: str):
-        shortcut = (
-            "Disabled"
-            if disabled
-            else "+".join(sorted(modifiers) + [enqueue_key_codes[key_code]])
-        )
+        if disabled:
+            modifiers.insert(0, "Disabled")
+
+        shortcut = "+".join(sorted(modifiers) + [enqueue_key_codes[key_code]])
 
         return (
             shortcut,
@@ -448,6 +447,7 @@ def on_ui_settings():
         key = parts.pop()
         key_code_value = [k for k, v in enqueue_key_codes.items() if v == key]
         modifiers = [m for m in parts if m in enqueue_key_modifiers]
+        disabled = "Disabled" in value
 
         with gr.Group(elem_id="enqueue_keyboard_shortcut_wrapper"):
             modifiers = gr.CheckboxGroup(
@@ -455,15 +455,17 @@ def on_ui_settings():
                 value=modifiers,
                 label="Enqueue keyboard shortcut",
                 elem_id="enqueue_keyboard_shortcut_modifiers",
+                interactive=not disabled,
             )
             key_code = gr.Dropdown(
                 choices=list(enqueue_key_codes.keys()),
                 value="E" if len(key_code_value) == 0 else key_code_value[0],
                 elem_id="enqueue_keyboard_shortcut_key",
                 label="Key",
+                interactive=not disabled,
             )
             shortcut = gr.Textbox(**_kwargs)
-        disable = gr.Checkbox(value=(value == "Disabled"), label="Disable keyboard shortcut")
+        disable = gr.Checkbox(value=disabled, label="Disable keyboard shortcut")
 
         modifiers.change(
             fn=enqueue_keyboard_shortcut,
