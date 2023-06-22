@@ -53,7 +53,7 @@ enqueue_key_codes.update(
 enqueue_key_codes.update(
     {chr(i): "Digit" + chr(i) for i in range(ord("0"), ord("9") + 1)}
 )
-enqueue_key_codes.update({"`": "Backquote"})
+enqueue_key_codes.update({"`": "Backquote", "Enter": "Enter"})
 
 
 class Script(scripts.Script):
@@ -433,16 +433,22 @@ def on_ui_settings():
         return "+".join(sorted(modifiers) + [enqueue_key_codes[key_code]])
 
     def enqueue_keyboard_shortcut_ui(**_kwargs):
+        value = _kwargs.get("value", "Shift+KeyE")
+        parts = value.split("+")
+        key = parts.pop()
+        key_code_value = [k for k, v in enqueue_key_codes.items() if v == key]
+        modifiers = [m for m in parts if m in enqueue_key_modifiers]
+
         with gr.Group(elem_id="enqueue_keyboard_shortcut_wrapper"):
             modifiers = gr.CheckboxGroup(
                 enqueue_key_modifiers,
-                value=["Shift"],
+                value=modifiers,
                 label="Enqueue keyboard shortcut",
                 elem_id="enqueue_keyboard_shortcut_modifiers",
             )
             key_code = gr.Dropdown(
                 choices=list(enqueue_key_codes.keys()),
-                value="E",
+                value="E" if len(key_code_value) == 0 else key_code_value[0],
                 elem_id="enqueue_keyboard_shortcut_key",
                 label="Key",
             )

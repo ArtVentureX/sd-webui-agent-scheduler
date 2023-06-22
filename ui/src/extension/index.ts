@@ -24,11 +24,18 @@ import 'ag-grid-community/styles/ag-theme-alpine.css';
 import 'notyf/notyf.min.css';
 import './index.scss';
 
-const notyf = new Notyf();
+const notyf = new Notyf({
+  position: {
+    x: 'center',
+    y: 'bottom',
+  },
+  duration: 3000,
+});
 
 declare global {
   function gradioApp(): HTMLElement;
   function randomId(): string;
+  function origRandomId(): string;
   function get_tab_index(name: string): number;
   function create_submit_args(args: any[]): any[];
   function requestProgress(
@@ -230,8 +237,9 @@ function notify(response: ResponseStatus) {
 }
 
 window.notify = notify;
+window.origRandomId = window.randomId;
 
-function showTaskProgress(task_id: string, callback: () => void) {
+function showTaskProgress(task_id: string, type: string, callback: () => void) {
   const args = extractArgs(requestProgress);
 
   const gallery: HTMLDivElement = gradioApp().querySelector(
@@ -241,6 +249,19 @@ function showTaskProgress(task_id: string, callback: () => void) {
   // A1111 version
   if (args.includes('progressbarContainer')) {
     requestProgress(task_id, gallery, gallery, callback);
+    // if (type === 'txt2img') {
+    //   requestProgress(
+    //     task_id,
+    //     gradioApp().querySelector('#txt2img_gallery_container')!,
+    //     gradioApp().querySelector('#txt2img_gallery')!,
+    //   );
+    // } else if (type === 'img2img') {
+    //   requestProgress(
+    //     task_id,
+    //     gradioApp().querySelector('#img2img_gallery_container')!,
+    //     gradioApp().querySelector('#img2img_gallery')!,
+    //   );
+    // }
   } else {
     // Vlad version
     const progressDiv = document.createElement('div');
@@ -265,11 +286,21 @@ function showTaskProgress(task_id: string, callback: () => void) {
       },
     );
   }
+
+  // monkey patch randomId to return task_id, then call submit to trigger progress
+  window.randomId = () => task_id;
+  if (type === 'txt2img') {
+    window.submit();
+  } else if (type === 'img2img') {
+    window.submit_img2img();
+  }
+  window.randomId = window.origRandomId;
 }
 
 function initQueueHandler() {
   window.submit_enqueue = function submit_enqueue(...args) {
-    const res = window.submit(...args);
+    const res = create_submit_args(args);
+    res[0] = randomId();
 
     const btnEnqueue = document.querySelector('#txt2img_enqueue');
     if (btnEnqueue) {
@@ -288,7 +319,9 @@ function initQueueHandler() {
   };
 
   window.submit_enqueue_img2img = function submit_enqueue_img2img(...args) {
-    const res = window.submit_img2img(...args);
+    const res = create_submit_args(args);
+    res[0] = randomId();
+    res[1] = get_tab_index('mode_img2img');
 
     const btnEnqueue = document.querySelector('#img2img_enqueue');
     if (btnEnqueue) {
@@ -320,23 +353,55 @@ function initQueueHandler() {
     const parts = setting.value.split('+');
     const code = parts.pop();
 
-    window.addEventListener('keypress', (e) => {
+    const handleShortcut = (e: KeyboardEvent) => {
       if (e.code !== code) return;
       if (parts.includes('Shift') && !e.shiftKey) return;
       if (parts.includes('Alt') && !e.altKey) return;
       if (parts.includes('Command') && !e.metaKey) return;
       if ((parts.includes('Control') || parts.includes('Ctrl')) && !e.ctrlKey) return;
 
+      e.preventDefault();
+      e.stopPropagation();
+
       const activeTab = get_tab_index('tabs');
       if (activeTab === 0) {
-        const btn = gradioApp().querySelector('#txt2img_enqueue') as HTMLButtonElement;
+        const btn = gradioApp().querySelector<HTMLButtonElement>('#txt2img_enqueue');
         btn?.click();
       } else if (activeTab === 1) {
-        const btn = gradioApp().querySelector('#img2img_enqueue') as HTMLButtonElement;
+        const btn = gradioApp().querySelector<HTMLButtonElement>('#img2img_enqueue');
         btn?.click();
       }
-    });
+    };
+
+    window.addEventListener('keypress', handleShortcut);
+
+    const txt2imgPrompt = gradioApp().querySelector<HTMLTextAreaElement>(
+      '#txt2img_prompt textarea',
+    );
+    if (txt2imgPrompt) {
+      txt2imgPrompt.addEventListener('keydown', handleShortcut);
+    }
+
+    const img2imgPrompt = gradioApp().querySelector<HTMLTextAreaElement>(
+      '#img2img_prompt textarea',
+    );
+    if (img2imgPrompt) {
+      img2imgPrompt.addEventListener('keydown', handleShortcut);
+    }
   }
+
+  // watch for current task id change
+  const onTaskIdChange = (id: string | null) => {
+    if (!id) return;
+    const task = pendingStore.getState().pending_tasks.find((t) => t.id === id);
+
+    showTaskProgress(id, task?.type, pendingStore.refresh);
+  };
+  pendingStore.subscribe((curr, prev) => {
+    if (prev.current_task_id !== curr.current_task_id) {
+      onTaskIdChange(curr.current_task_id);
+    }
+  });
 }
 
 function initTabChangeHandler() {
@@ -396,16 +461,8 @@ function initPendingTab() {
   pauseButton.addEventListener('click', () => store.pauseQueue().then(notify));
   resumeButton.addEventListener('click', () => store.resumeQueue().then(notify));
 
-  // watch for current task id change
-  const onTaskIdChange = (id: string | null) => {
-    if (id) {
-      showTaskProgress(id, store.refresh);
-    }
-  };
-  store.subscribe((curr, prev) => {
-    if (prev.current_task_id !== curr.current_task_id) {
-      onTaskIdChange(curr.current_task_id);
-    }
+  // watch for queue status change
+  store.subscribe((curr) => {
     if (curr.paused) {
       pauseButton.classList.add('hide');
       resumeButton.classList.remove('hide');
