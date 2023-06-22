@@ -33667,7 +33667,7 @@ function Lm() {
   const t = gradioApp().querySelector(
     "#setting_queue_keyboard_shortcut textarea"
   );
-  if (t != null && t.value) {
+  if (t != null && t.value && t.value !== "Disabled") {
     const r = t.value.split("+"), o = r.pop(), i = (l) => {
       if (l.code !== o || r.includes("Shift") && !l.shiftKey || r.includes("Alt") && !l.altKey || r.includes("Command") && !l.metaKey || (r.includes("Control") || r.includes("Ctrl")) && !l.ctrlKey)
         return;

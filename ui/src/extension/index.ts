@@ -239,7 +239,7 @@ function notify(response: ResponseStatus) {
 window.notify = notify;
 window.origRandomId = window.randomId;
 
-function showTaskProgress(task_id: string, type: string, callback: () => void) {
+function showTaskProgress(task_id: string, type: string | undefined, callback: () => void) {
   const args = extractArgs(requestProgress);
 
   const gallery: HTMLDivElement = gradioApp().querySelector(
@@ -249,19 +249,6 @@ function showTaskProgress(task_id: string, type: string, callback: () => void) {
   // A1111 version
   if (args.includes('progressbarContainer')) {
     requestProgress(task_id, gallery, gallery, callback);
-    // if (type === 'txt2img') {
-    //   requestProgress(
-    //     task_id,
-    //     gradioApp().querySelector('#txt2img_gallery_container')!,
-    //     gradioApp().querySelector('#txt2img_gallery')!,
-    //   );
-    // } else if (type === 'img2img') {
-    //   requestProgress(
-    //     task_id,
-    //     gradioApp().querySelector('#img2img_gallery_container')!,
-    //     gradioApp().querySelector('#img2img_gallery')!,
-    //   );
-    // }
   } else {
     // Vlad version
     const progressDiv = document.createElement('div');
@@ -349,7 +336,7 @@ function initQueueHandler() {
   const setting = gradioApp().querySelector(
     '#setting_queue_keyboard_shortcut textarea',
   ) as HTMLTextAreaElement;
-  if (setting?.value) {
+  if (setting?.value && setting.value !== 'Disabled') {
     const parts = setting.value.split('+');
     const code = parts.pop();
 
