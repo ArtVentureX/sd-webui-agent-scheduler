@@ -12,6 +12,7 @@ Introducing AgentScheduler, an A1111/Vladmandic Stable Diffusion Web UI extensio
 - [Functionality](#functionality-as-of-current-version)
 - [Settings](#extension-settings)
 - [API Access](#api-access)
+- [Troubleshooting](#troubleshooting)
 - [Road Map](#road-map)
 - [Contributing](#contributing)
 - [License](#license)
@@ -138,6 +139,30 @@ Use api `/agent-scheduler/v1/results/{id}` to get the generated images. The api 
 ```
 
 - zip file with querystring `zip=true`
+
+## Troubleshooting
+
+Make sure that you are running the latest version of the extension and an updated version of the WebUI.
+
+- To update the extension, go to `Extension` tab and click `Check for Updates`, then click `Apply and restart UI`.
+- To update the WebUI it self, you run the command `git pull origin master` in the same folder as webui.bat (or webui.sh).
+
+Steps to try to find the cause of issues:
+
+- Check the for errors in the WebUI output console.
+- Press F12 in the browser then go to the console tab and reload the page, find any error message here.
+
+Common errors:
+
+**AttributeError: module 'modules.script_callbacks' has no attribute 'on_before_reload'**
+
+If you see this error message in the output console, try update the WebUI to the latest version.
+
+**ReferenceError: submit_enqueue is not defined**
+
+If you click the `Enqueue` button and nothing happen, and you find above error message in the browser F12 console, follow the steps in [this comment](https://github.com/ArtVentureX/sd-webui-agent-scheduler/issues/4#issuecomment-1575986274).
+
+For other errors, feel free to fire a new [Github issue](https://github.com/ArtVentureX/sd-webui-agent-scheduler/issues/new/choose).
 
 ## Road Map
 
