@@ -25,7 +25,7 @@ from agent_scheduler.helpers import (
     compare_components_with_ids,
     get_components_by_ids,
 )
-from agent_scheduler.db import init, task_manager, TaskStatus
+from agent_scheduler.db import init as init_db, task_manager, TaskStatus
 from agent_scheduler.api import regsiter_apis
 
 task_runner: TaskRunner = None
@@ -56,6 +56,8 @@ enqueue_key_codes.update(
     {chr(i): "Digit" + chr(i) for i in range(ord("0"), ord("9") + 1)}
 )
 enqueue_key_codes.update({"`": "Backquote", "Enter": "Enter"})
+
+init_db()
 
 
 class Script(scripts.Script):
@@ -250,11 +252,6 @@ def get_task_results(task_id: str, image_idx: int = None):
 
 
 def on_ui_tab(**_kwargs):
-    global initialized
-    if not initialized:
-        initialized = True
-        init()
-
     with gr.Blocks(analytics_enabled=False) as scheduler_tab:
         with gr.Tabs(elem_id="agent_scheduler_tabs"):
             with gr.Tab(
