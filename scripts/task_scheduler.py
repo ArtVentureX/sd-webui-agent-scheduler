@@ -8,8 +8,10 @@ from modules import shared, script_callbacks, scripts
 from modules.shared import list_checkpoint_tiles, refresh_checkpoints
 from modules.ui import create_refresh_button
 from modules.generation_parameters_copypaste import (
+    registered_param_bindings,
     create_buttons,
     register_paste_params_button,
+    connect_paste_params_buttons,
     ParamBinding,
 )
 
@@ -27,7 +29,6 @@ from agent_scheduler.db import init, task_manager, TaskStatus
 from agent_scheduler.api import regsiter_apis
 
 task_runner: TaskRunner = None
-initialized = False
 
 checkpoint_current = "Current Checkpoint"
 checkpoint_runtime = "Runtime Checkpoint"
@@ -528,7 +529,11 @@ def on_app_started(block: gr.Blocks, app):
     ):
         with block:
             with block.children[1]:
+                bindings = registered_param_bindings.copy()
+                registered_param_bindings.clear()
                 on_ui_tab()
+                connect_paste_params_buttons()
+                registered_param_bindings.extend(bindings)
 
 
 if getattr(shared.opts, "queue_ui_placement", "") != ui_placement_append_to_main:
