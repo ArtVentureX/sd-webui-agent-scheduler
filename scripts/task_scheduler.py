@@ -46,6 +46,7 @@ enqueue_key_modifiers = [
     "Control" if is_macos else "Alt",
     "Shift",
 ]
+enqueue_default_hotkey = enqueue_key_modifiers[0] + "+KeyE"
 enqueue_key_codes = {}
 enqueue_key_codes.update(
     {chr(i): "Key" + chr(i) for i in range(ord("A"), ord("Z") + 1)}
@@ -442,7 +443,7 @@ def on_ui_settings():
         )
 
     def enqueue_keyboard_shortcut_ui(**_kwargs):
-        value = _kwargs.get("value", "Shift+KeyE")
+        value = _kwargs.get("value", enqueue_default_hotkey)
         parts = value.split("+")
         key = parts.pop()
         key_code_value = [k for k, v in enqueue_key_codes.items() if v == key]
@@ -488,7 +489,7 @@ def on_ui_settings():
     shared.opts.add_option(
         "queue_keyboard_shortcut",
         shared.OptionInfo(
-            "Shift+KeyE",
+            enqueue_default_hotkey,
             "Enqueue keyboard shortcut",
             enqueue_keyboard_shortcut_ui,
             {
