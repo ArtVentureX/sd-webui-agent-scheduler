@@ -328,7 +328,7 @@ function initQueueHandler() {
 
   // detect queue button placement
   const interrogateCol: HTMLDivElement = gradioApp().querySelector('.interrogate-col')!;
-  if (interrogateCol.childElementCount > 2) {
+  if (interrogateCol && interrogateCol.childElementCount > 2) {
     interrogateCol.classList.add('has-queue-button');
   }
 
@@ -441,7 +441,7 @@ function initPendingTab() {
   const store = pendingStore;
 
   // init actions
-  const refreshButton = gradioApp().querySelector('#agent_scheduler_action_refresh')!;
+  const refreshButton = gradioApp().querySelector('#agent_scheduler_action_reload')!;
   const pauseButton = gradioApp().querySelector('#agent_scheduler_action_pause')!;
   const resumeButton = gradioApp().querySelector('#agent_scheduler_action_resume')!;
   refreshButton.addEventListener('click', store.refresh);

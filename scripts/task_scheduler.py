@@ -276,8 +276,7 @@ def on_ui_tab(**_kwargs):
                             )
                             gr.Button(
                                 "Refresh",
-                                elem_id="agent_scheduler_action_refresh",
-                                elem_classes="agent_scheduler_action_refresh",
+                                elem_id="agent_scheduler_action_reload",
                                 variant="secondary",
                             )
                             gr.HTML('<div id="agent_scheduler_action_search"></div>')
@@ -318,7 +317,7 @@ def on_ui_tab(**_kwargs):
                             label="Output",
                             show_label=False,
                         ).style(columns=2, object_fit="contain", preview=True)
-                        gen_info = gr.Textbox(
+                        gen_info = gr.TextArea(
                             label="Generation Info",
                             elem_id=f"agent_scheduler_history_gen_info",
                             interactive=False,
@@ -464,7 +463,11 @@ def on_ui_settings():
                 interactive=not disabled,
             )
             shortcut = gr.Textbox(**_kwargs)
-        disable = gr.Checkbox(value=disabled, label="Disable keyboard shortcut")
+            disable = gr.Checkbox(
+                value=disabled,
+                label="Disable keyboard shortcut",
+                elem_id="enqueue_keyboard_shortcut_disable",
+            )
 
         modifiers.change(
             fn=enqueue_keyboard_shortcut,

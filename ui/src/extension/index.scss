@@ -168,7 +168,7 @@
   > div:first-child {
     flex-direction: row;
     flex-wrap: nowrap;
-    align-items: flex-start;
+    align-items: stretch;
     flex: 0 0 auto;
   }
 
@@ -205,5 +205,14 @@
   }
   #setting_queue_keyboard_shortcut {
     display: none;
+  }
+  #enqueue_keyboard_shortcut_disable {
+    width: 100%;
+  }
+}
+
+.modification-indicator + #enqueue_keyboard_shortcut_wrapper {
+  #enqueue_keyboard_shortcut_disable {
+    padding-left: 12px !important;
   }
 }

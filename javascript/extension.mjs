@@ -33663,7 +33663,7 @@ function Lm() {
     }, 1e3)), i;
   };
   const n = gradioApp().querySelector(".interrogate-col");
-  n.childElementCount > 2 && n.classList.add("has-queue-button");
+  n && n.childElementCount > 2 && n.classList.add("has-queue-button");
   const t = gradioApp().querySelector(
     "#setting_queue_keyboard_shortcut textarea"
   );
@@ -33720,7 +33720,7 @@ function Mm() {
   });
 }
 function Im() {
-  const n = at, t = gradioApp().querySelector("#agent_scheduler_action_refresh"), e = gradioApp().querySelector("#agent_scheduler_action_pause"), r = gradioApp().querySelector("#agent_scheduler_action_resume");
+  const n = at, t = gradioApp().querySelector("#agent_scheduler_action_reload"), e = gradioApp().querySelector("#agent_scheduler_action_pause"), r = gradioApp().querySelector("#agent_scheduler_action_resume");
   t.addEventListener("click", n.refresh), e.addEventListener("click", () => n.pauseQueue().then(St)), r.addEventListener("click", () => n.resumeQueue().then(St)), n.subscribe((s) => {
     s.paused ? (e.classList.add("hide"), r.classList.remove("hide")) : (e.classList.remove("hide"), r.classList.add("hide"));
   });
