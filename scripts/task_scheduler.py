@@ -66,6 +66,9 @@ class Script(scripts.Script):
         script_callbacks.on_app_started(lambda block, _: self.on_app_started(block))
         self.checkpoint_override = checkpoint_current
         self.generate_button = None
+        self.enqueue_row = None
+        self.checkpoint_dropdown = None
+        self.submit_button = None
 
     def title(self):
         return "Agent Scheduler"
@@ -77,16 +80,52 @@ class Script(scripts.Script):
         self.checkpoint_override = checkpoint
 
     def after_component(self, component, **_kwargs):
-        elem_id = "txt2img_generate" if self.is_txt2img else "img2img_generate"
+        genetate_id = "txt2img_generate" if self.is_txt2img else "img2img_generate"
+        neg_id = "txt2img_neg_prompt" if self.is_txt2img else "img2img_neg_prompt"
 
-        if component.elem_id == elem_id:
+        if component.elem_id == genetate_id:
             self.generate_button = component
+            if shared.opts.queue_button_placement == placement_under_generate:
+                with component.parent:
+                    self.add_enqueue_button()
+            return
+
+        if (
+            shared.opts.queue_button_placement == placement_between_prompt_and_generate
+            and component.elem_id == neg_id
+        ):
+            toprow = component.parent.parent.parent.parent.parent
+            self.add_enqueue_button()
+            component.parent.children.pop()
+            toprow.add(self.enqueue_row)
 
     def on_app_started(self, block):
         if self.generate_button is not None:
-            self.add_enqueue_button(block, self.generate_button)
+            self.bind_enqueue_button(block)
 
-    def add_enqueue_button(self, root: gr.Blocks, generate: gr.Button):
+    def add_enqueue_button(self):
+        id_part = "img2img" if self.is_img2img else "txt2img"
+        with gr.Row(elem_id=f"{id_part}_enqueue_wrapper") as row:
+            self.enqueue_row = row
+            if not shared.opts.queue_button_hide_checkpoint:
+                self.checkpoint_dropdown = gr.Dropdown(
+                    choices=get_checkpoint_choices(),
+                    value=checkpoint_current,
+                    show_label=False,
+                    interactive=True,
+                )
+                create_refresh_button(
+                    self.checkpoint_dropdown,
+                    refresh_checkpoints,
+                    lambda: {"choices": get_checkpoint_choices()},
+                    f"refresh_{id_part}_checkpoint",
+                )
+            self.submit_button = gr.Button(
+                "Enqueue", elem_id=f"{id_part}_enqueue", variant="primary"
+            )
+
+    def bind_enqueue_button(self, root: gr.Blocks):
+        generate = self.generate_button
         is_img2img = self.is_img2img
         dependencies: list[dict] = [
             x
@@ -111,70 +150,35 @@ class Script(scripts.Script):
             elif len(d["outputs"]) == 4:
                 dependency = d
 
-        fn_block = next(
-            fn
-            for fn in root.fns
-            if compare_components_with_ids(fn.inputs, dependency["inputs"])
-        )
-        fn = self.wrap_register_ui_task()
-        args = dict(
-            fn=fn,
-            _js="submit_enqueue_img2img" if is_img2img else "submit_enqueue",
-            inputs=fn_block.inputs,
-            outputs=None,
-            show_progress=False,
-        )
-
-        id_part = "img2img" if is_img2img else "txt2img"
         with root:
-            with gr.Row(elem_id=f"{id_part}_enqueue_wrapper") as row:
-                if not shared.opts.queue_button_hide_checkpoint:
-                    checkpoint = gr.Dropdown(
-                        choices=get_checkpoint_choices(),
-                        value=checkpoint_current,
-                        show_label=False,
-                        interactive=True,
-                    )
-                    create_refresh_button(
-                        checkpoint,
-                        refresh_checkpoints,
-                        lambda: {"choices": get_checkpoint_choices()},
-                        f"refresh_{id_part}_checkpoint",
-                    )
-                    checkpoint.change(
-                        fn=self.on_checkpoint_changed, inputs=[checkpoint]
-                    )
-
-                submit = gr.Button(
-                    "Enqueue", elem_id=f"{id_part}_enqueue", variant="primary"
+            if self.checkpoint_dropdown is not None:
+                self.checkpoint_dropdown.change(
+                    fn=self.on_checkpoint_changed, inputs=[self.checkpoint_dropdown]
                 )
-                submit.click(**args)
 
-        # relocation the enqueue button
-        root.children.pop()
-        if shared.opts.queue_button_placement == placement_between_prompt_and_generate:
-            if is_img2img:
-                # add to the iterrogate div
-                parent = generate.parent.parent.parent.children[1]
-                parent.add(row)
-            else:
-                # insert after the prompts
-                parent = generate.parent.parent.parent
-                row.parent = parent
-                parent.children.insert(1, row)
-        else:
-            # insert after the generate button
-            parent = generate.parent.parent
-            parent.children.insert(1, row)
-
-        if cnet_dependency is not None:
-            cnet_fn_block = next(
+            fn_block = next(
                 fn
                 for fn in root.fns
-                if compare_components_with_ids(fn.inputs, cnet_dependency["inputs"])
+                if compare_components_with_ids(fn.inputs, dependency["inputs"])
             )
-            with root:
-                submit.click(
+            fn = self.wrap_register_ui_task()
+            args = dict(
+                fn=fn,
+                _js="submit_enqueue_img2img" if is_img2img else "submit_enqueue",
+                inputs=fn_block.inputs,
+                outputs=None,
+                show_progress=False,
+            )
+
+            self.submit_button.click(**args)
+
+            if cnet_dependency is not None:
+                cnet_fn_block = next(
+                    fn
+                    for fn in root.fns
+                    if compare_components_with_ids(fn.inputs, cnet_dependency["inputs"])
+                )
+                self.submit_button.click(
                     fn=UiControlNetUnit,
                     inputs=cnet_fn_block.inputs,
                     outputs=cnet_fn_block.outputs,
