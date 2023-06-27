@@ -100,7 +100,7 @@ class TaskRunner:
 
     @property
     def paused(self) -> bool:
-        return shared.opts.queue_paused
+        return getattr(shared.opts, "queue_paused", False)
 
     def __serialize_ui_task_args(self, is_img2img: bool, *args, checkpoint: str = None):
         named_args, script_args = map_ui_task_args_list_to_named_args(
@@ -430,7 +430,7 @@ class TaskRunner:
         # delete task that are too old
         retention_days = 30
         if (
-            shared.opts.queue_history_retention_days
+            getattr(shared.opts, "queue_history_retention_days", None)
             and shared.opts.queue_history_retention_days in task_history_retenion_map
         ):
             retention_days = task_history_retenion_map[

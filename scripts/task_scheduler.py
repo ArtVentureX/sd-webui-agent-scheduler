@@ -80,20 +80,24 @@ class Script(scripts.Script):
         self.checkpoint_override = checkpoint
 
     def after_component(self, component, **_kwargs):
-        genetate_id = "txt2img_generate" if self.is_txt2img else "img2img_generate"
+        generate_id = "txt2img_generate" if self.is_txt2img else "img2img_generate"
         neg_id = "txt2img_neg_prompt" if self.is_txt2img else "img2img_neg_prompt"
 
-        if component.elem_id == genetate_id:
+        if component.elem_id == generate_id:
             self.generate_button = component
-            if shared.opts.queue_button_placement == placement_under_generate:
+            if (
+                getattr(shared.opts, "queue_button_placement", placement_under_generate)
+                == placement_under_generate
+            ):
                 self.add_enqueue_button()
                 component.parent.children.pop()
                 component.parent.parent.add(self.enqueue_row)
             return
 
         if (
-            shared.opts.queue_button_placement == placement_between_prompt_and_generate
-            and component.elem_id == neg_id
+            component.elem_id == neg_id
+            and getattr(shared.opts, "queue_button_placement", placement_under_generate)
+            == placement_between_prompt_and_generate
         ):
             toprow = component.parent.parent.parent.parent.parent
             self.add_enqueue_button()
@@ -108,7 +112,7 @@ class Script(scripts.Script):
         id_part = "img2img" if self.is_img2img else "txt2img"
         with gr.Row(elem_id=f"{id_part}_enqueue_wrapper") as row:
             self.enqueue_row = row
-            if not shared.opts.queue_button_hide_checkpoint:
+            if not getattr(shared.opts, "queue_button_hide_checkpoint", True):
                 self.checkpoint_dropdown = gr.Dropdown(
                     choices=get_checkpoint_choices(),
                     value=checkpoint_current,
@@ -265,7 +269,7 @@ def on_ui_tab(**_kwargs):
                 with gr.Row(elem_id="agent_scheduler_pending_tasks_wrapper"):
                     with gr.Column(scale=1):
                         with gr.Group(elem_id="agent_scheduler_pending_tasks_actions"):
-                            paused = shared.opts.queue_paused
+                            paused = getattr(shared.opts, "queue_paused", False)
 
                             gr.Button(
                                 "Pause",
