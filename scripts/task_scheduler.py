@@ -3,7 +3,7 @@ import json
 import platform
 import gradio as gr
 from PIL import Image
-
+from gradio import context
 from modules import shared, script_callbacks, scripts
 from modules.shared import list_checkpoint_tiles, refresh_checkpoints
 from modules.ui import create_refresh_button
@@ -86,8 +86,9 @@ class Script(scripts.Script):
         if component.elem_id == genetate_id:
             self.generate_button = component
             if shared.opts.queue_button_placement == placement_under_generate:
-                with component.parent:
-                    self.add_enqueue_button()
+                self.add_enqueue_button()
+                component.parent.children.pop()
+                component.parent.parent.add(self.enqueue_row)
             return
 
         if (

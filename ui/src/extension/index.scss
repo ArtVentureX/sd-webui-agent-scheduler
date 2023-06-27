@@ -163,13 +163,14 @@
   min-width: 210px;
   display: flex;
   flex-direction: column;
-  gap: calc(var(--layout-gap) / 2);
+  gap: 0;
 
   > div:first-child {
     flex-direction: row;
     flex-wrap: nowrap;
     align-items: stretch;
     flex: 0 0 auto;
+    margin-bottom: calc(var(--layout-gap) / 2);
   }
 
   .gradio-button,

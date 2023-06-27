@@ -6,7 +6,7 @@ import gradio as gr
 from gradio.blocks import Block, BlockContext
 
 if logging.getLogger().hasHandlers():
-    log = logging.getLogger("agent_scheduler")
+    log = logging.getLogger("sd")
 else:
 
     class Log:
