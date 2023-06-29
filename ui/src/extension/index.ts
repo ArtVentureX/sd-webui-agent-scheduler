@@ -24,13 +24,7 @@ import 'ag-grid-community/styles/ag-theme-alpine.css';
 import 'notyf/notyf.min.css';
 import './index.scss';
 
-const notyf = new Notyf({
-  position: {
-    x: 'center',
-    y: 'bottom',
-  },
-  duration: 3000,
-});
+let notyf: Notyf;
 
 declare global {
   function gradioApp(): HTMLElement;
@@ -228,7 +222,18 @@ function initSearchInput(selector: string) {
   return searchContainer;
 }
 
-function notify(response: ResponseStatus) {
+async function notify(response: ResponseStatus) {
+  if (!notyf) {
+    const Notyf = await import("notyf");
+    notyf = new Notyf.Notyf({
+      position: {
+        x: 'center',
+        y: 'bottom',
+      },
+      duration: 3000,
+    });
+    }
+
   if (response.success) {
     notyf.success(response.message);
   } else {
@@ -360,7 +365,7 @@ function initQueueHandler() {
       }
     };
 
-    window.addEventListener('keypress', handleShortcut);
+    window.addEventListener('keydown', handleShortcut);
 
     const txt2imgPrompt = gradioApp().querySelector<HTMLTextAreaElement>(
       '#txt2img_prompt textarea',

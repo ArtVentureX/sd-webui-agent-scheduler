@@ -8,8 +8,8 @@ export default defineConfig({
     lib: {
       name: 'agentScheduler',
       entry: 'src/extension/index.ts',
-      fileName: 'javascript/extension',
-      formats: ['es']
+      fileName: 'javascript/agent-scheduler',
+      formats: ['iife']
     },
   },
 });
