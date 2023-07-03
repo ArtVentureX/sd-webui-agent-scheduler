@@ -28,6 +28,8 @@ from .helpers import (
     get_dict_attribute,
 )
 from .task_helpers import (
+    serialize_image,
+    deserialize_image,
     encode_image_to_base64,
     serialize_img2img_image_args,
     deserialize_img2img_image_args,
@@ -111,11 +113,12 @@ class TaskRunner:
         if is_img2img:
             serialize_img2img_image_args(named_args)
 
-        # loop through script_args and serialize controlnets
-        if self.UiControlNetUnit is not None:
-            for i, a in enumerate(script_args):
-                if isinstance(a, self.UiControlNetUnit):
-                    script_args[i] = serialize_controlnet_args(a)
+        # loop through script_args and serialize images
+        for i, a in enumerate(script_args):
+            if isinstance(a, Image.Image):
+                script_args[i] = serialize_image(a)
+            elif self.UiControlNetUnit and isinstance(a, self.UiControlNetUnit):
+                script_args[i] = serialize_controlnet_args(a)
 
         return json.dumps(
             {
@@ -158,11 +161,12 @@ class TaskRunner:
         if is_img2img:
             deserialize_img2img_image_args(named_args)
 
-        # loop through script_args and deserialize controlnets
-        if self.UiControlNetUnit is not None:
-            for i, arg in enumerate(script_args):
-                if isinstance(arg, dict) and arg.get("is_cnet", False):
-                    script_args[i] = deserialize_controlnet_args(arg)
+        # loop through script_args and deserialize images
+        for i, arg in enumerate(script_args):
+            if isinstance(arg, dict) and arg.get("is_cnet", False):
+                script_args[i] = deserialize_controlnet_args(arg)
+            elif isinstance(arg, dict) and arg.get("cls", "") in {"Image", "ndarray"}:
+                script_args[i] = deserialize_image(arg)
 
     def __deserialize_api_task_args(self, is_img2img: bool, named_args: dict):
         # load images from disk

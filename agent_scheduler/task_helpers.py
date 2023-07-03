@@ -72,7 +72,7 @@ def encode_image_to_base64(image):
         return "data:image/png;base64," + base64.b64encode(bytes_data).decode("utf-8")
 
 
-def __serialize_image(image):
+def serialize_image(image):
     if isinstance(image, np.ndarray):
         shape = image.shape
         data = base64.b64encode(zlib.compress(image.tobytes())).decode()
@@ -91,7 +91,7 @@ def __serialize_image(image):
         return image
 
 
-def __deserialize_image(image_str):
+def deserialize_image(image_str):
     if isinstance(image_str, dict) and image_str.get("cls", None):
         cls = image_str["cls"]
         data = zlib.decompress(base64.b64decode(image_str["data"]))
@@ -116,11 +116,11 @@ def serialize_img2img_image_args(args: dict):
                 args[keys[0]] = None
             elif len(keys) == 1:
                 image = args.get(keys[0], None)
-                args[keys[0]] = __serialize_image(image)
+                args[keys[0]] = serialize_image(image)
             else:
                 value = args.get(keys[0], {})
                 image = value.get(keys[1], None)
-                value[keys[1]] = __serialize_image(image)
+                value[keys[1]] = serialize_image(image)
                 args[keys[0]] = value
 
 
@@ -132,11 +132,11 @@ def deserialize_img2img_image_args(args: dict):
         for keys in image_args:
             if len(keys) == 1:
                 image = args.get(keys[0], None)
-                args[keys[0]] = __deserialize_image(image)
+                args[keys[0]] = deserialize_image(image)
             else:
                 value = args.get(keys[0], {})
                 image = value.get(keys[1], None)
-                value[keys[1]] = __deserialize_image(image)
+                value[keys[1]] = deserialize_image(image)
                 args[keys[0]] = value
 
 
@@ -146,8 +146,8 @@ def serialize_controlnet_args(cnet_unit):
     for k, v in args.items():
         if k == "image" and v is not None:
             args[k] = {
-                "image": __serialize_image(v["image"]),
-                "mask": __serialize_image(v["mask"])
+                "image": serialize_image(v["image"]),
+                "mask": serialize_image(v["mask"])
                 if v.get("mask", None) is not None
                 else None,
             }
@@ -161,8 +161,8 @@ def deserialize_controlnet_args(args: dict):
     for k, v in args.items():
         if k == "image" and v is not None:
             args[k] = {
-                "image": __deserialize_image(v["image"]),
-                "mask": __deserialize_image(v["mask"])
+                "image": deserialize_image(v["image"]),
+                "mask": deserialize_image(v["mask"])
                 if v.get("mask", None) is not None
                 else None,
             }
