@@ -162,28 +162,38 @@ def serialize_controlnet_args(cnet_unit):
     args: dict = cnet_unit.__dict__
     args["is_cnet"] = True
     for k, v in args.items():
-        if k == "image" and v is not None:
+        if k == "image" and hasattr(v, "image") and v.image is not None:
+            print("serialize image for controlnet")
             args[k] = {
                 "image": serialize_image(v["image"]),
                 "mask": serialize_image(v["mask"])
                 if v.get("mask", None) is not None
                 else None,
             }
-        if isinstance(v, Enum):
-            args[k] = v.value
+        elif k == 'image' and isinstance(v, (np.ndarray, torch.Tensor, Image.Image)):
+            args[k] = serialize_image(v)
+        elif isinstance(v, Enum):
+            args[k] = serialize_image(v.value)
+        else:
+            args[k] = serialize_image(v)
 
     return args
 
 
 def deserialize_controlnet_args(args: dict):
     for k, v in args.items():
-        if k == "image" and v is not None:
+        if k == "image" and hasattr(v, "image") and v.image is not None:
+            print("deserialize image for controlnet")
             args[k] = {
                 "image": deserialize_image(v["image"]),
                 "mask": deserialize_image(v["mask"])
                 if v.get("mask", None) is not None
                 else None,
             }
+        elif isinstance(v, dict) and v.get("cls", None) in ["Image", "ndarray", "Tensor"]:
+            args[k] = deserialize_image(v)
+        else:
+            args[k] = v
 
     return args
 
