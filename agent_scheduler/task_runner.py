@@ -19,6 +19,8 @@ from modules.api.models import (
     StableDiffusionTxt2ImgProcessingAPI,
     StableDiffusionImg2ImgProcessingAPI,
 )
+from numpy import ndarray
+from torch import Tensor
 
 from .db import TaskStatus, Task, task_manager
 from .helpers import (
@@ -115,7 +117,7 @@ class TaskRunner:
 
         # loop through script_args and serialize images
         for i, a in enumerate(script_args):
-            if isinstance(a, Image.Image):
+            if isinstance(a, (Image.Image, ndarray, Tensor)):
                 script_args[i] = serialize_image(a)
             elif self.UiControlNetUnit and isinstance(a, self.UiControlNetUnit):
                 script_args[i] = serialize_controlnet_args(a)
@@ -165,7 +167,7 @@ class TaskRunner:
         for i, arg in enumerate(script_args):
             if isinstance(arg, dict) and arg.get("is_cnet", False):
                 script_args[i] = deserialize_controlnet_args(arg)
-            elif isinstance(arg, dict) and arg.get("cls", "") in {"Image", "ndarray"}:
+            elif isinstance(arg, dict) and arg.get("cls", "") in {"Image", "ndarray", "Tensor"}:
                 script_args[i] = deserialize_image(arg)
 
     def __deserialize_api_task_args(self, is_img2img: bool, named_args: dict):
