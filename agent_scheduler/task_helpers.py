@@ -76,12 +76,14 @@ def encode_image_to_base64(image):
 def serialize_image(image):
     if isinstance(image, np.ndarray):
         shape = image.shape
+        dtype = image.dtype
         data = base64.b64encode(zlib.compress(image.tobytes())).decode()
-        return {"shape": shape, "data": data, "cls": "ndarray"}
+        return {"shape": shape, "data": data, "cls": "ndarray", "dtype": str(dtype)}
     elif isinstance(image, torch.Tensor):
         shape = image.shape
+        dtype = image.dtype
         data = base64.b64encode(zlib.compress(image.detach().numpy().tobytes())).decode()
-        return {"shape": shape, "data": data, "cls": "Tensor", "device": image.device.type}
+        return {"shape": shape, "data": data, "cls": "Tensor", "device": image.device.type, "dtype": str(dtype)}
     elif isinstance(image, Image.Image):
         size = image.size
         mode = image.mode
@@ -102,12 +104,19 @@ def deserialize_image(image_str):
         data = zlib.decompress(base64.b64decode(image_str["data"]))
 
         if cls == "ndarray":
+            # warn if required fields are missing
+            if image_str.get("dtype", None) is None:
+                log.warning(f"Missing dtype for ndarray")
             shape = tuple(image_str["shape"])
-            image = np.frombuffer(data, dtype=np.uint8)
+            dtype = np.dtype(image_str.get("dtype", "uint8"))
+            image = np.frombuffer(data, dtype=dtype)
             return image.reshape(shape)
         elif cls == "Tensor":
+            if image_str.get("device", None) is None:
+                log.warning(f"Missing device for Tensor")
             shape = tuple(image_str["shape"])
-            image_np = np.frombuffer(data, dtype=np.uint8)
+            dtype = np.dtype(image_str.get("dtype", "uint8"))
+            image_np = np.frombuffer(data, dtype=dtype)
             return torch.from_numpy(image_np.reshape(shape)).to(device = image_str.get("device", "cpu"))
         else:
             size = tuple(image_str["size"])
