@@ -5,6 +5,7 @@ import base64
 import inspect
 import requests
 import numpy as np
+import torch
 from typing import Union
 from enum import Enum
 from PIL import Image, ImageOps, ImageChops, ImageEnhance, ImageFilter
@@ -77,6 +78,10 @@ def serialize_image(image):
         shape = image.shape
         data = base64.b64encode(zlib.compress(image.tobytes())).decode()
         return {"shape": shape, "data": data, "cls": "ndarray"}
+    elif isinstance(image, torch.Tensor):
+        shape = image.shape
+        data = base64.b64encode(zlib.compress(image.numpy().tobytes())).decode()
+        return {"shape": shape, "data": data, "cls": "Tensor"}
     elif isinstance(image, Image.Image):
         size = image.size
         mode = image.mode
@@ -100,6 +105,10 @@ def deserialize_image(image_str):
             shape = tuple(image_str["shape"])
             image = np.frombuffer(data, dtype=np.uint8)
             return image.reshape(shape)
+        elif cls == "Tensor":
+            shape = tuple(image_str["shape"])
+            image_np = np.frombuffer(data, dtype=np.uint8)
+            return torch.from_numpy(image_np.reshape(shape))
         else:
             size = tuple(image_str["size"])
             mode = image_str["mode"]
