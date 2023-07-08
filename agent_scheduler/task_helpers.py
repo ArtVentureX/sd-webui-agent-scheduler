@@ -80,8 +80,8 @@ def serialize_image(image):
         return {"shape": shape, "data": data, "cls": "ndarray"}
     elif isinstance(image, torch.Tensor):
         shape = image.shape
-        data = base64.b64encode(zlib.compress(image.numpy().tobytes())).decode()
-        return {"shape": shape, "data": data, "cls": "Tensor"}
+        data = base64.b64encode(zlib.compress(image.detach().numpy().tobytes())).decode()
+        return {"shape": shape, "data": data, "cls": "Tensor", "device": image.device.type}
     elif isinstance(image, Image.Image):
         size = image.size
         mode = image.mode
@@ -108,7 +108,7 @@ def deserialize_image(image_str):
         elif cls == "Tensor":
             shape = tuple(image_str["shape"])
             image_np = np.frombuffer(data, dtype=np.uint8)
-            return torch.from_numpy(image_np.reshape(shape))
+            return torch.from_numpy(image_np.reshape(shape)).to(device = image_str.get("device", "cpu"))
         else:
             size = tuple(image_str["size"])
             mode = image_str["mode"]
