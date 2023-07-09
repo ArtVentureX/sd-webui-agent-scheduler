@@ -136,7 +136,9 @@ class TaskRunner:
         """
         Recursively deserialize an object from JSON
         """
-        if isinstance(obj, dict):
+        if isinstance(obj, dict) and 'cls' in obj:
+            return deserialize_image(obj)
+        if isinstance(obj, dict) and not obj.get("is_cnet", False):
             new_obj = {}
             for k, v in obj.items():
                 new_obj[k] = self.recursively_deserialize(v)
@@ -147,7 +149,10 @@ class TaskRunner:
                 new_obj.append(self.recursively_deserialize(v))
             return new_obj
         elif isinstance(obj, dict) and obj.get("is_cnet", False):
-            return deserialize_controlnet_args(obj)
+            new_obj = {}
+            for k, v in obj.items():
+                new_obj[k] = self.recursively_deserialize(v)
+            return deserialize_controlnet_args(new_obj)
         else:
             return deserialize_image(obj)
 
@@ -221,12 +226,7 @@ class TaskRunner:
         deserialized_args:list = [None] * len(script_args)
         # loop through script_args and deserialize images
         for i, arg in enumerate(script_args):
-            if isinstance(arg, dict) and arg.get("is_cnet", False):
-                deserialized_args[i] = deserialize_controlnet_args(arg)
-            elif isinstance(arg, dict) and arg.get("cls", "") in {"Image", "ndarray", "Tensor"}:
-                deserialized_args[i] = deserialize_image(arg)
-            else:
-                deserialized_args[i] = self.recursively_deserialize(arg)
+            deserialized_args[i] = self.recursively_deserialize(arg)
         for i, arg in enumerate(deserialized_args):
             script_args[i] = arg
         

@@ -165,7 +165,6 @@ def serialize_controlnet_args(cnet_unit):
     for k, v in args.items():
         if k == 'image':
             if hasattr(v, "image") and v.image is not None:
-                print("serialize image for controlnet")
                 new_args[k] = {
                     "image": serialize_image(v["image"]),
                     "mask": serialize_image(v["mask"])
@@ -178,7 +177,6 @@ def serialize_controlnet_args(cnet_unit):
                     "mask": None if v.get("mask", None) is None else serialize_image(v["mask"]),
                 }
             else:
-                print("Fallbacked for argument " + str(k) + " with value " + str(v) + " to serialize_image")
                 new_args[k] = serialize_image(v)
         elif k == 'image' and isinstance(v, (np.ndarray, torch.Tensor, Image.Image)):
             new_args[k] = serialize_image(v)
@@ -191,21 +189,22 @@ def serialize_controlnet_args(cnet_unit):
 
 
 def deserialize_controlnet_args(args: dict):
+    new_args = {}
     for k, v in args.items():
         if k == "image" and hasattr(v, "image") and v.image is not None:
             print("deserialize image for controlnet")
-            args[k] = {
-                "image": deserialize_image(v["image"]),
-                "mask": deserialize_image(v["mask"])
-                if v.get("mask", None) is not None
-                else None,
-            }
+            new_args["image"] = deserialize_image(v["image"])
+            new_args["mask"] = deserialize_image(v["mask"]) if v.get("mask", None) is not None else None
+        elif k == "image" and isinstance(v, dict) and v.get("image", None) is not None:
+            new_args["image"] = deserialize_image(v["image"])
+            new_args["mask"] = deserialize_image(v["mask"]) if v.get("mask", None) is not None else None
         elif isinstance(v, dict) and v.get("cls", None) in ["Image", "ndarray", "Tensor"]:
-            args[k] = deserialize_image(v)
+            new_args["image"] = deserialize_image(v)
+            new_args["mask"] = None
         else:
-            args[k] = v
+            new_args[k] = v
 
-    return args
+    return new_args
 
 
 def map_controlnet_args_to_api_task_args(args: dict):
