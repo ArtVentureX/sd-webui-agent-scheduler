@@ -160,24 +160,34 @@ def deserialize_img2img_image_args(args: dict):
 
 def serialize_controlnet_args(cnet_unit):
     args: dict = cnet_unit.__dict__
-    args["is_cnet"] = True
+    new_args = {}
+    new_args["is_cnet"] = True
     for k, v in args.items():
-        if k == "image" and hasattr(v, "image") and v.image is not None:
-            print("serialize image for controlnet")
-            args[k] = {
-                "image": serialize_image(v["image"]),
-                "mask": serialize_image(v["mask"])
-                if v.get("mask", None) is not None
-                else None,
-            }
+        if k == 'image':
+            if hasattr(v, "image") and v.image is not None:
+                print("serialize image for controlnet")
+                new_args[k] = {
+                    "image": serialize_image(v["image"]),
+                    "mask": serialize_image(v["mask"])
+                    if v.get("mask", None) is not None
+                    else None,
+                }
+            elif type(v) is dict and v.get('image', None) is not None:
+                new_args[k] = {
+                    "image": serialize_image(v),
+                    "mask": None if v.get("mask", None) is None else serialize_image(v["mask"]),
+                }
+            else:
+                print("Fallbacked for argument " + str(k) + " with value " + str(v) + " to serialize_image")
+                new_args[k] = serialize_image(v)
         elif k == 'image' and isinstance(v, (np.ndarray, torch.Tensor, Image.Image)):
-            args[k] = serialize_image(v)
+            new_args[k] = serialize_image(v)
         elif isinstance(v, Enum):
-            args[k] = serialize_image(v.value)
+            new_args[k] = serialize_image(v.value)
         else:
-            args[k] = serialize_image(v)
+            new_args[k] = serialize_image(v)
 
-    return args
+    return new_args
 
 
 def deserialize_controlnet_args(args: dict):

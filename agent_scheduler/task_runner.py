@@ -127,7 +127,7 @@ class TaskRunner:
             return serialize_image(obj)
         # controlnet
         elif self.UiControlNetUnit and isinstance(obj, self.UiControlNetUnit):
-            return serialize_controlnet_args(obj)
+            return self.recursively_serialize(serialize_controlnet_args(obj))
         else:
             # check json.dumps
             return obj
@@ -163,12 +163,7 @@ class TaskRunner:
         # loop through script_args and serialize images
         serialized_args:list = [None] * len(script_args)
         for i, a in enumerate(script_args):
-            if isinstance(a, (Image.Image, ndarray, Tensor)):
-                serialized_args[i] = serialize_image(a)
-            elif self.UiControlNetUnit and isinstance(a, self.UiControlNetUnit):
-                serialized_args[i] = serialize_controlnet_args(a)
-            else:
-                serialized_args[i] = self.recursively_serialize(a)
+            serialized_args[i] = self.recursively_serialize(a)
         # assert each arguments is serializable
         check_args = [named_args, serialized_args, checkpoint]
         args_name = ["named_args", "script_args", "checkpoint"]
