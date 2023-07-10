@@ -29,6 +29,7 @@ class QueueStatusAPI(BaseModel):
 class TaskModel(BaseModel):
     id: str = Field(title="Task Id")
     api_task_id: Optional[str] = Field(title="API Task Id", default=None)
+    api_task_callback: Optional[str] = Field(title="API Task Callback", default=None)
     name: Optional[str] = Field(title="Task Name")
     type: str = Field(title="Task Type", description="Either txt2img or img2img")
     status: str = Field(
@@ -65,6 +66,11 @@ class Txt2ImgApiTaskArgs(StableDiffusionTxt2ImgProcessingAPI):
     sampler_index: Optional[str] = Field(
         sd_samplers.samplers[0].name, title="Sampler name", alias="sampler_name"
     )
+    callback_url: Optional[str] = Field(
+        None,
+        title="Callback URL",
+        description="The callback URL to send the result to.",
+    )
 
     class Config(StableDiffusionTxt2ImgProcessingAPI.__config__):
         @staticmethod
@@ -83,6 +89,12 @@ class Img2ImgApiTaskArgs(StableDiffusionImg2ImgProcessingAPI):
     sampler_index: Optional[str] = Field(
         sd_samplers.samplers[0].name, title="Sampler name", alias="sampler_name"
     )
+    callback_url: Optional[str] = Field(
+        None,
+        title="Callback URL",
+        description="The callback URL to send the result to.",
+    )
+
 
     class Config(StableDiffusionImg2ImgProcessingAPI.__config__):
         @staticmethod

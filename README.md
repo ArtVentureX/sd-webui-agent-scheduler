@@ -140,6 +140,47 @@ Use api `/agent-scheduler/v1/results/{id}` to get the generated images. The api 
 
 - zip file with querystring `zip=true`
 
+
+#### API Callback
+
+Queue task with param `callback_url` to register an API callback. Eg:
+```json
+{
+  "prompt": "1girl",
+  "negative_prompt": "easynegative",
+  "callback_url": "http://somehost:port/task_completed"
+}
+```
+
+The callback endpoint must support `POST` method with body in `multipart/form-data` encoding. Body format:
+
+```json
+{
+  "task_id": "abc123",
+  "status": "done",
+  "files": [list of image files],
+}
+```
+
+Example code of the endpoint handle with `FastApi`:
+```python
+from fastapi import FastAPI, UploadFile, File, Form
+
+@app.post("/task_completed")
+async def handle_task_completed(
+    task_id: Annotated[str, Form()],
+    status: Annotated[str, Form()],
+    files: Optional[List[UploadFile]] = File(None),
+):
+    print(f"Received {len(files)} files for task {task_id} with status {status}")
+    for file in files:
+        print(f"* {file.filename} {file.content_type} {file.size}")
+        # ... do something with the file contents ...
+
+# Received 1 files for task 3cf8b150-f260-4489-b6e8-d86ed8a564ca with status done
+# * 00008-3322209480.png image/png 416400
+```
+
 ## Troubleshooting
 
 Make sure that you are running the latest version of the extension and an updated version of the WebUI.

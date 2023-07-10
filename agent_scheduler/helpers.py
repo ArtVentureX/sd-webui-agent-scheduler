@@ -1,6 +1,10 @@
 import sys
 import abc
+import time
 import logging
+import requests
+import traceback
+from typing import Callable
 
 import gradio as gr
 from gradio.blocks import Block, BlockContext
@@ -10,12 +14,24 @@ if logging.getLogger().hasHandlers():
 else:
 
     class Log:
-        info = print
-        debug = print
-        warning: print
+        def __init__(self, level=logging.INFO) -> None:
+            self.level = level
 
-        def error(*args, **kwargs):
-            print(*args, **kwargs, file=sys.stderr)
+        def __log(self, level, *args, **kwargs):
+            if (level >= self.level):
+                print(*args, **kwargs)
+
+        def info(self, *args, **kwargs):
+            self.__log(logging.INFO, *args, **kwargs)
+
+        def debug(self, *args, **kwargs):
+            self.__log(logging.DEBUG, *args, **kwargs)
+
+        def warning(self, *args, **kwargs):
+            self.__log(logging.WARNING, *args, **kwargs)
+
+        def error(self, *args, **kwargs):
+            self.__log(logging.ERROR, *args, **kwargs, file=sys.stderr)
 
     log = Log()
 
@@ -127,3 +143,33 @@ def set_dict_attribute(dict_inst: dict, name_string: str, value):
 
     # Set the final attribute to its value
     current_dict[name_list[-1]] = value
+
+
+def request_with_retry(
+    make_request: Callable[[], requests.Response],
+    max_try: int = 3,
+    retries: int = 0,
+):
+    try:
+        res = make_request()
+        if res.status_code > 400:
+            raise Exception(res.text)
+
+        return True
+    except requests.exceptions.ConnectionError:
+        log.error("[ArtVenture] Connection error while uploading result")
+        if retries >= max_try - 1:
+            return False
+
+        time.sleep(1)
+        log.info(f"[ArtVenture] Retrying {retries + 1}...")
+        return request_with_retry(
+            make_request,
+            max_try=max_try,
+            retries=retries + 1,
+        )
+    except Exception as e:
+        log.error("[ArtVenture] Error while uploading result")
+        log.error(e)
+        log.debug(traceback.format_exc())
+        return False
