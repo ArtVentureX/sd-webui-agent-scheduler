@@ -235,7 +235,7 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
             return {"success": False, "message": "Task not found"}
 
         if task.status != TaskStatus.DONE:
-            return {"success": False, "message": f"Task is {task.status.value}"}
+            return {"success": False, "message": f"Task is {task.status}"}
 
         if task.result is None:
             return {"success": False, "message": "Task result is not available"}
