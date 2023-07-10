@@ -463,6 +463,21 @@ def serialize_api_task_args(
         if script_args:
             arg_list = map_named_script_args_to_list(script, script_args)
             valid_alwayson_scripts[script_name] = {"args": arg_list}
+    
+    # check if alwayson_scripts has script that is not in script_runner.alwayson_scripts
+    assert type(alwayson_scripts) is dict
+    for script in alwayson_scripts:
+        if script not in valid_alwayson_scripts:
+            # allow controlnet
+            if script == "ControlNet":
+                script_args = get_dict_attribute(alwayson_scripts, f"{script}.args", None)
+                if script_args:
+                    arg_list = map_named_script_args_to_list(script, script_args)
+                    valid_alwayson_scripts[script] = {"args": arg_list}
+            else:
+                print(f"Warning: script {script} is not in script_runner.alwayson_scripts")
+                # print args
+                print(alwayson_scripts[script])
 
     params["alwayson_scripts"] = valid_alwayson_scripts
 
