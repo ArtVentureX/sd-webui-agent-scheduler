@@ -4,7 +4,7 @@ import time
 import logging
 import requests
 import traceback
-from typing import Callable
+from typing import Callable, List
 
 import gradio as gr
 from gradio.blocks import Block, BlockContext
@@ -50,7 +50,7 @@ class Singleton(abc.ABCMeta, type):
         return cls._instances[cls]
 
 
-def compare_components_with_ids(components: list[Block], ids: list[int]):
+def compare_components_with_ids(components: List[Block], ids: List[int]):
     return len(components) == len(ids) and all(
         component._id == _id for component, _id in zip(components, ids)
     )
@@ -70,8 +70,8 @@ def get_component_by_elem_id(root: Block, elem_id: str):
     return elem
 
 
-def get_components_by_ids(root: Block, ids: list[int]):
-    components: list[Block] = []
+def get_components_by_ids(root: Block, ids: List[int]):
+    components: List[Block] = []
 
     if root._id in ids:
         components.append(root)
@@ -87,7 +87,7 @@ def get_components_by_ids(root: Block, ids: list[int]):
 def detect_control_net(root: gr.Blocks, submit: gr.Button):
     UiControlNetUnit = None
 
-    dependencies: list[dict] = [
+    dependencies: List[dict] = [
         x
         for x in root.dependencies
         if x["trigger"] == "click" and submit._id in x["targets"]

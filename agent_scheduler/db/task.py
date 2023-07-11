@@ -1,6 +1,6 @@
 from enum import Enum
 from datetime import datetime
-from typing import Optional, Union
+from typing import Union, List
 
 from sqlalchemy import (
     Column,
@@ -118,13 +118,13 @@ class TaskManager(BaseTableManager):
     def get_tasks(
         self,
         type: str = None,
-        status: Union[str, list[str]] = None,
+        status: Union[str, List[str]] = None,
         bookmarked: bool = None,
         api_task_id: str = None,
         limit: int = None,
         offset: int = None,
         order: str = "asc",
-    ) -> list[TaskTable]:
+    ) -> List[TaskTable]:
         session = Session(self.engine)
         try:
             query = session.query(TaskTable)
@@ -168,7 +168,7 @@ class TaskManager(BaseTableManager):
     def count_tasks(
         self,
         type: str = None,
-        status: Union[str, list[str]] = None,
+        status: Union[str, List[str]] = None,
         api_task_id: str = None,
     ) -> int:
         session = Session(self.engine)

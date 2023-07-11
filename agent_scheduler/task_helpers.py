@@ -190,11 +190,17 @@ def deserialize_controlnet_args(args: dict):
     new_args = {}
     for k, v in args.items():
         if k == "image" and isinstance(v, dict) and v.get("image", None) is not None:
-            new_args["image"] = deserialize_image(v["image"])
-            new_args["mask"] = deserialize_image(v["mask"]) if v.get("mask", None) is not None else None
+            new_args["image"] = {
+                "image" : deserialize_image(v["image"]),
+                "mask" : deserialize_image(v["mask"]) 
+                if v.get("mask", None) is not None 
+                else None
+            }
         elif isinstance(v, dict) and v.get("cls", None) in ["Image", "ndarray", "Tensor"]:
-            new_args["image"] = deserialize_image(v)
-            new_args["mask"] = None
+            new_args["image"] = {
+                "image" : deserialize_image(v),
+                "mask" : None
+            }
         else:
             new_args[k] = v
 

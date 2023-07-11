@@ -6,7 +6,7 @@ import threading
 
 from pydantic import BaseModel
 from datetime import datetime, timedelta
-from typing import Any, Callable, Union, Optional
+from typing import Any, Callable, Union, Optional, List, Dict, Tuple
 from fastapi import FastAPI
 from PIL import Image
 
@@ -60,9 +60,9 @@ task_history_retenion_map = {
 
 class ParsedTaskArgs(BaseModel):
     is_ui: bool
-    ui_args: list[Any]
-    named_args: dict[str, Any]
-    script_args: list[Any]
+    ui_args: List[Any]
+    named_args: Dict[str, Any]
+    script_args: List[Any]
     checkpoint: Optional[str] = None
 
 class TaskRunner:
@@ -75,7 +75,7 @@ class TaskRunner:
         self.__current_thread: threading.Thread = None
         self.__api = Api(FastAPI(), queue_lock)
 
-        self.__saved_images_path: list[tuple[str, str]] = []
+        self.__saved_images_path: List[Tuple[str, str]] = []
         script_callbacks.on_image_saved(self.__on_image_saved)
 
         self.script_callbacks = {
@@ -243,13 +243,13 @@ class TaskRunner:
         named_args.update({"save_images": True, "send_images": False})
 
     def parse_task_args(self, task: Task, deserialization: bool = True):
-        parsed: dict[str, Any] = json.loads(task.params)
+        parsed: Dict[str, Any] = json.loads(task.params)
 
         is_ui = parsed.get("is_ui", True)
         is_img2img = parsed.get("is_img2img", None)
         checkpoint = parsed.get("checkpoint", None)
-        named_args: dict[str, Any] = parsed["args"]
-        script_args: list[Any] = parsed.get("script_args", [])
+        named_args: Dict[str, Any] = parsed["args"]
+        script_args: List[Any] = parsed.get("script_args", [])
 
         if is_ui and deserialization:
             self.__deserialize_ui_task_args(is_img2img, named_args, script_args)

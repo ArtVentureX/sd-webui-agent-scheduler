@@ -4,6 +4,7 @@ import platform
 import gradio as gr
 from PIL import Image
 from gradio import context
+from typing import List
 from modules import shared, script_callbacks, scripts
 from modules.shared import list_checkpoint_tiles, refresh_checkpoints
 from modules.ui import create_refresh_button
@@ -132,7 +133,7 @@ class Script(scripts.Script):
     def bind_enqueue_button(self, root: gr.Blocks):
         generate = self.generate_button
         is_img2img = self.is_img2img
-        dependencies: list[dict] = [
+        dependencies: List[dict] = [
             x
             for x in root.dependencies
             if x["trigger"] == "click" and generate._id in x["targets"]
@@ -436,7 +437,7 @@ def on_ui_settings():
         ),
     )
 
-    def enqueue_keyboard_shortcut(disabled: bool, modifiers: list[str], key_code: str):
+    def enqueue_keyboard_shortcut(disabled: bool, modifiers: List[str], key_code: str):
         if disabled:
             modifiers.insert(0, "Disabled")
 

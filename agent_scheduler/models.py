@@ -37,7 +37,7 @@ class TaskModel(BaseModel):
         title="Task Status",
         description="Either pending, running, done or failed",
     )
-    params: dict[str, Any] = Field(
+    params: Dict[str, Any] = Field(
         title="Task Parameters", description="The parameters of the task in JSON format"
     )
     priority: Optional[int] = Field(title="Task Priority")
