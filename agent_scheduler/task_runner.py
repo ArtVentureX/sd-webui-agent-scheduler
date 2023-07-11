@@ -6,7 +6,7 @@ import threading
 
 from pydantic import BaseModel
 from datetime import datetime, timedelta
-from typing import Any, Callable, Union, Optional
+from typing import Any, Callable, Union, Optional, List, Dict, Tuple
 from fastapi import FastAPI
 from PIL import Image
 
@@ -19,6 +19,8 @@ from modules.api.models import (
     StableDiffusionTxt2ImgProcessingAPI,
     StableDiffusionImg2ImgProcessingAPI,
 )
+from numpy import ndarray
+from torch import Tensor
 
 from .db import TaskStatus, Task, task_manager
 from .helpers import (
@@ -58,11 +60,10 @@ task_history_retenion_map = {
 
 class ParsedTaskArgs(BaseModel):
     is_ui: bool
-    ui_args: list[Any]
-    named_args: dict[str, Any]
-    script_args: list[Any]
+    ui_args: List[Any]
+    named_args: Dict[str, Any]
+    script_args: List[Any]
     checkpoint: Optional[str] = None
-
 
 class TaskRunner:
     instance = None
@@ -74,7 +75,7 @@ class TaskRunner:
         self.__current_thread: threading.Thread = None
         self.__api = Api(FastAPI(), queue_lock)
 
-        self.__saved_images_path: list[tuple[str, str]] = []
+        self.__saved_images_path: List[Tuple[str, str]] = []
         script_callbacks.on_image_saved(self.__on_image_saved)
 
         self.script_callbacks = {
@@ -103,6 +104,57 @@ class TaskRunner:
     @property
     def paused(self) -> bool:
         return getattr(shared.opts, "queue_paused", False)
+    
+    def recursively_serialize(self, obj):
+        """
+        Recursively serialize an object to JSON
+        """
+        # dict
+        if isinstance(obj, dict):
+            new_obj = {}
+            for k, v in obj.items():
+                assert k not in new_obj, "Cannot serialize recursive dict"
+                new_obj[k] = self.recursively_serialize(v)
+            return new_obj
+        elif isinstance(obj, list):
+            new_obj = []
+            for v in obj:
+                assert v is not obj, "Cannot serialize recursive list"
+                new_obj.append(self.recursively_serialize(v))
+            return new_obj
+        # image or tensor or ndarray
+        elif isinstance(obj, (Image.Image, Tensor, ndarray)):
+            return serialize_image(obj)
+        # controlnet
+        elif self.UiControlNetUnit and isinstance(obj, self.UiControlNetUnit):
+            return self.recursively_serialize(serialize_controlnet_args(obj))
+        else:
+            # check json.dumps
+            return obj
+        
+    def recursively_deserialize(self, obj):
+        """
+        Recursively deserialize an object from JSON
+        """
+        if isinstance(obj, dict) and 'cls' in obj:
+            return deserialize_image(obj)
+        if isinstance(obj, dict) and not obj.get("is_cnet", False):
+            new_obj = {}
+            for k, v in obj.items():
+                new_obj[k] = self.recursively_deserialize(v)
+            return new_obj
+        elif isinstance(obj, list):
+            new_obj = []
+            for v in obj:
+                new_obj.append(self.recursively_deserialize(v))
+            return new_obj
+        elif isinstance(obj, dict) and obj.get("is_cnet", False):
+            new_obj = {}
+            for k, v in obj.items():
+                new_obj[k] = self.recursively_deserialize(v)
+            return deserialize_controlnet_args(new_obj)
+        else:
+            return deserialize_image(obj)
 
     def __serialize_ui_task_args(self, is_img2img: bool, *args, checkpoint: str = None):
         named_args, script_args = map_ui_task_args_list_to_named_args(
@@ -114,16 +166,22 @@ class TaskRunner:
             serialize_img2img_image_args(named_args)
 
         # loop through script_args and serialize images
+        serialized_args:list = [None] * len(script_args)
         for i, a in enumerate(script_args):
-            if isinstance(a, Image.Image):
-                script_args[i] = serialize_image(a)
-            elif self.UiControlNetUnit and isinstance(a, self.UiControlNetUnit):
-                script_args[i] = serialize_controlnet_args(a)
-
+            serialized_args[i] = self.recursively_serialize(a)
+        # assert each arguments is serializable
+        check_args = [named_args, serialized_args, checkpoint]
+        args_name = ["named_args", "script_args", "checkpoint"]
+        for args, name in zip(check_args, args_name):
+            try:
+                json.dumps(args)
+            except Exception as e:
+                print(f"Cannot serialize args: {args} with name: {name}")
+                raise e
         return json.dumps(
             {
                 "args": named_args,
-                "script_args": script_args,
+                "script_args": serialized_args,
                 "checkpoint": checkpoint,
                 "is_ui": True,
                 "is_img2img": is_img2img,
@@ -157,16 +215,21 @@ class TaskRunner:
     def __deserialize_ui_task_args(
         self, is_img2img: bool, named_args: dict, script_args: list
     ):
+        """
+        Deserialize UI task arguments
+        In-place update named_args and script_args
+        """
         # loop through image_args and deserialize images
         if is_img2img:
             deserialize_img2img_image_args(named_args)
-
+        
+        deserialized_args:list = [None] * len(script_args)
         # loop through script_args and deserialize images
         for i, arg in enumerate(script_args):
-            if isinstance(arg, dict) and arg.get("is_cnet", False):
-                script_args[i] = deserialize_controlnet_args(arg)
-            elif isinstance(arg, dict) and arg.get("cls", "") in {"Image", "ndarray"}:
-                script_args[i] = deserialize_image(arg)
+            deserialized_args[i] = self.recursively_deserialize(arg)
+        for i, arg in enumerate(deserialized_args):
+            script_args[i] = arg
+        
 
     def __deserialize_api_task_args(self, is_img2img: bool, named_args: dict):
         # load images from disk
@@ -180,13 +243,13 @@ class TaskRunner:
         named_args.update({"save_images": True, "send_images": False})
 
     def parse_task_args(self, task: Task, deserialization: bool = True):
-        parsed: dict[str, Any] = json.loads(task.params)
+        parsed: Dict[str, Any] = json.loads(task.params)
 
         is_ui = parsed.get("is_ui", True)
         is_img2img = parsed.get("is_img2img", None)
         checkpoint = parsed.get("checkpoint", None)
-        named_args: dict[str, Any] = parsed["args"]
-        script_args: list[Any] = parsed.get("script_args", [])
+        named_args: Dict[str, Any] = parsed["args"]
+        script_args: List[Any] = parsed.get("script_args", [])
 
         if is_ui and deserialization:
             self.__deserialize_ui_task_args(is_img2img, named_args, script_args)

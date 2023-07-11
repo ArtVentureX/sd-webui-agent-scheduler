@@ -5,7 +5,8 @@ import base64
 import inspect
 import requests
 import numpy as np
-from typing import Union, List
+import torch
+from typing import Union, List, Dict
 from enum import Enum
 from PIL import Image, ImageOps, ImageChops, ImageEnhance, ImageFilter
 
@@ -21,7 +22,7 @@ from modules.api.models import (
 
 from .helpers import log, get_dict_attribute
 
-img2img_image_args_by_mode: dict[int, list[list[str]]] = {
+img2img_image_args_by_mode: Dict[int, List[List[str]]] = {
     0: [["init_img"]],
     1: [["sketch"]],
     2: [["init_img_with_mask", "image"], ["init_img_with_mask", "mask"]],
@@ -75,8 +76,14 @@ def encode_image_to_base64(image):
 def serialize_image(image):
     if isinstance(image, np.ndarray):
         shape = image.shape
+        dtype = image.dtype
         data = base64.b64encode(zlib.compress(image.tobytes())).decode()
-        return {"shape": shape, "data": data, "cls": "ndarray"}
+        return {"shape": shape, "data": data, "cls": "ndarray", "dtype": str(dtype)}
+    elif isinstance(image, torch.Tensor):
+        shape = image.shape
+        dtype = image.dtype
+        data = base64.b64encode(zlib.compress(image.detach().numpy().tobytes())).decode()
+        return {"shape": shape, "data": data, "cls": "Tensor", "device": image.device.type, "dtype": str(dtype)}
     elif isinstance(image, Image.Image):
         size = image.size
         mode = image.mode
@@ -97,9 +104,20 @@ def deserialize_image(image_str):
         data = zlib.decompress(base64.b64decode(image_str["data"]))
 
         if cls == "ndarray":
+            # warn if required fields are missing
+            if image_str.get("dtype", None) is None:
+                log.warning(f"Missing dtype for ndarray")
             shape = tuple(image_str["shape"])
-            image = np.frombuffer(data, dtype=np.uint8)
+            dtype = np.dtype(image_str.get("dtype", "uint8"))
+            image = np.frombuffer(data, dtype=dtype)
             return image.reshape(shape)
+        elif cls == "Tensor":
+            if image_str.get("device", None) is None:
+                log.warning(f"Missing device for Tensor")
+            shape = tuple(image_str["shape"])
+            dtype = np.dtype(image_str.get("dtype", "uint8"))
+            image_np = np.frombuffer(data, dtype=dtype)
+            return torch.from_numpy(image_np.reshape(shape)).to(device = image_str.get("device", "cpu"))
         else:
             size = tuple(image_str["size"])
             mode = image_str["mode"]
@@ -142,32 +160,51 @@ def deserialize_img2img_image_args(args: dict):
 
 def serialize_controlnet_args(cnet_unit):
     args: dict = cnet_unit.__dict__
-    args["is_cnet"] = True
+    new_args = {}
+    new_args["is_cnet"] = True
     for k, v in args.items():
-        if k == "image" and v is not None:
-            args[k] = {
-                "image": serialize_image(v["image"]),
-                "mask": serialize_image(v["mask"])
-                if v.get("mask", None) is not None
-                else None,
-            }
-        if isinstance(v, Enum):
-            args[k] = v.value
+        if k == 'image':
+            if hasattr(v, "image") and v.image is not None:
+                new_args[k] = {
+                    "image": serialize_image(v.image),
+                    "mask": serialize_image(v.mask)
+                    if v.get("mask", None) is not None
+                    else None,
+                }
+            elif type(v) is dict and v.get('image', None) is not None:
+                new_args[k] = {
+                    "image": serialize_image(v["image"]),
+                    "mask": None if v.get("mask", None) is None else serialize_image(v["mask"]),
+                }
+            else:
+                new_args[k] = serialize_image(v)
+        elif isinstance(v, Enum):
+            new_args[k] = serialize_image(v.value)
+        else:
+            new_args[k] = serialize_image(v)
 
-    return args
+    return new_args
 
 
 def deserialize_controlnet_args(args: dict):
+    new_args = {}
     for k, v in args.items():
-        if k == "image" and v is not None:
-            args[k] = {
-                "image": deserialize_image(v["image"]),
-                "mask": deserialize_image(v["mask"])
-                if v.get("mask", None) is not None
-                else None,
+        if k == "image" and isinstance(v, dict) and v.get("image", None) is not None:
+            new_args["image"] = {
+                "image" : deserialize_image(v["image"]),
+                "mask" : deserialize_image(v["mask"]) 
+                if v.get("mask", None) is not None 
+                else None
             }
+        elif isinstance(v, dict) and v.get("cls", None) in ["Image", "ndarray", "Tensor"]:
+            new_args["image"] = {
+                "image" : deserialize_image(v),
+                "mask" : None
+            }
+        else:
+            new_args[k] = v
 
-    return args
+    return new_args
 
 
 def map_controlnet_args_to_api_task_args(args: dict):
@@ -435,6 +472,21 @@ def serialize_api_task_args(
         if script_args:
             arg_list = map_named_script_args_to_list(script, script_args)
             valid_alwayson_scripts[script_name] = {"args": arg_list}
+    
+    # check if alwayson_scripts has script that is not in script_runner.alwayson_scripts
+    assert type(alwayson_scripts) is dict
+    for script in alwayson_scripts:
+        if script not in valid_alwayson_scripts:
+            # allow controlnet
+            if script == "ControlNet":
+                script_args = get_dict_attribute(alwayson_scripts, f"{script}.args", None)
+                if script_args:
+                    arg_list = map_named_script_args_to_list(script, script_args)
+                    valid_alwayson_scripts[script] = {"args": arg_list}
+            else:
+                print(f"Warning: script {script} is not in script_runner.alwayson_scripts")
+                # print args
+                print(alwayson_scripts[script])
 
     params["alwayson_scripts"] = valid_alwayson_scripts
 
