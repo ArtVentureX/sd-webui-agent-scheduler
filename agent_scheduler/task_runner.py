@@ -278,12 +278,15 @@ class TaskRunner:
         params = self.__serialize_ui_task_args(is_img2img, *args, checkpoint=checkpoint)
 
         task_type = "img2img" if is_img2img else "txt2img"
-        task_manager.add_task(Task(id=task_id, type=task_type, params=params))
+        task = Task(id=task_id, type=task_type, params=params)
+        task_manager.add_task(task)
 
         self.__run_callbacks(
             "task_registered", task_id, is_img2img=is_img2img, is_ui=True, args=params
         )
         self.__total_pending_tasks += 1
+
+        return task
 
     def register_api_task(
         self,
@@ -300,14 +303,15 @@ class TaskRunner:
         )
 
         task_type = "img2img" if is_img2img else "txt2img"
-        task_manager.add_task(
-            Task(id=task_id, api_task_id=api_task_id, type=task_type, params=params)
-        )
+        task = Task(id=task_id, api_task_id=api_task_id, type=task_type, params=params)
+        task_manager.add_task(task)
 
         self.__run_callbacks(
             "task_registered", task_id, is_img2img=is_img2img, is_ui=False, args=params
         )
         self.__total_pending_tasks += 1
+
+        return task
 
     def execute_task(self, task: Task, get_next_task: Callable[[], Task]):
         while True:
@@ -323,7 +327,7 @@ class TaskRunner:
                 task_meta = {
                     "is_img2img": is_img2img,
                     "is_ui": task_args.is_ui,
-                    "api_task_id": task.api_task_id,
+                    "task": task,
                 }
 
                 self.interrupted = None
@@ -349,11 +353,9 @@ class TaskRunner:
                         log.error(f"[AgentScheduler] Task {task_id} failed: {res}")
                         log.debug(traceback.format_exc())
 
-                    task_manager.update_task(
-                        id=task_id,
-                        status=TaskStatus.FAILED,
-                        result=str(res) if res else None,
-                    )
+                    task.status = TaskStatus.FAILED
+                    task.result = str(res) if res else None
+                    task_manager.update_task(task)
                     self.__run_callbacks(
                         "task_finished", task_id, status=TaskStatus.FAILED, **task_meta
                     )
@@ -361,10 +363,8 @@ class TaskRunner:
                     is_interrupted = self.interrupted == task_id
                     if is_interrupted:
                         log.info(f"\n[AgentScheduler] Task {task.id} interrupted")
-                        task_manager.update_task(
-                            id=task_id,
-                            status=TaskStatus.INTERRUPTED,
-                        )
+                        task.status = TaskStatus.INTERRUPTED
+                        task_manager.update_task(task)
                         self.__run_callbacks(
                             "task_finished",
                             task_id,
@@ -380,11 +380,9 @@ class TaskRunner:
                             result["images"].append(filename)
                             result["infotexts"].append(pnginfo)
 
-                        task_manager.update_task(
-                            id=task_id,
-                            status=TaskStatus.DONE,
-                            result=json.dumps(result),
-                        )
+                        task.status = TaskStatus.DONE
+                        task.result = json.dumps(result)
+                        task_manager.update_task(task)
                         self.__run_callbacks(
                             "task_finished",
                             task_id,

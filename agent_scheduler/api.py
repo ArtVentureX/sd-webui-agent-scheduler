@@ -1,5 +1,7 @@
 import io
+import os
 import json
+import requests
 import threading
 from uuid import uuid4
 from zipfile import ZipFile
@@ -11,7 +13,7 @@ from fastapi.responses import StreamingResponse
 
 from modules import shared, progress
 
-from .db import TaskStatus, task_manager
+from .db import Task, TaskStatus, task_manager
 from .models import (
     Txt2ImgApiTaskArgs,
     Img2ImgApiTaskArgs,
@@ -21,8 +23,50 @@ from .models import (
     TaskModel,
 )
 from .task_runner import TaskRunner
-from .helpers import log
+from .helpers import log, request_with_retry
 from .task_helpers import encode_image_to_base64, img2img_image_args_by_mode
+
+
+def api_callback(callback_url: str, task_id: str, status: TaskStatus, images: list):
+    files = []
+    for img in images:
+        img_path = Path(img)
+        ext = img_path.suffix.lower()
+        content_type = f"image/{ext[1:]}"
+        files.append(
+            (
+                "files",
+                (img_path.name, open(os.path.abspath(img), "rb"), content_type),
+            )
+        )
+
+    return requests.post(
+        callback_url,
+        timeout=5,
+        data={"task_id": task_id, "status": status.value},
+        files=files,
+    )
+
+
+def on_task_finished(
+    task_id: str,
+    task: Task,
+    status: TaskStatus = None,
+    result: dict = None,
+    **_,
+):
+    # handle api task callback
+    if not task.api_task_callback:
+        return
+
+    upload = lambda: api_callback(
+        task.api_task_callback,
+        task_id=task_id,
+        status=status,
+        images=result["images"],
+    )
+
+    request_with_retry(upload)
 
 
 def regsiter_apis(app: App, task_runner: TaskRunner):
@@ -33,13 +77,18 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
         task_id = str(uuid4())
         args = body.dict()
         checkpoint = args.pop("checkpoint", None)
-        task_runner.register_api_task(
+        callback_url = args.pop("callback_url", None)
+        task = task_runner.register_api_task(
             task_id,
             api_task_id=None,
             is_img2img=False,
             args=args,
             checkpoint=checkpoint,
         )
+        if callback_url:
+            task.api_task_callback = callback_url
+            task_manager.update_task(task)
+
         task_runner.execute_pending_tasks_threading()
 
         return QueueTaskResponse(task_id=task_id)
@@ -49,13 +98,18 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
         task_id = str(uuid4())
         args = body.dict()
         checkpoint = args.pop("checkpoint", None)
-        task_runner.register_api_task(
+        callback_url = args.pop("callback_url", None)
+        task = task_runner.register_api_task(
             task_id,
             api_task_id=None,
             is_img2img=True,
             args=args,
             checkpoint=checkpoint,
         )
+        if callback_url:
+            task.api_task_callback = callback_url
+            task_manager.update_task(task)
+
         task_runner.execute_pending_tasks_threading()
 
         return QueueTaskResponse(task_id=task_id)
@@ -207,7 +261,7 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
             return {"success": False, "message": "Task not found"}
 
         task.bookmarked = True
-        task_manager.update_task(id, bookmarked=True)
+        task_manager.update_task(task)
         return {"success": True, "message": "Task bookmarked"}
 
     @app.post("/agent-scheduler/v1/unbookmark/{id}")
@@ -216,7 +270,8 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
         if task is None:
             return {"success": False, "message": "Task not found"}
 
-        task_manager.update_task(id, bookmarked=False)
+        task.bookmarked = False
+        task_manager.update_task(task)
         return {"success": True, "message": "Task unbookmarked"}
 
     @app.post("/agent-scheduler/v1/rename/{id}")
@@ -225,7 +280,8 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
         if task is None:
             return {"success": False, "message": "Task not found"}
 
-        task_manager.update_task(id, name=name)
+        task.name = name
+        task_manager.update_task(task)
         return {"success": True, "message": "Task renamed."}
 
     @app.get("/agent-scheduler/v1/results/{id}")
@@ -235,7 +291,7 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
             return {"success": False, "message": "Task not found"}
 
         if task.status != TaskStatus.DONE:
-            return {"success": False, "message": f"Task is {task.status.value}"}
+            return {"success": False, "message": f"Task is {task.status}"}
 
         if task.result is None:
             return {"success": False, "message": "Task result is not available"}
@@ -286,3 +342,5 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
         shared.opts.queue_paused = False
         TaskRunner.instance.execute_pending_tasks_threading()
         return {"success": True, "message": "Queue resumed."}
+
+    task_runner.on_task_finished(on_task_finished)

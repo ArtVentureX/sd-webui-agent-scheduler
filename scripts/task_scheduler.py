@@ -361,7 +361,7 @@ def on_ui_tab(**_kwargs):
             inputs=[status],
         )
         selected_task.change(
-            fn=get_task_results,
+            fn=lambda x: get_task_results(x, None),
             inputs=[selected_task],
             outputs=[galerry, gen_info, result_actions],
         )
@@ -474,8 +474,8 @@ def on_ui_settings():
             shortcut = gr.Textbox(**_kwargs)
             disable = gr.Checkbox(
                 value=disabled,
-                label="Disable keyboard shortcut",
                 elem_id="enqueue_keyboard_shortcut_disable",
+                label="Disable keyboard shortcut",
             )
 
         modifiers.change(

@@ -6,11 +6,11 @@ import inspect
 import requests
 import numpy as np
 import torch
-from typing import Union
+from typing import Union, List, Dict
 from enum import Enum
 from PIL import Image, ImageOps, ImageChops, ImageEnhance, ImageFilter
 
-from modules import sd_samplers, scripts
+from modules import sd_samplers, scripts, shared
 from modules.generation_parameters_copypaste import create_override_settings_dict
 from modules.sd_models import CheckpointInfo, get_closet_checkpoint_match
 from modules.txt2img import txt2img
@@ -22,7 +22,7 @@ from modules.api.models import (
 
 from .helpers import log, get_dict_attribute
 
-img2img_image_args_by_mode: dict[int, list[list[str]]] = {
+img2img_image_args_by_mode: Dict[int, List[List[str]]] = {
     0: [["init_img"]],
     1: [["sketch"]],
     2: [["init_img_with_mask", "image"], ["init_img_with_mask", "mask"]],
@@ -236,10 +236,19 @@ def map_ui_task_args_list_to_named_args(
 
     named_args = dict(zip(args_name, args[0 : len(args_name)]))
     script_args = args[len(args_name) :]
+
+    override_settings_texts: List[str] = named_args.get("override_settings_texts", [])
+    # serialize current clip_skip value if not exist
+    clip_skip = next(
+        (s for s in override_settings_texts if s.startswith("Clip skip:")), None
+    )
+    if clip_skip is None:
+        override_settings_texts.append(f"Clip skip: {shared.opts.CLIP_stop_at_last_layers}")
+
     if checkpoint is not None:
-        override_settings_texts = named_args.get("override_settings_texts", [])
         override_settings_texts.append("Model hash: " + checkpoint)
-        named_args["override_settings_texts"] = override_settings_texts
+
+    named_args["override_settings_texts"] = override_settings_texts
 
     sampler_index = named_args.get("sampler_index", None)
     if sampler_index is not None:

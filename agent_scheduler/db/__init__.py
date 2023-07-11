@@ -14,10 +14,7 @@ task_manager = TaskManager()
 def init():
     engine = create_engine(f"sqlite:///{db_file}")
 
-    # check if database exists
-    if not Path(db_file).exists():
-        # create database
-        metadata.create_all(engine)
+    metadata.create_all(engine)
 
     state_manager.set_value(AppStateKey.Version, version)
     # check if app state exists
@@ -35,6 +32,10 @@ def init():
         # add api_task_id column
         if not any(col["name"] == "api_task_id" for col in task_columns):
             conn.execute(text("ALTER TABLE task ADD COLUMN api_task_id VARCHAR(64)"))
+
+        # add api_task_callback column
+        if not any(col["name"] == "api_task_callback" for col in task_columns):
+            conn.execute(text("ALTER TABLE task ADD COLUMN api_task_callback VARCHAR(255)"))
 
         # add name column
         if not any(col["name"] == "name" for col in task_columns):

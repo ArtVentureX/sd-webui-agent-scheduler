@@ -42,6 +42,7 @@ class Task(TaskModel):
         return Task(
             id=table.id,
             api_task_id=table.api_task_id,
+            api_task_callback=table.api_task_callback,
             name=table.name,
             type=table.type,
             params=table.params,
@@ -57,6 +58,7 @@ class Task(TaskModel):
         return TaskTable(
             id=self.id,
             api_task_id=self.api_task_id,
+            api_task_callback=self.api_task_callback,
             name=self.name,
             type=self.type,
             params=self.params,
@@ -73,6 +75,7 @@ class TaskTable(Base):
 
     id = Column(String(64), primary_key=True)
     api_task_id = Column(String(64), nullable=True)
+    api_task_callback = Column(String(255), nullable=True)
     name = Column(String(255), nullable=True)
     type = Column(String(20), nullable=False)  # txt2img or img2txt
     params = Column(Text, nullable=False)  # task args
@@ -193,10 +196,10 @@ class TaskManager(BaseTableManager):
     def add_task(self, task: Task) -> TaskTable:
         session = Session(self.engine)
         try:
-            result = task.to_table()
-            session.add(result)
+            item = task.to_table()
+            session.add(item)
             session.commit()
-            return result
+            return task
         except Exception as e:
             print(f"Exception adding task to database: {e}")
             raise e
@@ -205,27 +208,15 @@ class TaskManager(BaseTableManager):
 
     def update_task(
         self,
-        id: str,
-        name: str = None,
-        status: str = None,
-        result: str = None,
-        bookmarked: bool = None,
+        task: Task
     ) -> TaskTable:
         session = Session(self.engine)
         try:
-            task = session.get(TaskTable, id)
-            if task is None:
+            current = session.get(TaskTable, task.id)
+            if current is None:
                 raise Exception(f"Task with id {id} not found")
 
-            if name is not None:
-                task.name = name
-            if status is not None:
-                task.status = status
-            if result is not None:
-                task.result = result
-            if bookmarked is not None:
-                task.bookmarked = bookmarked
-
+            session.merge(task.to_table())
             session.commit()
             return task
 
