@@ -9,6 +9,8 @@ import torch
 from typing import Union, List, Dict
 from enum import Enum
 from PIL import Image, ImageOps, ImageChops, ImageEnhance, ImageFilter
+from numpy import ndarray
+from torch import Tensor
 
 from modules import sd_samplers, scripts, shared
 from modules.generation_parameters_copypaste import create_override_settings_dict
@@ -82,8 +84,16 @@ def serialize_image(image):
     elif isinstance(image, torch.Tensor):
         shape = image.shape
         dtype = image.dtype
-        data = base64.b64encode(zlib.compress(image.detach().numpy().tobytes())).decode()
-        return {"shape": shape, "data": data, "cls": "Tensor", "device": image.device.type, "dtype": str(dtype)}
+        data = base64.b64encode(
+            zlib.compress(image.detach().numpy().tobytes())
+        ).decode()
+        return {
+            "shape": shape,
+            "data": data,
+            "cls": "Tensor",
+            "device": image.device.type,
+            "dtype": str(dtype),
+        }
     elif isinstance(image, Image.Image):
         size = image.size
         mode = image.mode
@@ -117,7 +127,9 @@ def deserialize_image(image_str):
             shape = tuple(image_str["shape"])
             dtype = np.dtype(image_str.get("dtype", "uint8"))
             image_np = np.frombuffer(data, dtype=dtype)
-            return torch.from_numpy(image_np.reshape(shape)).to(device = image_str.get("device", "cpu"))
+            return torch.from_numpy(image_np.reshape(shape)).to(
+                device=image_str.get("device", "cpu")
+            )
         else:
             size = tuple(image_str["size"])
             mode = image_str["mode"]
@@ -163,7 +175,7 @@ def serialize_controlnet_args(cnet_unit):
     new_args = {}
     new_args["is_cnet"] = True
     for k, v in args.items():
-        if k == 'image':
+        if k == "image":
             if hasattr(v, "image") and v.image is not None:
                 new_args[k] = {
                     "image": serialize_image(v.image),
@@ -171,10 +183,12 @@ def serialize_controlnet_args(cnet_unit):
                     if v.get("mask", None) is not None
                     else None,
                 }
-            elif type(v) is dict and v.get('image', None) is not None:
+            elif type(v) is dict and v.get("image", None) is not None:
                 new_args[k] = {
                     "image": serialize_image(v["image"]),
-                    "mask": None if v.get("mask", None) is None else serialize_image(v["mask"]),
+                    "mask": None
+                    if v.get("mask", None) is None
+                    else serialize_image(v["mask"]),
                 }
             else:
                 new_args[k] = serialize_image(v)
@@ -191,20 +205,67 @@ def deserialize_controlnet_args(args: dict):
     for k, v in args.items():
         if k == "image" and isinstance(v, dict) and v.get("image", None) is not None:
             new_args["image"] = {
-                "image" : deserialize_image(v["image"]),
-                "mask" : deserialize_image(v["mask"]) 
-                if v.get("mask", None) is not None 
-                else None
+                "image": deserialize_image(v["image"]),
+                "mask": deserialize_image(v["mask"])
+                if v.get("mask", None) is not None
+                else None,
             }
-        elif isinstance(v, dict) and v.get("cls", None) in ["Image", "ndarray", "Tensor"]:
-            new_args["image"] = {
-                "image" : deserialize_image(v),
-                "mask" : None
-            }
-        else:
+        elif isinstance(v, dict) and v.get("cls", None) in [
+            "Image",
+            "ndarray",
+            "Tensor",
+        ]:
+            new_args["image"] = {"image": deserialize_image(v), "mask": None}
+        elif k != "is_cnet":
             new_args[k] = v
 
     return new_args
+
+
+def recursively_serialize(obj):
+    """
+    Recursively serialize an object to JSON
+    """
+
+    # dict
+    if isinstance(obj, dict):
+        new_obj = {}
+        for k, v in obj.items():
+            assert k not in new_obj, "Cannot serialize recursive dict"
+            new_obj[k] = recursively_serialize(v)
+        return new_obj
+    # list
+    elif isinstance(obj, list):
+        new_obj = []
+        for v in obj:
+            assert v is not obj, "Cannot serialize recursive list"
+            new_obj.append(recursively_serialize(v))
+        return new_obj
+    # controlnet
+    elif type(obj).__name__ == "UiControlNetUnit":
+        return serialize_controlnet_args(obj)
+    # image or tensor or ndarray
+    elif isinstance(obj, (Image.Image, Tensor, ndarray)):
+        return serialize_image(obj)
+    else:
+        return obj
+
+
+def recursively_deserialize(obj):
+    """
+    Recursively deserialize an object from JSON
+    """
+
+    if isinstance(obj, list):
+        return [recursively_deserialize(v) for v in obj]
+    elif isinstance(obj, dict) and "cls" in obj:
+        return deserialize_image(obj)
+    if isinstance(obj, dict) and not obj.get("is_cnet", False):
+        return {k: recursively_deserialize(v) for k, v in obj.items()}
+    elif isinstance(obj, dict) and obj.get("is_cnet", False):
+        return deserialize_controlnet_args(obj)
+    else:
+        return deserialize_image(obj)
 
 
 def map_controlnet_args_to_api_task_args(args: dict):
@@ -238,12 +299,15 @@ def map_ui_task_args_list_to_named_args(
     script_args = args[len(args_name) :]
 
     override_settings_texts: List[str] = named_args.get("override_settings_texts", [])
-    # serialize current clip_skip value if not exist
-    clip_skip = next(
-        (s for s in override_settings_texts if s.startswith("Clip skip:")), None
-    )
-    if clip_skip is None:
-        override_settings_texts.append(f"Clip skip: {shared.opts.CLIP_stop_at_last_layers}")
+    # add clip_skip if not exist in args (vlad fork has this arg)
+    if named_args.get("clip_skip", None) is None:
+        clip_skip = next(
+            (s for s in override_settings_texts if s.startswith("Clip skip:")), None
+        )
+        if clip_skip is None and hasattr(shared.opts, "CLIP_stop_at_last_layers"):
+            override_settings_texts.append(
+                f"Clip skip: {shared.opts.CLIP_stop_at_last_layers}"
+            )
 
     if checkpoint is not None:
         override_settings_texts.append("Model hash: " + checkpoint)
@@ -472,19 +536,23 @@ def serialize_api_task_args(
         if script_args:
             arg_list = map_named_script_args_to_list(script, script_args)
             valid_alwayson_scripts[script_name] = {"args": arg_list}
-    
+
     # check if alwayson_scripts has script that is not in script_runner.alwayson_scripts
     assert type(alwayson_scripts) is dict
     for script in alwayson_scripts:
         if script not in valid_alwayson_scripts:
             # allow controlnet
             if script == "ControlNet":
-                script_args = get_dict_attribute(alwayson_scripts, f"{script}.args", None)
+                script_args = get_dict_attribute(
+                    alwayson_scripts, f"{script}.args", None
+                )
                 if script_args:
                     arg_list = map_named_script_args_to_list(script, script_args)
                     valid_alwayson_scripts[script] = {"args": arg_list}
             else:
-                print(f"Warning: script {script} is not in script_runner.alwayson_scripts")
+                print(
+                    f"Warning: script {script} is not in script_runner.alwayson_scripts"
+                )
                 # print args
                 print(alwayson_scripts[script])
 
@@ -515,6 +583,7 @@ def serialize_api_task_args(
             init_images[i] = encode_image_to_base64(image)
 
         args.mask = encode_image_to_base64(args.mask)
-        args.batch_size = len(init_images)
+        if len(init_images) > 1:
+            args.batch_size = len(init_images)
 
     return args.dict()
