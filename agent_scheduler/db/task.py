@@ -31,7 +31,8 @@ class Task(TaskModel):
     script_params: bytes = None
     params: str
 
-    def __init__(self, priority=int(datetime.utcnow().timestamp() * 1000), **kwargs):
+    def __init__(self, **kwargs):
+        priority = kwargs.pop("priority", int(datetime.utcnow().timestamp() * 1000))
         super().__init__(priority=priority, **kwargs)
 
     class Config(TaskModel.__config__):
