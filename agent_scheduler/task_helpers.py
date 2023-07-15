@@ -1,7 +1,7 @@
-import os
 import io
 import zlib
 import base64
+import pickle
 import inspect
 import requests
 import numpy as np
@@ -138,7 +138,7 @@ def deserialize_image(image_str):
         return image_str
 
 
-def serialize_img2img_image_args(args: dict):
+def serialize_img2img_image_args(args: Dict):
     for mode, image_args in img2img_image_args_by_mode.items():
         for keys in image_args:
             if mode != args["mode"]:
@@ -154,7 +154,7 @@ def serialize_img2img_image_args(args: dict):
                 args[keys[0]] = value
 
 
-def deserialize_img2img_image_args(args: dict):
+def deserialize_img2img_image_args(args: Dict):
     for mode, image_args in img2img_image_args_by_mode.items():
         if mode != args["mode"]:
             continue
@@ -171,7 +171,7 @@ def deserialize_img2img_image_args(args: dict):
 
 
 def serialize_controlnet_args(cnet_unit):
-    args: dict = cnet_unit.__dict__
+    args: Dict = cnet_unit.__dict__
     new_args = {}
     new_args["is_cnet"] = True
     for k, v in args.items():
@@ -200,7 +200,7 @@ def serialize_controlnet_args(cnet_unit):
     return new_args
 
 
-def deserialize_controlnet_args(args: dict):
+def deserialize_controlnet_args(args: Dict):
     new_args = {}
     for k, v in args.items():
         if k == "image" and isinstance(v, dict) and v.get("image", None) is not None:
@@ -268,7 +268,18 @@ def recursively_deserialize(obj):
         return deserialize_image(obj)
 
 
-def map_controlnet_args_to_api_task_args(args: dict):
+def serialize_script_args(script_args: List):
+    return zlib.compress(pickle.dumps(script_args))
+
+
+def deserialize_script_args(script_args: Union[bytes, List]):
+    if type(script_args) is list:
+        return recursively_deserialize(script_args)
+
+    return pickle.loads(zlib.decompress(script_args))
+
+
+def map_controlnet_args_to_api_task_args(args: Dict):
     if type(args).__name__ == "UiControlNetUnit":
         args = args.__dict__
 
@@ -287,7 +298,7 @@ def map_controlnet_args_to_api_task_args(args: dict):
 
 
 def map_ui_task_args_list_to_named_args(
-    args: list, is_img2img: bool, checkpoint: str = None
+    args: List, is_img2img: bool, checkpoint: str = None
 ):
     args_name = []
     if is_img2img:
@@ -330,7 +341,7 @@ def map_ui_task_args_list_to_named_args(
 
 
 def map_named_args_to_ui_task_args_list(
-    named_args: dict, script_args: list, is_img2img: bool
+    named_args: Dict, script_args: List, is_img2img: bool
 ):
     args_name = []
     if is_img2img:
@@ -354,7 +365,7 @@ def map_named_args_to_ui_task_args_list(
     return args
 
 
-def map_script_args_list_to_named(script: scripts.Script, args: list):
+def map_script_args_list_to_named(script: scripts.Script, args: List):
     script_name = script.title().lower()
     print("script", script_name, "is alwayson", script.alwayson)
 
@@ -398,9 +409,9 @@ def map_named_script_args_to_list(
 
 
 def map_ui_task_args_to_api_task_args(
-    named_args: dict, script_args: list, is_img2img: bool
+    named_args: Dict, script_args: List, is_img2img: bool
 ):
-    api_task_args: dict = named_args.copy()
+    api_task_args: Dict = named_args.copy()
 
     prompt_styles = api_task_args.pop("prompt_styles", [])
     api_task_args["styles"] = prompt_styles
@@ -430,7 +441,7 @@ def map_ui_task_args_to_api_task_args(
             image = image.convert("RGB") if image else None
             mask = None
         elif mode == 2:
-            init_img_with_mask: dict = api_task_args.pop("init_img_with_mask") or {}
+            init_img_with_mask: Dict = api_task_args.pop("init_img_with_mask") or {}
             image = init_img_with_mask.get("image", None)
             image = image.convert("RGB") if image else None
             mask = init_img_with_mask.get("mask", None)
@@ -509,7 +520,7 @@ def map_ui_task_args_to_api_task_args(
 
 
 def serialize_api_task_args(
-    params: dict,
+    params: Dict,
     is_img2img: bool,
     checkpoint: str = None,
 ):

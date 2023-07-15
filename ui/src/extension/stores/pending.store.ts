@@ -36,7 +36,9 @@ export const createPendingTasksStore = (initialState: PendingTasksState) => {
       return fetch('/agent-scheduler/v1/pause', { method: 'POST' })
         .then((response) => response.json())
         .then((data) => {
-          actions.refresh();
+          setTimeout(() => {
+            actions.refresh();
+          }, 5000);
           return data;
         });
     },
@@ -44,7 +46,9 @@ export const createPendingTasksStore = (initialState: PendingTasksState) => {
       return fetch('/agent-scheduler/v1/resume', { method: 'POST' })
         .then((response) => response.json())
         .then((data) => {
-          actions.refresh();
+          setTimeout(() => {
+            actions.refresh();
+          }, 5000);
           return data;
         });
     },
@@ -52,7 +56,9 @@ export const createPendingTasksStore = (initialState: PendingTasksState) => {
       return fetch(`/agent-scheduler/v1/run/${id}`, { method: 'POST' })
         .then((response) => response.json())
         .then((data) => {
-          actions.refresh();
+          setTimeout(() => {
+            actions.refresh();
+          }, 5000);
           return data;
         });
     },

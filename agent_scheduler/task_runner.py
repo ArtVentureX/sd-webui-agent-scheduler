@@ -31,8 +31,8 @@ from .task_helpers import (
     encode_image_to_base64,
     serialize_img2img_image_args,
     deserialize_img2img_image_args,
-    recursively_serialize,
-    recursively_deserialize,
+    serialize_script_args,
+    deserialize_script_args,
     serialize_api_task_args,
     map_ui_task_args_list_to_named_args,
     map_named_args_to_ui_task_args_list,
@@ -56,7 +56,6 @@ task_history_retenion_map = {
 
 class ParsedTaskArgs(BaseModel):
     is_ui: bool
-    ui_args: List[Any]
     named_args: Dict[str, Any]
     script_args: List[Any]
     checkpoint: Optional[str] = None
@@ -111,34 +110,27 @@ class TaskRunner:
         if is_img2img:
             serialize_img2img_image_args(named_args)
 
-        # loop through script_args and serialize images
-        serialized_args: list = [None] * len(script_args)
+        # convert UiControlNetUnit to dict to make it serializable
         for i, a in enumerate(script_args):
-            serialized_args[i] = recursively_serialize(a)
+            if type(a).__name__ == "UiControlNetUnit":
+                script_args[i] = a.__dict__
 
-        # assert each arguments is serializable
-        check_args = [named_args, serialized_args, checkpoint]
-        args_name = ["named_args", "script_args", "checkpoint"]
-        for args, name in zip(check_args, args_name):
-            try:
-                json.dumps(args)
-            except Exception as e:
-                print(f"Cannot serialize args: {args} with name: {name}")
-                raise e
-        return json.dumps(
+        params = json.dumps(
             {
                 "args": named_args,
-                "script_args": serialized_args,
                 "checkpoint": checkpoint,
                 "is_ui": True,
                 "is_img2img": is_img2img,
             }
         )
+        script_params = serialize_script_args(script_args)
+
+        return (params, script_params)
 
     def __serialize_api_task_args(
         self,
         is_img2img: bool,
-        script_args: list = [],
+        script_args: List = [],
         checkpoint: str = None,
         **api_args,
     ):
@@ -149,18 +141,19 @@ class TaskRunner:
             named_args, "override_settings.sd_model_checkpoint", None
         )
 
-        return json.dumps(
+        params = json.dumps(
             {
                 "args": named_args,
-                "script_args": script_args,
                 "checkpoint": checkpoint,
                 "is_ui": False,
                 "is_img2img": is_img2img,
             }
         )
+        script_params = serialize_script_args(script_args)
+        return (params, script_params)
 
     def __deserialize_ui_task_args(
-        self, is_img2img: bool, named_args: dict, script_args: list
+        self, is_img2img: bool, named_args: Dict, script_args: List
     ):
         """
         Deserialize UI task arguments
@@ -172,10 +165,13 @@ class TaskRunner:
             deserialize_img2img_image_args(named_args)
 
         # loop through script_args and deserialize images
-        for i, arg in enumerate(script_args):
-            script_args[i] = recursively_deserialize(arg)
+        script_args = deserialize_script_args(script_args)
 
-    def __deserialize_api_task_args(self, is_img2img: bool, named_args: dict):
+        return (named_args, script_args)
+
+    def __deserialize_api_task_args(
+        self, is_img2img: bool, named_args: Dict, script_args: List
+    ):
         # load images from disk
         if is_img2img:
             init_images = named_args.get("init_images")
@@ -186,6 +182,9 @@ class TaskRunner:
 
         named_args.update({"save_images": True, "send_images": False})
 
+        script_args = deserialize_script_args(script_args)
+        return (named_args, script_args)
+
     def parse_task_args(self, task: Task, deserialization: bool = True):
         parsed: Dict[str, Any] = json.loads(task.params)
 
@@ -193,22 +192,22 @@ class TaskRunner:
         is_img2img = parsed.get("is_img2img", None)
         checkpoint = parsed.get("checkpoint", None)
         named_args: Dict[str, Any] = parsed["args"]
-        script_args: List[Any] = parsed.get("script_args", [])
+        script_args: List[Any] = parsed.get("script_args", task.script_params)
 
         if is_ui and deserialization:
-            self.__deserialize_ui_task_args(is_img2img, named_args, script_args)
+            named_args, script_args = self.__deserialize_ui_task_args(
+                is_img2img, named_args, script_args
+            )
         elif deserialization:
-            self.__deserialize_api_task_args(is_img2img, named_args)
-
-        ui_args = (
-            map_named_args_to_ui_task_args_list(named_args, script_args, is_img2img)
-            if is_ui
-            else []
-        )
+            named_args, script_args = self.__deserialize_api_task_args(
+                is_img2img, named_args, script_args
+            )
+        else:
+            # ignore script_args if not deserialization
+            script_args = []
 
         return ParsedTaskArgs(
             is_ui=is_ui,
-            ui_args=ui_args,
             named_args=named_args,
             script_args=script_args,
             checkpoint=checkpoint,
@@ -219,10 +218,14 @@ class TaskRunner:
     ):
         progress.add_task_to_queue(task_id)
 
-        params = self.__serialize_ui_task_args(is_img2img, *args, checkpoint=checkpoint)
+        (params, script_args) = self.__serialize_ui_task_args(
+            is_img2img, *args, checkpoint=checkpoint
+        )
 
         task_type = "img2img" if is_img2img else "txt2img"
-        task = Task(id=task_id, type=task_type, params=params)
+        task = Task(
+            id=task_id, type=task_type, params=params, script_params=script_args
+        )
         task_manager.add_task(task)
 
         self.__run_callbacks(
@@ -237,17 +240,23 @@ class TaskRunner:
         task_id: str,
         api_task_id: str,
         is_img2img: bool,
-        args: dict,
+        args: Dict,
         checkpoint: str = None,
     ):
         progress.add_task_to_queue(task_id)
 
-        params = self.__serialize_api_task_args(
+        (params, script_params) = self.__serialize_api_task_args(
             is_img2img, checkpoint=checkpoint, **args
         )
 
         task_type = "img2img" if is_img2img else "txt2img"
-        task = Task(id=task_id, api_task_id=api_task_id, type=task_type, params=params)
+        task = Task(
+            id=task_id,
+            api_task_id=api_task_id,
+            type=task_type,
+            params=params,
+            script_params=script_params,
+        )
         task_manager.add_task(task)
 
         self.__run_callbacks(
@@ -368,7 +377,11 @@ class TaskRunner:
 
     def __execute_task(self, task_id: str, is_img2img: bool, task_args: ParsedTaskArgs):
         if task_args.is_ui:
-            return self.__execute_ui_task(task_id, is_img2img, *task_args.ui_args)
+            ui_args = map_named_args_to_ui_task_args_list(
+                task_args.named_args, task_args.script_args, is_img2img
+            )
+
+            return self.__execute_ui_task(task_id, is_img2img, *ui_args)
         else:
             return self.__execute_api_task(
                 task_id,
@@ -477,7 +490,7 @@ class TaskRunner:
     def on_task_registered(self, callback: Callable):
         """Callback when a task is registered
 
-        Callback signature: callback(task_id: str, is_img2img: bool, is_ui: bool, args: dict)
+        Callback signature: callback(task_id: str, is_img2img: bool, is_ui: bool, args: Dict)
         """
 
         self.script_callbacks["task_registered"].append(callback)
@@ -493,7 +506,7 @@ class TaskRunner:
     def on_task_finished(self, callback: Callable):
         """Callback when a task is finished
 
-        Callback signature: callback(task_id: str, is_img2img: bool, is_ui: bool, status: TaskStatus, result: dict)
+        Callback signature: callback(task_id: str, is_img2img: bool, is_ui: bool, status: TaskStatus, result: Dict)
         """
 
         self.script_callbacks["task_finished"].append(callback)
