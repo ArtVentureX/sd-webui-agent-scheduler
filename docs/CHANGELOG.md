@@ -1,5 +1,28 @@
 # Change Logs
 
+## 2023/07/16
+
+- Use pickle to serialize script args
+
+## 2023/07/12
+
+- Fix: batch_size is ignored when queue img2img task via api
+
+## 2023/07/11
+
+- Add clip_skip to queue params
+- Add support for api task callback
+
+## 2023/06/29
+
+- Switch js format to iife
+- Bugs fixing
+
+## 2023/06/23
+
+- Add setting to disable keyboard shortcut
+- Bugs fixing
+
 ## 2023/06/21
 
 - Add enqueue keyboard shortcut
