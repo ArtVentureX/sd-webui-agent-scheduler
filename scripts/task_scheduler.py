@@ -3,7 +3,6 @@ import json
 import platform
 import gradio as gr
 from PIL import Image
-from gradio import context
 from typing import List
 from modules import shared, script_callbacks, scripts
 from modules.shared import list_checkpoint_tiles, refresh_checkpoints
@@ -437,7 +436,7 @@ def on_ui_settings():
         ),
     )
 
-    def enqueue_keyboard_shortcut(disabled: bool, modifiers: List[str], key_code: str):
+    def enqueue_keyboard_shortcut(disabled: bool, modifiers, key_code: str):
         if disabled:
             modifiers.insert(0, "Disabled")
 

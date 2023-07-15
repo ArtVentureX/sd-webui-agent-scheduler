@@ -528,12 +528,20 @@ def get_instance(block) -> TaskRunner:
         else:
             TaskRunner()
 
-        def on_before_reload():
-            # Tell old instance to stop
-            TaskRunner.instance.dispose = True
-            # force recreate the instance
-            TaskRunner.instance = None
+        if not hasattr(script_callbacks, "on_before_reload"):
+            log.warning(
+                "*****************************************************************************************\n"
+                + "[AgentScheduler] YOUR SD WEBUI IS OUTDATED AND AGENT SCHEDULER WILL NOT WORKING PROPERLY."
+                + "*****************************************************************************************\n",
+            )
+        else:
 
-        script_callbacks.on_before_reload(on_before_reload)
+            def on_before_reload():
+                # Tell old instance to stop
+                TaskRunner.instance.dispose = True
+                # force recreate the instance
+                TaskRunner.instance = None
+
+            script_callbacks.on_before_reload(on_before_reload)
 
     return TaskRunner.instance
