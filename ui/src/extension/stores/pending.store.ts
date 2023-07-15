@@ -38,7 +38,7 @@ export const createPendingTasksStore = (initialState: PendingTasksState) => {
         .then((data) => {
           setTimeout(() => {
             actions.refresh();
-          }, 5000);
+          }, 500);
           return data;
         });
     },
@@ -48,7 +48,7 @@ export const createPendingTasksStore = (initialState: PendingTasksState) => {
         .then((data) => {
           setTimeout(() => {
             actions.refresh();
-          }, 5000);
+          }, 500);
           return data;
         });
     },
@@ -58,7 +58,7 @@ export const createPendingTasksStore = (initialState: PendingTasksState) => {
         .then((data) => {
           setTimeout(() => {
             actions.refresh();
-          }, 5000);
+          }, 500);
           return data;
         });
     },
