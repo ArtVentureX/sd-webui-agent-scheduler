@@ -172,32 +172,14 @@ def deserialize_img2img_image_args(args: Dict):
 
 def serialize_controlnet_args(cnet_unit):
     args: Dict = cnet_unit.__dict__
-    new_args = {}
-    new_args["is_cnet"] = True
+    serialized_args = {"is_cnet": True}
     for k, v in args.items():
-        if k == "image":
-            if hasattr(v, "image") and v.image is not None:
-                new_args[k] = {
-                    "image": serialize_image(v.image),
-                    "mask": serialize_image(v.mask)
-                    if v.get("mask", None) is not None
-                    else None,
-                }
-            elif type(v) is dict and v.get("image", None) is not None:
-                new_args[k] = {
-                    "image": serialize_image(v["image"]),
-                    "mask": None
-                    if v.get("mask", None) is None
-                    else serialize_image(v["mask"]),
-                }
-            else:
-                new_args[k] = serialize_image(v)
-        elif isinstance(v, Enum):
-            new_args[k] = serialize_image(v.value)
+        if isinstance(v, Enum):
+            serialized_args[k] = v.value
         else:
-            new_args[k] = serialize_image(v)
+            serialized_args[k] = v
 
-    return new_args
+    return serialized_args
 
 
 def deserialize_controlnet_args(args: Dict):
@@ -269,6 +251,11 @@ def recursively_deserialize(obj):
 
 
 def serialize_script_args(script_args: List):
+    # convert UiControlNetUnit to dict to make it serializable
+    for i, a in enumerate(script_args):
+        if type(a).__name__ == "UiControlNetUnit":
+            script_args[i] = serialize_controlnet_args(a)
+
     return zlib.compress(pickle.dumps(script_args))
 
 
@@ -305,6 +292,10 @@ def map_ui_task_args_list_to_named_args(
         args_name = inspect.getfullargspec(img2img).args
     else:
         args_name = inspect.getfullargspec(txt2img).args
+
+    # SD WebUI 1.5.0 has new request arg
+    if "request" in args_name:
+        args.insert(args_name.index("request"), None)
 
     named_args = dict(zip(args_name, args[0 : len(args_name)]))
     script_args = args[len(args_name) :]

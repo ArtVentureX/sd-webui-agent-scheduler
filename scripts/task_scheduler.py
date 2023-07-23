@@ -191,7 +191,7 @@ class Script(scripts.Script):
                 )
 
     def wrap_register_ui_task(self):
-        def f(*args, **kwargs):
+        def f(request: gr.Request, *args, **kwargs):
             if len(args) == 0 and len(kwargs) == 0:
                 raise Exception("Invalid call")
 
@@ -208,7 +208,7 @@ class Script(scripts.Script):
                 checkpoint = self.checkpoint_override
 
             task_runner.register_ui_task(
-                task_id, self.is_img2img, *args, checkpoint=checkpoint
+                task_id, self.is_img2img, *args, checkpoint=checkpoint, request=request
             )
             task_runner.execute_pending_tasks_threading()
 

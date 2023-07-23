@@ -3,6 +3,7 @@ import json
 import time
 import traceback
 import threading
+import gradio as gr
 
 from pydantic import BaseModel
 from datetime import datetime, timedelta
@@ -43,6 +44,11 @@ class OutOfMemoryError(Exception):
     def __init__(self, message="CUDA out of memory") -> None:
         self.message = message
         super().__init__(message)
+
+
+class FakeRequest:
+    def __init__(self, username: str = None):
+        self.username = username
 
 
 task_history_retenion_map = {
@@ -101,7 +107,13 @@ class TaskRunner:
     def paused(self) -> bool:
         return getattr(shared.opts, "queue_paused", False)
 
-    def __serialize_ui_task_args(self, is_img2img: bool, *args, checkpoint: str = None):
+    def __serialize_ui_task_args(
+        self,
+        is_img2img: bool,
+        *args,
+        checkpoint: str = None,
+        request: gr.Request = None,
+    ):
         named_args, script_args = map_ui_task_args_list_to_named_args(
             list(args), is_img2img, checkpoint=checkpoint
         )
@@ -110,10 +122,8 @@ class TaskRunner:
         if is_img2img:
             serialize_img2img_image_args(named_args)
 
-        # convert UiControlNetUnit to dict to make it serializable
-        for i, a in enumerate(script_args):
-            if type(a).__name__ == "UiControlNetUnit":
-                script_args[i] = a.__dict__
+        if "request" in named_args:
+            named_args["request"] = {"username": request.username}
 
         params = json.dumps(
             {
@@ -159,6 +169,9 @@ class TaskRunner:
         Deserialize UI task arguments
         In-place update named_args and script_args
         """
+
+        if "request" in named_args:
+            named_args["request"] = FakeRequest(**named_args["request"])
 
         # loop through image_args and deserialize images
         if is_img2img:
@@ -214,12 +227,17 @@ class TaskRunner:
         )
 
     def register_ui_task(
-        self, task_id: str, is_img2img: bool, *args, checkpoint: str = None
+        self,
+        task_id: str,
+        is_img2img: bool,
+        *args,
+        checkpoint: str = None,
+        request: gr.Request = None,
     ):
         progress.add_task_to_queue(task_id)
 
         (params, script_args) = self.__serialize_ui_task_args(
-            is_img2img, *args, checkpoint=checkpoint
+            is_img2img, *args, checkpoint=checkpoint, request=request
         )
 
         task_type = "img2img" if is_img2img else "txt2img"
