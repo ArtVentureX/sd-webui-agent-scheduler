@@ -208,10 +208,7 @@ class TaskManager(BaseTableManager):
         finally:
             session.close()
 
-    def update_task(
-        self,
-        task: Task
-    ) -> TaskTable:
+    def update_task(self, task: Task) -> TaskTable:
         session = Session(self.engine)
         try:
             current = session.get(TaskTable, task.id)
@@ -236,7 +233,9 @@ class TaskManager(BaseTableManager):
             result = session.get(TaskTable, id)
             if result:
                 if priority == 0:
-                    result.priority = self.__get_min_priority(status=TaskStatus.PENDING) - 1
+                    result.priority = (
+                        self.__get_min_priority(status=TaskStatus.PENDING) - 1
+                    )
                 elif priority == -1:
                     result.priority = int(datetime.utcnow().timestamp() * 1000)
                 else:
@@ -269,16 +268,27 @@ class TaskManager(BaseTableManager):
         finally:
             session.close()
 
-    def delete_tasks_before(self, before: datetime, all: bool = False):
+    def delete_tasks(
+        self,
+        before: datetime = None,
+        status: Union[str, List[str]] = [
+            TaskStatus.DONE,
+            TaskStatus.FAILED,
+            TaskStatus.INTERRUPTED,
+        ],
+    ):
         session = Session(self.engine)
         try:
-            query = session.query(TaskTable).filter(TaskTable.created_at < before)
-            if not all:
-                query = query.filter(
-                    TaskTable.status.in_(
-                        [TaskStatus.DONE, TaskStatus.FAILED, TaskStatus.INTERRUPTED]
-                    )
-                ).filter(TaskTable.bookmarked == False)
+            query = session.query(TaskTable).filter(TaskTable.bookmarked == False)
+
+            if before:
+                query = query.filter(TaskTable.created_at < before)
+
+            if status is not None:
+                if isinstance(status, list):
+                    query = query.filter(TaskTable.status.in_(status))
+                else:
+                    query = query.filter(TaskTable.status == status)
 
             deleted_rows = query.delete()
             session.commit()

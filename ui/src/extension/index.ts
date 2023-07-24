@@ -482,9 +482,14 @@ function initPendingTab() {
   const refreshButton = gradioApp().querySelector('#agent_scheduler_action_reload')!;
   const pauseButton = gradioApp().querySelector('#agent_scheduler_action_pause')!;
   const resumeButton = gradioApp().querySelector('#agent_scheduler_action_resume')!;
+  const clearButton = gradioApp().querySelector('#agent_scheduler_action_clear_queue')!;
   refreshButton.addEventListener('click', store.refresh);
   pauseButton.addEventListener('click', () => store.pauseQueue().then(notify));
   resumeButton.addEventListener('click', () => store.resumeQueue().then(notify));
+  clearButton.addEventListener('click', () => {
+    if (!confirm('Are you sure you want to clear the queue?')) return;
+    store.clearQueue().then(notify)
+  });
 
   // watch for queue status change
   store.subscribe((curr) => {
@@ -498,7 +503,6 @@ function initPendingTab() {
   });
 
   // init grid
-
   const gridOptions: GridOptions<Task> = {
     ...sharedGridOptions,
     editType: 'fullRow',
@@ -683,8 +687,13 @@ function initHistoryTab() {
 
   // init actions
   const refreshButton = gradioApp().querySelector('#agent_scheduler_action_refresh_history')!;
+  const clearButton = gradioApp().querySelector('#agent_scheduler_action_clear_history')!;
   refreshButton.addEventListener('click', () => {
     store.refresh();
+  });
+  clearButton.addEventListener('click', () => {
+    if (!confirm('Are you sure you want to clear the history?')) return;
+    store.clearHistory().then(notify);
   });
   const resultTaskId: HTMLTextAreaElement = gradioApp().querySelector(
     '#agent_scheduler_history_selected_task textarea',
@@ -695,6 +704,7 @@ function initHistoryTab() {
   const resultGallery: HTMLDivElement = gradioApp().querySelector(
     '#agent_scheduler_history_gallery',
   )!;
+
   resultGallery.addEventListener('click', (e) => {
     const target = e.target as HTMLImageElement;
     if (target.tagName === 'IMG') {

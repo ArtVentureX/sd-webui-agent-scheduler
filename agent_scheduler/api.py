@@ -381,15 +381,33 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
 
             return {"success": True, "data": data}
 
-    @app.post("/agent-scheduler/v1/pause")
+    @app.post("/agent-scheduler/v1/pause", deprecated=True)
+    @app.post("/agent-scheduler/v1/queue/pause")
     def pause_queue():
         shared.opts.queue_paused = True
         return {"success": True, "message": "Queue paused."}
 
-    @app.post("/agent-scheduler/v1/resume")
+    @app.post("/agent-scheduler/v1/resume", deprecated=True)
+    @app.post("/agent-scheduler/v1/queue/resume")
     def resume_queue():
         shared.opts.queue_paused = False
         TaskRunner.instance.execute_pending_tasks_threading()
         return {"success": True, "message": "Queue resumed."}
+
+    @app.post("/agent-scheduler/v1/queue/clear")
+    def clear_queue():
+        task_manager.delete_tasks(status=TaskStatus.PENDING)
+        return {"success": True, "message": "Queue cleared."}
+
+    @app.post("/agent-scheduler/v1/history/clear")
+    def clear_history():
+        task_manager.delete_tasks(
+            status=[
+                TaskStatus.DONE,
+                TaskStatus.FAILED,
+                TaskStatus.INTERRUPTED,
+            ]
+        )
+        return {"success": True, "message": "History cleared."}
 
     task_runner.on_task_finished(on_task_finished)

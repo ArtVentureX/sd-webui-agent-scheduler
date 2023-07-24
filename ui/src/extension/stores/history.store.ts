@@ -14,6 +14,7 @@ type HistoryTasksActions = {
   bookmarkTask: (id: string, bookmarked: boolean) => Promise<ResponseStatus>;
   renameTask: (id: string, name: string) => Promise<ResponseStatus>;
   requeueTask: (id: string) => Promise<ResponseStatus>;
+  clearHistory: () => Promise<ResponseStatus>;
 };
 
 export type HistoryTasksStore = ReturnType<typeof createHistoryTasksStore>;
@@ -53,6 +54,12 @@ export const createHistoryTasksStore = (initialState: HistoryTasksState) => {
       return fetch(`/agent-scheduler/v1/task/${id}/requeue`, { method: 'POST' }).then((response) =>
         response.json(),
       );
+    },
+    clearHistory: async () => {
+      return fetch('/agent-scheduler/v1/history/clear', { method: 'POST' }).then((response) => {
+        actions.refresh();
+        return response.json();
+      });
     },
   };
 

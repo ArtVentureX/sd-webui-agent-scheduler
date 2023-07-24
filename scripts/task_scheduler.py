@@ -290,8 +290,8 @@ def on_ui_tab(**_kwargs):
                             )
                             gr.Button(
                                 "Clear",
-                                elem_id="agent_scheduler_action_empty_queue",
-                                variant="secondary",
+                                elem_id="agent_scheduler_action_clear_queue",
+                                variant="stop",
                             )
                             gr.HTML('<div id="agent_scheduler_action_search"></div>')
                         gr.HTML(
@@ -316,7 +316,7 @@ def on_ui_tab(**_kwargs):
                             gr.Button(
                                 "Clear",
                                 elem_id="agent_scheduler_action_clear_history",
-                                variant="secondary",
+                                variant="stop",
                             )
                             status = gr.Dropdown(
                                 elem_id="agent_scheduler_status_filter",

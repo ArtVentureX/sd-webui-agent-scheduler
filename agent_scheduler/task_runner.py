@@ -505,8 +505,8 @@ class TaskRunner:
             ]
 
         if retention_days > 0:
-            deleted_rows = task_manager.delete_tasks_before(
-                datetime.now() - timedelta(days=retention_days)
+            deleted_rows = task_manager.delete_tasks(
+                before=datetime.now() - timedelta(days=retention_days)
             )
             if deleted_rows > 0:
                 log.debug(

@@ -13,6 +13,7 @@ type PendingTasksActions = {
   refresh: () => Promise<void>;
   pauseQueue: () => Promise<ResponseStatus>;
   resumeQueue: () => Promise<ResponseStatus>;
+  clearQueue: () => Promise<ResponseStatus>;
   runTask: (id: string) => Promise<ResponseStatus>;
   moveTask: (id: string, overId: string) => Promise<ResponseStatus>;
   updateTask: (id: string, task: Task) => Promise<ResponseStatus>;
@@ -34,7 +35,7 @@ export const createPendingTasksStore = (initialState: PendingTasksState) => {
         });
     },
     pauseQueue: async () => {
-      return fetch('/agent-scheduler/v1/pause', { method: 'POST' })
+      return fetch('/agent-scheduler/v1/queue/pause', { method: 'POST' })
         .then((response) => response.json())
         .then((data) => {
           setTimeout(() => {
@@ -44,12 +45,20 @@ export const createPendingTasksStore = (initialState: PendingTasksState) => {
         });
     },
     resumeQueue: async () => {
-      return fetch('/agent-scheduler/v1/resume', { method: 'POST' })
+      return fetch('/agent-scheduler/v1/queue/resume', { method: 'POST' })
         .then((response) => response.json())
         .then((data) => {
           setTimeout(() => {
             actions.refresh();
           }, 500);
+          return data;
+        });
+    },
+    clearQueue: async () => {
+      return fetch('/agent-scheduler/v1/queue/clear', { method: 'POST' })
+        .then((response) => response.json())
+        .then((data) => {
+          actions.refresh();
           return data;
         });
     },
