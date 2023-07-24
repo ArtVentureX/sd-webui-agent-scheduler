@@ -1,5 +1,17 @@
 # Change Logs
 
+## 2023/07/24
+
+New features:
+- New API `/task/{id}` to get single task (https://github.com/ArtVentureX/sd-webui-agent-scheduler/issues/86)
+- Update queued task
+- Clear queue and clear history
+- Queue task with specific name & queue with all
+- Minor change to support changes in SD webui 1.5.0-RC
+
+Bugs fixing:
+- Fixed https://github.com/ArtVentureX/sd-webui-agent-scheduler/issues/87
+
 ## 2023/07/16
 
 - Use pickle to serialize script args
