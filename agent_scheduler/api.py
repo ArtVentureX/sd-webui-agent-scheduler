@@ -284,6 +284,20 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
         task_manager.update_task(task)
         return {"success": True, "message": "Task renamed."}
 
+    @app.get("/agent-scheduler/v1/task/{id}")
+    def get_task(id: str):
+        task = task_manager.get_task(id)
+        if task is None:
+            return {"success": False, "message": "Task not found"}
+
+        params = format_task_args(task)
+        task_data = task.dict()
+        task_data["params"] = params
+        if task.id == progress.current_task:
+            task_data["status"] = "running"
+
+        return {"success": True, "data": TaskModel(**task_data)}
+
     @app.get("/agent-scheduler/v1/results/{id}")
     def get_task_results(id: str, zip: Optional[bool] = False):
         task = task_manager.get_task(id)
