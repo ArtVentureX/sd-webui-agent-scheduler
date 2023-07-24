@@ -259,6 +259,7 @@ class TaskRunner:
         is_img2img: bool,
         *args,
         checkpoint: str = None,
+        task_name: str = None,
         request: gr.Request = None,
     ):
         progress.add_task_to_queue(task_id)
@@ -269,7 +270,11 @@ class TaskRunner:
 
         task_type = "img2img" if is_img2img else "txt2img"
         task = Task(
-            id=task_id, type=task_type, params=params, script_params=script_args
+            id=task_id,
+            name=task_name,
+            type=task_type,
+            params=params,
+            script_params=script_args,
         )
         task_manager.add_task(task)
 

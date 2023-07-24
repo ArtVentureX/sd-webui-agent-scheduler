@@ -3,6 +3,7 @@ import json
 import platform
 import gradio as gr
 from PIL import Image
+from uuid import uuid4
 from typing import List
 from modules import shared, script_callbacks, scripts
 from modules.shared import list_checkpoint_tiles, refresh_checkpoints
@@ -32,6 +33,7 @@ task_runner: TaskRunner = None
 
 checkpoint_current = "Current Checkpoint"
 checkpoint_runtime = "Runtime Checkpoint"
+queue_with_every_checkpoints = "$$_queue_with_all_checkpoints_$$"
 
 ui_placement_as_tab = "As a tab"
 ui_placement_append_to_main = "Append to main UI"
@@ -201,15 +203,38 @@ class Script(scripts.Script):
                 # not a task, exit
                 return (None, "", "<p>Invalid params</p>", "")
 
-            checkpoint = None
-            if self.checkpoint_override == checkpoint_current:
-                checkpoint = shared.sd_model.sd_checkpoint_info.title
-            elif self.checkpoint_override != checkpoint_runtime:
-                checkpoint = self.checkpoint_override
+            if task_id == queue_with_every_checkpoints:
+                for checkpoint in list_checkpoint_tiles():
+                    task_id = str(uuid4())
+                    task_runner.register_ui_task(
+                        task_id,
+                        self.is_img2img,
+                        *args,
+                        checkpoint=checkpoint,
+                        request=request,
+                    )
+            else:
+                if not task_id.startswith("task("):
+                    task_name = task_id
+                    task_id = str(uuid4())
+                else:
+                    task_name = None
 
-            task_runner.register_ui_task(
-                task_id, self.is_img2img, *args, checkpoint=checkpoint, request=request
-            )
+                checkpoint = None
+                if self.checkpoint_override == checkpoint_current:
+                    checkpoint = shared.sd_model.sd_checkpoint_info.title
+                elif self.checkpoint_override != checkpoint_runtime:
+                    checkpoint = self.checkpoint_override
+
+                task_runner.register_ui_task(
+                    task_id,
+                    self.is_img2img,
+                    *args,
+                    checkpoint=checkpoint,
+                    task_name=task_name,
+                    request=request,
+                )
+
             task_runner.execute_pending_tasks_threading()
 
         return f

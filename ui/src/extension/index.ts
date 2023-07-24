@@ -47,6 +47,7 @@ declare global {
   function submit_enqueue(...args: any[]): any[];
   function submit_enqueue_img2img(...args: any[]): any[];
   function agent_scheduler_status_filter_changed(value: string): void;
+  function appendContextMenuOption(selector: string, label: string, callback: () => void): void;
 }
 
 const sharedStore = createSharedStore({
@@ -319,15 +320,15 @@ function showTaskProgress(task_id: string, type: string | undefined, callback: (
   } else if (type === 'img2img') {
     window.submit_img2img();
   }
-  window.randomId = window.origRandomId;
 }
 
 function initQueueHandler() {
+  const btnEnqueue = document.querySelector<HTMLButtonElement>('#txt2img_enqueue');
   window.submit_enqueue = function submit_enqueue(...args) {
     const res = create_submit_args(args);
     res[0] = randomId();
+    window.randomId = window.origRandomId;
 
-    const btnEnqueue = document.querySelector('#txt2img_enqueue');
     if (btnEnqueue) {
       btnEnqueue.innerHTML = 'Queued';
       setTimeout(() => {
@@ -343,16 +344,17 @@ function initQueueHandler() {
     return res;
   };
 
+  const btnImg2ImgEnqueue = document.querySelector<HTMLButtonElement>('#img2img_enqueue');
   window.submit_enqueue_img2img = function submit_enqueue_img2img(...args) {
     const res = create_submit_args(args);
     res[0] = randomId();
     res[1] = get_tab_index('mode_img2img');
+    window.randomId = window.origRandomId;
 
-    const btnEnqueue = document.querySelector('#img2img_enqueue');
-    if (btnEnqueue) {
-      btnEnqueue.innerHTML = 'Queued';
+    if (btnImg2ImgEnqueue) {
+      btnImg2ImgEnqueue.innerHTML = 'Queued';
       setTimeout(() => {
-        btnEnqueue.innerHTML = 'Enqueue';
+        btnImg2ImgEnqueue.innerHTML = 'Enqueue';
         if (!sharedStore.getState().uiAsTab) {
           if (sharedStore.getState().selectedTab === 'pending') {
             pendingStore.refresh();
@@ -427,6 +429,36 @@ function initQueueHandler() {
       onTaskIdChange(curr.current_task_id);
     }
   });
+
+  // context menu
+  const queueWithTaskName = (img2img = false) => {
+    const name = prompt('Enter task name');
+    window.randomId = () =>  name || window.origRandomId();
+    if (img2img) {
+      btnImg2ImgEnqueue?.click();
+    } else {
+      btnEnqueue?.click();
+    }
+  };
+  const queueWithEveryCheckpoint = (img2img = false) => {
+    window.randomId = () => '$$_queue_with_all_checkpoints_$$';
+    if (img2img) {
+      btnImg2ImgEnqueue?.click();
+    } else {
+      btnEnqueue?.click();
+    }
+  };
+
+  appendContextMenuOption('#txt2img_enqueue', 'Queue with task name', () => queueWithTaskName());
+  appendContextMenuOption('#txt2img_enqueue', 'Queue with all checkpoints', () =>
+    queueWithEveryCheckpoint(),
+  );
+  appendContextMenuOption('#img2img_enqueue', 'Queue with task name', () =>
+    queueWithTaskName(true),
+  );
+  appendContextMenuOption('#img2img_enqueue', 'Queue with all checkpoints', () =>
+    queueWithEveryCheckpoint(true),
+  );
 }
 
 function initTabChangeHandler() {
@@ -488,7 +520,7 @@ function initPendingTab() {
   resumeButton.addEventListener('click', () => store.resumeQueue().then(notify));
   clearButton.addEventListener('click', () => {
     if (!confirm('Are you sure you want to clear the queue?')) return;
-    store.clearQueue().then(notify)
+    store.clearQueue().then(notify);
   });
 
   // watch for queue status change
