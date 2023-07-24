@@ -288,6 +288,11 @@ def on_ui_tab(**_kwargs):
                                 elem_id="agent_scheduler_action_reload",
                                 variant="secondary",
                             )
+                            gr.Button(
+                                "Clear",
+                                elem_id="agent_scheduler_action_empty_queue",
+                                variant="secondary",
+                            )
                             gr.HTML('<div id="agent_scheduler_action_search"></div>')
                         gr.HTML(
                             '<div id="agent_scheduler_pending_tasks_grid" class="ag-theme-alpine"></div>'
@@ -306,6 +311,11 @@ def on_ui_tab(**_kwargs):
                                 "Refresh",
                                 elem_id="agent_scheduler_action_refresh_history",
                                 elem_classes="agent_scheduler_action_refresh",
+                                variant="secondary",
+                            )
+                            gr.Button(
+                                "Clear",
+                                elem_id="agent_scheduler_action_clear_history",
                                 variant="secondary",
                             )
                             status = gr.Dropdown(

@@ -6,7 +6,7 @@ import threading
 from uuid import uuid4
 from zipfile import ZipFile
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict
 from gradio.routes import App
 from PIL import Image
 from fastapi.responses import StreamingResponse
@@ -21,6 +21,7 @@ from .models import (
     QueueStatusResponse,
     HistoryResponse,
     TaskModel,
+    UpdateTaskArgs,
 )
 from .task_runner import TaskRunner
 from .helpers import log, request_with_retry
@@ -181,7 +182,48 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
             tasks=parsed_tasks,
         )
 
-    @app.post("/agent-scheduler/v1/run/{id}")
+    @app.get("/agent-scheduler/v1/task/{id}")
+    def get_task(id: str):
+        task = task_manager.get_task(id)
+        if task is None:
+            return {"success": False, "message": "Task not found"}
+
+        params = format_task_args(task)
+        task_data = task.dict()
+        task_data["params"] = params
+        if task.id == progress.current_task:
+            task_data["status"] = "running"
+
+        return {"success": True, "data": TaskModel(**task_data)}
+
+    @app.put("/agent-scheduler/v1/task/{id}")
+    def update_task(id: str, body: UpdateTaskArgs):
+        task = task_manager.get_task(id)
+        if task is None:
+            return {"success": False, "message": "Task not found"}
+
+        should_save = False
+        if body.name is not None:
+            task.name = body.name
+            should_save = True
+
+        if body.checkpoint or body.params:
+            params: Dict = json.loads(task.params)
+            if body.checkpoint is not None:
+                params["checkpoint"] = body.checkpoint
+            if body.checkpoint is not None:
+                params["args"].update(body.params)
+
+            task.params = json.dumps(params)
+            should_save = True
+
+        if should_save:
+            task_manager.update_task(task)
+
+        return {"success": True, "message": "Task updated."}
+
+    @app.post("/agent-scheduler/v1/run/{id}", deprecated=True)
+    @app.post("/agent-scheduler/v1/task/{id}/run")
     def run_task(id: str):
         if progress.current_task is not None:
             if progress.current_task == id:
@@ -208,7 +250,8 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
 
             return {"success": True, "message": "Task is executing"}
 
-    @app.post("/agent-scheduler/v1/requeue/{id}")
+    @app.post("/agent-scheduler/v1/requeue/{id}", deprecated=True)
+    @app.post("/agent-scheduler/v1/task/{id}/requeue")
     def requeue_task(id: str):
         task = task_manager.get_task(id)
         if task is None:
@@ -224,7 +267,8 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
 
         return {"success": True, "message": "Task requeued"}
 
-    @app.post("/agent-scheduler/v1/delete/{id}")
+    @app.post("/agent-scheduler/v1/delete/{id}", deprecated=True)
+    @app.delete("/agent-scheduler/v1/task/{id}")
     def delete_task(id: str):
         if progress.current_task == id:
             shared.state.interrupt()
@@ -234,7 +278,8 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
         task_manager.delete_task(id)
         return {"success": True, "message": "Task deleted"}
 
-    @app.post("/agent-scheduler/v1/move/{id}/{over_id}")
+    @app.post("/agent-scheduler/v1/move/{id}/{over_id}", deprecated=True)
+    @app.post("/agent-scheduler/v1/task/{id}/move/{over_id}")
     def move_task(id: str, over_id: str):
         task = task_manager.get_task(id)
         if task is None:
@@ -254,7 +299,8 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
             task_manager.prioritize_task(id, over_task.priority)
             return {"success": True, "message": "Task moved"}
 
-    @app.post("/agent-scheduler/v1/bookmark/{id}")
+    @app.post("/agent-scheduler/v1/bookmark/{id}", deprecated=True)
+    @app.post("/agent-scheduler/v1/task/{id}/bookmark")
     def pin_task(id: str):
         task = task_manager.get_task(id)
         if task is None:
@@ -264,7 +310,8 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
         task_manager.update_task(task)
         return {"success": True, "message": "Task bookmarked"}
 
-    @app.post("/agent-scheduler/v1/unbookmark/{id}")
+    @app.post("/agent-scheduler/v1/unbookmark/{id}", deprecated=True)
+    @app.post("/agent-scheduler/v1/task/{id}/unbookmark")
     def unpin_task(id: str):
         task = task_manager.get_task(id)
         if task is None:
@@ -274,7 +321,8 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
         task_manager.update_task(task)
         return {"success": True, "message": "Task unbookmarked"}
 
-    @app.post("/agent-scheduler/v1/rename/{id}")
+    @app.post("/agent-scheduler/v1/rename/{id}", deprecated=True)
+    @app.post("/agent-scheduler/v1/task/{id}/rename")
     def rename_task(id: str, name: str):
         task = task_manager.get_task(id)
         if task is None:
@@ -284,21 +332,8 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
         task_manager.update_task(task)
         return {"success": True, "message": "Task renamed."}
 
-    @app.get("/agent-scheduler/v1/task/{id}")
-    def get_task(id: str):
-        task = task_manager.get_task(id)
-        if task is None:
-            return {"success": False, "message": "Task not found"}
-
-        params = format_task_args(task)
-        task_data = task.dict()
-        task_data["params"] = params
-        if task.id == progress.current_task:
-            task_data["status"] = "running"
-
-        return {"success": True, "data": TaskModel(**task_data)}
-
-    @app.get("/agent-scheduler/v1/results/{id}")
+    @app.get("/agent-scheduler/v1/results/{id}", deprecated=True)
+    @app.get("/agent-scheduler/v1/task/{id}/results")
     def get_task_results(id: str, zip: Optional[bool] = False):
         task = task_manager.get_task(id)
         if task is None:

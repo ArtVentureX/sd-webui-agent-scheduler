@@ -95,7 +95,6 @@ class Img2ImgApiTaskArgs(StableDiffusionImg2ImgProcessingAPI):
         description="The callback URL to send the result to.",
     )
 
-
     class Config(StableDiffusionImg2ImgProcessingAPI.__config__):
         @staticmethod
         def schema_extra(schema: Dict[str, Any], model) -> None:
@@ -130,3 +129,11 @@ class HistoryResponse(BaseModel):
 
     class Config:
         json_encoders = {datetime: lambda dt: int(dt.timestamp() * 1e3)}
+
+
+class UpdateTaskArgs(BaseModel):
+    name: Optional[str] = Field(title="Task Name")
+    checkpoint: Optional[str]
+    params: Optional[Dict[str, Any]] = Field(
+        title="Task Parameters", description="The parameters of the task in JSON format"
+    )

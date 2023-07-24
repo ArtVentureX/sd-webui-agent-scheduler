@@ -15,6 +15,7 @@ type PendingTasksActions = {
   resumeQueue: () => Promise<ResponseStatus>;
   runTask: (id: string) => Promise<ResponseStatus>;
   moveTask: (id: string, overId: string) => Promise<ResponseStatus>;
+  updateTask: (id: string, task: Task) => Promise<ResponseStatus>;
   deleteTask: (id: string) => Promise<ResponseStatus>;
 };
 
@@ -53,7 +54,7 @@ export const createPendingTasksStore = (initialState: PendingTasksState) => {
         });
     },
     runTask: async (id: string) => {
-      return fetch(`/agent-scheduler/v1/run/${id}`, { method: 'POST' })
+      return fetch(`/agent-scheduler/v1/task/${id}/run`, { method: 'POST' })
         .then((response) => response.json())
         .then((data) => {
           setTimeout(() => {
@@ -63,15 +64,33 @@ export const createPendingTasksStore = (initialState: PendingTasksState) => {
         });
     },
     moveTask: async (id: string, overId: string) => {
-      return fetch(`/agent-scheduler/v1/move/${id}/${overId}`, { method: 'POST' })
+      return fetch(`/agent-scheduler/v1/task/${id}/move/${overId}`, { method: 'POST' })
         .then((response) => response.json())
         .then((data) => {
           actions.refresh();
           return data;
         });
     },
+    updateTask: async (id: string, task: Task) => {
+      const newValue = {
+        name: task.name,
+        checkpoint: task.params.checkpoint,
+        params: {
+          prompt: task.params.prompt,
+          negative_prompt: task.params.negative_prompt,
+          sampler_name: task.params.sampler_name,
+          steps: task.params.steps,
+          cfg_scale: task.params.cfg_scale,
+        },
+      };
+      return fetch(`/agent-scheduler/v1/task/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(newValue),
+        headers: { 'Content-Type': 'application/json' },
+      }).then((response) => response.json());
+    },
     deleteTask: async (id: string) => {
-      return fetch(`/agent-scheduler/v1/delete/${id}`, { method: 'POST' }).then((response) =>
+      return fetch(`/agent-scheduler/v1/task/${id}`, { method: 'DELETE' }).then((response) =>
         response.json(),
       );
     },

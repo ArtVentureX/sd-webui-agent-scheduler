@@ -55,6 +55,24 @@
   margin-top: var(--layout-gap);
 }
 
+#agent_scheduler_pending_tasks_grid {
+  .ag-cell.pending-actions {
+    &.editing {
+      .ts-btn-run,
+      .ts-btn-delete {
+        display: none;
+      }
+    }
+
+    &:not(.editing) {
+      .ts-btn-save,
+      .ts-btn-cancel {
+        display: none;
+      }
+    }
+  }
+}
+
 #agent_scheduler_pending_tasks_wrapper,
 #agent_scheduler_history_wrapper {
   border: none;

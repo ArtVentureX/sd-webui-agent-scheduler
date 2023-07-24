@@ -579,10 +579,10 @@ acorn@^8.8.0:
   resolved "https://registry.yarnpkg.com/acorn/-/acorn-8.8.2.tgz#1b2f25db02af965399b9776b0c2c391276d37c4a"
   integrity sha512-xjIYgE8HBrkpd/sJqOGNspf8uHG+NOHGOw6a/Urj8taM2EXfdNAH2oFcPeIFfsv3+kz/mJrS5VuMqbNLjCa2vw==
 
-ag-grid-community@^29.3.5:
-  version "29.3.5"
-  resolved "https://registry.yarnpkg.com/ag-grid-community/-/ag-grid-community-29.3.5.tgz#16897896d10fa3ecac79279aad50d3aaa17c5f33"
-  integrity sha512-LxUo21f2/CH31ACEs1C7Q/ggGGI1fQPSTB4aY5OThmM+lBkygZ7QszBE8jpfgWOIjvjdtcdIeQbmbjkHeMsA7A==
+ag-grid-community@^30.0.5:
+  version "30.0.5"
+  resolved "https://registry.yarnpkg.com/ag-grid-community/-/ag-grid-community-30.0.5.tgz#284623c0af46f87bf0db84975caf7ae7461de59b"
+  integrity sha512-3AXrNx5hnH0/c4QNgNv5ub1Kna3wVPecCFq2ddMYQ6b7Ob8JhU4bMwcBf+GOiDepVc6I+Df6Bop6rGrc4O8OZw==
 
 ajv@^6.10.0, ajv@^6.12.4:
   version "6.12.6"

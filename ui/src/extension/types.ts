@@ -10,6 +10,9 @@ export type Task = {
   priority: number;
   result: string;
   bookmarked?: boolean;
+  editing?: boolean;
+  created_at: string;
+  updated_at: string;
 };
 
 export type ResponseStatus = {

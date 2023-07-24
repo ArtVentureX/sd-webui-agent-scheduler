@@ -285,7 +285,7 @@ def map_controlnet_args_to_api_task_args(args: Dict):
 
 
 def map_ui_task_args_list_to_named_args(
-    args: List, is_img2img: bool, checkpoint: str = None
+    args: List, is_img2img: bool
 ):
     args_name = []
     if is_img2img:
@@ -310,9 +310,6 @@ def map_ui_task_args_list_to_named_args(
             override_settings_texts.append(
                 f"Clip skip: {shared.opts.CLIP_stop_at_last_layers}"
             )
-
-    if checkpoint is not None:
-        override_settings_texts.append("Model hash: " + checkpoint)
 
     named_args["override_settings_texts"] = override_settings_texts
 

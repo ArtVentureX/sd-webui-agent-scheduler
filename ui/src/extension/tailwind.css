@@ -17,11 +17,15 @@
     @apply inline-flex items-center !px-2 !py-1 !m-0 text-sm font-medium border focus:z-10 focus:ring-2 disabled:opacity-50 disabled:hover:!bg-transparent disabled:cursor-not-allowed;
   }
 
-  .ts-btn-run {
+  .ts-btn-success {
     @apply !text-green-500 hover:!text-white border-green-500 hover:bg-green-600 rounded-l-md focus:ring-green-400 dark:border-green-500 dark:hover:bg-green-600 dark:focus:ring-green-900 disabled:hover:!text-green-500;
   }
 
-  .ts-btn-delete {
+  .ts-btn-warning {
+    @apply !text-yellow-500 hover:!text-white border-yellow-600 hover:bg-yellow-600 rounded-r-md focus:ring-yellow-300 dark:border-yellow-500 dark:hover:bg-yellow-600 dark:focus:ring-yellow-900;
+  }
+
+  .ts-btn-danger {
     @apply !text-red-500 hover:!text-white border-red-600 hover:bg-red-600 rounded-r-md focus:ring-red-300 dark:border-red-500 dark:hover:bg-red-600 dark:focus:ring-red-900;
   }
 

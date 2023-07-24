@@ -39,18 +39,18 @@ export const createHistoryTasksStore = (initialState: HistoryTasksState) => {
       actions.refresh();
     },
     bookmarkTask: async (id: string, bookmarked: boolean) => {
-      return fetch(`/agent-scheduler/v1/${bookmarked ? 'bookmark' : 'unbookmark'}/${id}`, {
+      return fetch(`/agent-scheduler/v1/task/${id}/${bookmarked ? 'bookmark' : 'unbookmark'}`, {
         method: 'POST',
       }).then((response) => response.json());
     },
     renameTask: async (id: string, name: string) => {
-      return fetch(`/agent-scheduler/v1/rename/${id}?name=${encodeURIComponent(name)}`, {
+      return fetch(`/agent-scheduler/v1/task/${id}/rename?name=${encodeURIComponent(name)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       }).then((response) => response.json());
     },
     requeueTask: async (id: string) => {
-      return fetch(`/agent-scheduler/v1/requeue/${id}`, { method: 'POST' }).then((response) =>
+      return fetch(`/agent-scheduler/v1/task/${id}/requeue`, { method: 'POST' }).then((response) =>
         response.json(),
       );
     },

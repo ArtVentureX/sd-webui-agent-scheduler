@@ -115,7 +115,7 @@ class TaskRunner:
         request: gr.Request = None,
     ):
         named_args, script_args = map_ui_task_args_list_to_named_args(
-            list(args), is_img2img, checkpoint=checkpoint
+            list(args), is_img2img
         )
 
         # loop through named_args and serialize images
@@ -163,13 +163,26 @@ class TaskRunner:
         return (params, script_params)
 
     def __deserialize_ui_task_args(
-        self, is_img2img: bool, named_args: Dict, script_args: List
+        self,
+        is_img2img: bool,
+        named_args: Dict,
+        script_args: List,
+        checkpoint: str = None,
     ):
         """
         Deserialize UI task arguments
         In-place update named_args and script_args
         """
 
+        # Apply checkpoint override
+        if checkpoint is not None:
+            override: List[str] = named_args.get("override_settings_texts", [])
+            override = [x for x in override if not x.startswith("Model hash: ")]
+            if checkpoint != "System":
+                override.append("Model hash: " + checkpoint)
+            named_args["override_settings_texts"] = override
+
+        # A1111 1.5.0-RC has new request field
         if "request" in named_args:
             named_args["request"] = FakeRequest(**named_args["request"])
 
@@ -183,8 +196,21 @@ class TaskRunner:
         return (named_args, script_args)
 
     def __deserialize_api_task_args(
-        self, is_img2img: bool, named_args: Dict, script_args: List
+        self,
+        is_img2img: bool,
+        named_args: Dict,
+        script_args: List,
+        checkpoint: str = None,
     ):
+        # Apply checkpoint override
+        if checkpoint is not None:
+            override: Dict = named_args.get("override_settings", {})
+            if checkpoint != "System":
+                override["sd_model_checkpoint"] = checkpoint
+            else:
+                override.pop("sd_model_checkpoint", None)
+            named_args["override_settings"] = override
+
         # load images from disk
         if is_img2img:
             init_images = named_args.get("init_images")
@@ -193,6 +219,7 @@ class TaskRunner:
                     image = Image.open(img)
                     init_images[i] = encode_image_to_base64(image)
 
+        # force image saving
         named_args.update({"save_images": True, "send_images": False})
 
         script_args = deserialize_script_args(script_args)
@@ -209,11 +236,11 @@ class TaskRunner:
 
         if is_ui and deserialization:
             named_args, script_args = self.__deserialize_ui_task_args(
-                is_img2img, named_args, script_args
+                is_img2img, named_args, script_args, checkpoint=checkpoint
             )
         elif deserialization:
             named_args, script_args = self.__deserialize_api_task_args(
-                is_img2img, named_args, script_args
+                is_img2img, named_args, script_args, checkpoint=checkpoint
             )
         else:
             # ignore script_args if not deserialization

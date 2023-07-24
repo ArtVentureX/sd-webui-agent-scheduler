@@ -9,6 +9,7 @@ import cancelIcon from '../assets/icons/cancel.svg?raw';
 import deleteIcon from '../assets/icons/delete.svg?raw';
 import playIcon from '../assets/icons/play.svg?raw';
 import rotateIcon from '../assets/icons/rotate.svg?raw';
+import saveIcon from '../assets/icons/save.svg?raw';
 import searchIcon from '../assets/icons/search.svg?raw';
 import { debounce } from '../utils/debounce';
 import { extractArgs } from '../utils/extract-args';
@@ -65,6 +66,16 @@ const historyStore = createHistoryTasksStore({
   tasks: [],
 });
 
+// load samplers and checkpoints
+const samplers: string[] = [];
+const checkpoints: string[] = ['System'];
+sharedStore.getSamplers().then((res) => {
+  samplers.push(...res);
+});
+sharedStore.getCheckpoints().then((res) => {
+  checkpoints.push(...res);
+});
+
 const sharedGridOptions: GridOptions<Task> = {
   // default col def properties get applied to all columns
   defaultColDef: {
@@ -78,11 +89,11 @@ const sharedGridOptions: GridOptions<Task> = {
     {
       field: 'name',
       headerName: 'Task Id',
+      cellDataType: 'text',
       minWidth: 240,
       maxWidth: 240,
       pinned: 'left',
       rowDrag: true,
-      editable: true,
       valueGetter: ({ data }) => data?.name ?? data?.id,
       cellClass: ({ data }) => [
         'cursor-pointer',
@@ -98,6 +109,12 @@ const sharedGridOptions: GridOptions<Task> = {
       headerName: 'Type',
       minWidth: 80,
       maxWidth: 80,
+      editable: false,
+    },
+    {
+      field: 'editing',
+      editable: false,
+      hide: true,
     },
     {
       headerName: 'Params',
@@ -105,6 +122,7 @@ const sharedGridOptions: GridOptions<Task> = {
         {
           field: 'params.prompt',
           headerName: 'Prompt',
+          cellDataType: 'text',
           minWidth: 200,
           maxWidth: 400,
           autoHeight: true,
@@ -114,6 +132,7 @@ const sharedGridOptions: GridOptions<Task> = {
         {
           field: 'params.negative_prompt',
           headerName: 'Negative Prompt',
+          cellDataType: 'text',
           minWidth: 200,
           maxWidth: 400,
           autoHeight: true,
@@ -123,35 +142,62 @@ const sharedGridOptions: GridOptions<Task> = {
         {
           field: 'params.checkpoint',
           headerName: 'Checkpoint',
+          cellDataType: 'text',
           minWidth: 150,
           maxWidth: 300,
           valueFormatter: ({ value }) => value || 'System',
+          cellEditor: 'agSelectCellEditor',
+          cellEditorParams: () => ({
+            values: checkpoints,
+          }),
         },
         {
           field: 'params.sampler_name',
           headerName: 'Sampler',
+          cellDataType: 'text',
           width: 150,
           minWidth: 150,
+          cellEditor: 'agSelectCellEditor',
+          cellEditorParams: () => ({
+            values: samplers,
+          }),
         },
         {
           field: 'params.steps',
           headerName: 'Steps',
+          cellDataType: 'number',
           minWidth: 80,
           maxWidth: 80,
           filter: 'agNumberColumnFilter',
+          cellEditor: 'agNumberCellEditor',
+          cellEditorParams: {
+            min: 1,
+            max: 150,
+            precision: 0,
+            step: 1,
+          },
         },
         {
           field: 'params.cfg_scale',
           headerName: 'CFG Scale',
+          cellDataType: 'number',
           width: 100,
           minWidth: 100,
           filter: 'agNumberColumnFilter',
+          cellEditor: 'agNumberCellEditor',
+          cellEditorParams: {
+            min: 1,
+            max: 30,
+            precision: 1,
+            step: 0.5,
+          },
         },
         {
           field: 'params.size',
           headerName: 'Size',
           minWidth: 110,
           maxWidth: 110,
+          editable: false,
           valueGetter: ({ data }) =>
             data?.params?.width ? `${data.params.width}x${data.params.height}` : '',
         },
@@ -160,6 +206,7 @@ const sharedGridOptions: GridOptions<Task> = {
           headerName: 'Batching',
           minWidth: 100,
           maxWidth: 100,
+          editable: false,
           valueGetter: ({ data }) =>
             data?.params?.n_iter ? `${data.params.n_iter}x${data.params.batch_size}` : '1x1',
         },
@@ -169,12 +216,14 @@ const sharedGridOptions: GridOptions<Task> = {
       field: 'created_at',
       headerName: 'Queued At',
       minWidth: 170,
+      editable: false,
       valueFormatter: ({ value }) => value && formatDate(new Date(value)),
     },
     {
       field: 'updated_at',
       headerName: 'Updated At',
       minWidth: 170,
+      editable: false,
       valueFormatter: ({ value }) => value && formatDate(new Date(value)),
     },
   ],
@@ -187,22 +236,6 @@ const sharedGridOptions: GridOptions<Task> = {
   suppressCopyRowsToClipboard: true,
   suppressRowTransform: true,
   enableBrowserTooltips: true,
-  readOnlyEdit: true,
-  onCellEditRequest: ({ data, newValue, api, colDef }) => {
-    if (colDef.field !== 'name') return;
-    if (!newValue) return;
-
-    api.showLoadingOverlay();
-    historyStore.renameTask(data.id, newValue).then((res) => {
-      notify(res);
-      const newData = { ...data, name: newValue };
-      const tx = {
-        update: [newData],
-      };
-      api.applyTransaction(tx);
-      api.hideOverlay();
-    });
-  },
 };
 
 function initSearchInput(selector: string) {
@@ -224,7 +257,7 @@ function initSearchInput(selector: string) {
 
 async function notify(response: ResponseStatus) {
   if (!notyf) {
-    const Notyf = await import("notyf");
+    const Notyf = await import('notyf');
     notyf = new Notyf.Notyf({
       position: {
         x: 'center',
@@ -232,7 +265,7 @@ async function notify(response: ResponseStatus) {
       },
       duration: 3000,
     });
-    }
+  }
 
   if (response.success) {
     notyf.success(response.message);
@@ -465,8 +498,15 @@ function initPendingTab() {
   });
 
   // init grid
+
   const gridOptions: GridOptions<Task> = {
     ...sharedGridOptions,
+    editType: 'fullRow',
+    defaultColDef: {
+      ...sharedGridOptions.defaultColDef,
+      editable: ({ data }) => data?.status === 'pending',
+      cellDataType: false,
+    },
     // each entry here represents one column
     columnDefs: [
       {
@@ -481,18 +521,28 @@ function initPendingTab() {
         minWidth: 110,
         maxWidth: 110,
         resizable: false,
+        editable: false,
         valueGetter: ({ data }) => data?.id,
+        cellClass: ({ data }) => (data?.editing ? 'pending-actions editing' : 'pending-actions'),
         cellRenderer: ({ api, value, data }: any) => {
           if (!data) return undefined;
-
           const html = `
             <div class="inline-flex rounded-md shadow-sm mt-1.5" role="group">
-              <button type="button" title="Run" ${
-                data.status === 'running' ? 'disabled' : ''
-              } class="ts-btn-action ts-btn-run">
+              <!-- editing -->
+              <button type="button" title="Save" class="ts-btn-action ts-btn-success ts-btn-save">
+                ${saveIcon}
+              </button>
+              <button type="button" title="Cancel"
+                class="ts-btn-action ts-btn-warning ts-btn-cancel">
+                ${cancelIcon}
+              </button>
+              
+              <button type="button" title="Save" class="ts-btn-action ts-btn-success ts-btn-run"
+                ${data.status === 'running' ? 'disabled' : ''}>
                 ${playIcon}
               </button>
-              <button type="button" title="Delete" class="ts-btn-action ts-btn-delete">
+              <button type="button" title="${data.status === 'pending' ? 'Delete' : 'Interrupt'}"
+                class="ts-btn-action ts-btn-danger ts-btn-delete">
                 ${data.status === 'pending' ? deleteIcon : cancelIcon}
               </button>
             </div>
@@ -501,6 +551,20 @@ function initPendingTab() {
           const placeholder = document.createElement('div');
           placeholder.innerHTML = html;
           const node = placeholder.firstElementChild!;
+
+          const btnSave = node.querySelector('button.ts-btn-save')!;
+          btnSave.addEventListener('click', () => {
+            api.showLoadingOverlay();
+            pendingStore.updateTask(data.id, data).then((res) => {
+              notify(res);
+              api.hideOverlay();
+              api.stopEditing(false);
+            });
+          });
+          const btnCancel = node.querySelector('button.ts-btn-cancel')!;
+          btnCancel.addEventListener('click', () => {
+            api.stopEditing(true);
+          });
 
           const btnRun = node.querySelector('button.ts-btn-run')!;
           btnRun.addEventListener('click', () => {
@@ -578,6 +642,30 @@ function initPendingTab() {
         store.moveTask(id, overId).then(() => api.hideOverlay());
       }
     },
+    onRowEditingStarted: ({ api, data, node }) => {
+      if (!data) return;
+      node.setDataValue('editing', true);
+      api.refreshCells({
+        rowNodes: [node],
+        force: true,
+      });
+    },
+    onRowEditingStopped: ({ api, data, node }) => {
+      if (!data) return;
+      node.setDataValue('editing', false);
+      api.refreshCells({
+        rowNodes: [node],
+        force: true,
+      });
+    },
+    onRowValueChanged: ({ data, api }) => {
+      if (!data) return;
+      api.showLoadingOverlay();
+      pendingStore.updateTask(data.id, data).then((res) => {
+        notify(res);
+        api.hideOverlay();
+      });
+    },
   };
 
   const eGridDiv = gradioApp().querySelector<HTMLDivElement>(
@@ -625,9 +713,11 @@ function initHistoryTab() {
   // init grid
   const gridOptions: GridOptions<Task> = {
     ...sharedGridOptions,
+    readOnlyEdit: true,
     defaultColDef: {
       ...sharedGridOptions.defaultColDef,
       sortable: true,
+      editable: ({ colDef }) => colDef?.field === 'name',
     },
     // each entry here represents one column
     columnDefs: [
@@ -765,6 +855,21 @@ function initHistoryTab() {
         resultTaskId.value = selected.id;
         resultTaskId.dispatchEvent(new Event('input', { bubbles: true }));
       }
+    },
+    onCellEditRequest: ({ data, newValue, api, colDef }) => {
+      if (colDef.field !== 'name') return;
+      if (!newValue) return;
+
+      api.showLoadingOverlay();
+      historyStore.renameTask(data.id, newValue).then((res) => {
+        notify(res);
+        const newData = { ...data, name: newValue };
+        const tx = {
+          update: [newData],
+        };
+        api.applyTransaction(tx);
+        api.hideOverlay();
+      });
     },
   };
   const eGridDiv = gradioApp().querySelector<HTMLDivElement>(
