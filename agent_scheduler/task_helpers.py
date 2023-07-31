@@ -527,8 +527,8 @@ def serialize_api_task_args(
     valid_alwayson_scripts = {}
     script_runner = scripts.scripts_img2img if is_img2img else scripts.scripts_txt2img
     for script in script_runner.alwayson_scripts:
-        script_name = script.title().lower()
-        if script_name == "agent scheduler":
+        script_name = script.title()
+        if script_name.lower() == "agent scheduler":
             continue
 
         script_args = get_dict_attribute(alwayson_scripts, f"{script_name}.args", None)
