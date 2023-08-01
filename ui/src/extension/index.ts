@@ -707,9 +707,6 @@ function initPendingTab() {
   const eGridDiv = gradioApp().querySelector<HTMLDivElement>(
     '#agent_scheduler_pending_tasks_grid',
   )!;
-  if (document.querySelector('.dark')) {
-    eGridDiv.className = 'ag-theme-alpine-dark';
-  }
   eGridDiv.style.height = 'calc(100vh - 300px)';
   new Grid(eGridDiv, gridOptions);
 }
@@ -917,9 +914,6 @@ function initHistoryTab() {
   const eGridDiv = gradioApp().querySelector<HTMLDivElement>(
     '#agent_scheduler_history_tasks_grid',
   )!;
-  if (document.querySelector('.dark')) {
-    eGridDiv.className = 'ag-theme-alpine-dark';
-  }
   eGridDiv.style.height = 'calc(100vh - 300px)';
   new Grid(eGridDiv, gridOptions);
 }

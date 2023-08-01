@@ -1,7 +1,11 @@
+@use 'ag-grid-community/styles/ag-theme-alpine.css';
 @import './tailwind.css';
 
 /* ========================================================================= */
 
+.dark .ag-theme-alpine {
+  @extend .ag-theme-alpine-dark;
+}
 .ag-theme-alpine,
 .ag-theme-alpine-dark {
   --ag-row-height: 45px;
