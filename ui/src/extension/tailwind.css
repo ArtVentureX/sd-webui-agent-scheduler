@@ -41,6 +41,9 @@
 
   .ag-cell.task-running {
     @apply !text-blue-500;
+  }
+
+  .ag-cell.task-running > .ag-cell-wrapper {
     animation: 1s blink ease infinite;
   }
 
