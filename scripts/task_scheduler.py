@@ -114,13 +114,15 @@ class Script(scripts.Script):
         id_part = "img2img" if self.is_img2img else "txt2img"
         with gr.Row(elem_id=f"{id_part}_enqueue_wrapper") as row:
             self.enqueue_row = row
-            if not getattr(shared.opts, "queue_button_hide_checkpoint", True):
-                self.checkpoint_dropdown = gr.Dropdown(
-                    choices=get_checkpoint_choices(),
-                    value=checkpoint_current,
-                    show_label=False,
-                    interactive=True,
-                )
+            hide_checkpoint = getattr(shared.opts, "queue_button_hide_checkpoint", True)
+            self.checkpoint_dropdown = gr.Dropdown(
+                choices=get_checkpoint_choices(),
+                value=checkpoint_current,
+                show_label=False,
+                interactive=True,
+                visible=not hide_checkpoint,
+            )
+            if not hide_checkpoint:
                 create_refresh_button(
                     self.checkpoint_dropdown,
                     refresh_checkpoints,
@@ -169,10 +171,12 @@ class Script(scripts.Script):
                 if compare_components_with_ids(fn.inputs, dependency["inputs"])
             )
             fn = self.wrap_register_ui_task()
+            inputs = fn_block.inputs.copy()
+            inputs.insert(0, self.checkpoint_dropdown)
             args = dict(
                 fn=fn,
                 _js="submit_enqueue_img2img" if is_img2img else "submit_enqueue",
-                inputs=fn_block.inputs,
+                inputs=inputs,
                 outputs=None,
                 show_progress=False,
             )
@@ -193,15 +197,13 @@ class Script(scripts.Script):
                 )
 
     def wrap_register_ui_task(self):
-        def f(request: gr.Request, *args, **kwargs):
-            if len(args) == 0 and len(kwargs) == 0:
+        def f(request: gr.Request, *args):
+            if len(args) == 0:
                 raise Exception("Invalid call")
 
-            if len(args) > 0 and type(args[0]) == str:
-                task_id = args[0]
-            else:
-                # not a task, exit
-                return (None, "", "<p>Invalid params</p>", "")
+            checkpoint = args[0]
+            task_id = args[1]
+            args = args[1:]
 
             if task_id == queue_with_every_checkpoints:
                 for checkpoint in list_checkpoint_tiles():
@@ -214,17 +216,17 @@ class Script(scripts.Script):
                         request=request,
                     )
             else:
+                task_name = None
                 if not task_id.startswith("task("):
                     task_name = task_id
                     task_id = str(uuid4())
-                else:
-                    task_name = None
 
-                checkpoint = None
-                if self.checkpoint_override == checkpoint_current:
+                print("param checkpoint", checkpoint)
+                if checkpoint is None or checkpoint == "" or checkpoint == checkpoint_current:
                     checkpoint = shared.sd_model.sd_checkpoint_info.title
-                elif self.checkpoint_override != checkpoint_runtime:
-                    checkpoint = self.checkpoint_override
+                elif checkpoint == checkpoint_runtime:
+                    checkpoint = None
+                print("final checkpoint", checkpoint)
 
                 task_runner.register_ui_task(
                     task_id,

@@ -324,10 +324,36 @@ function showTaskProgress(task_id: string, type: string | undefined, callback: (
 }
 
 function initQueueHandler() {
+  const getUiCheckpoint = (is_img2img?: boolean) => {
+    const enqueue_wrapper_id = is_img2img ? 'img2img_enqueue_wrapper' : 'txt2img_enqueue_wrapper';
+    const enqueue_wrapper_model = gradioApp().querySelector<HTMLInputElement>(
+      `#${enqueue_wrapper_id} input`,
+    );
+    if (enqueue_wrapper_model) {
+      const checkpoint = enqueue_wrapper_model.value;
+      if (checkpoint == 'Runtime Checkpoint') {
+        return checkpoint;
+      }
+      if (checkpoint != 'Current Checkpoint') {
+        return checkpoint;
+      }
+    }
+
+    const setting_sd_model = gradioApp().querySelector<HTMLInputElement>(
+      '#setting_sd_model_checkpoint input',
+    );
+    if (setting_sd_model) {
+      return setting_sd_model.value;
+    }
+
+    return 'Current Checkpoint';
+  };
+
   const btnEnqueue = document.querySelector<HTMLButtonElement>('#txt2img_enqueue');
   window.submit_enqueue = function submit_enqueue(...args) {
     const res = create_submit_args(args);
-    res[0] = randomId();
+    res[0] = getUiCheckpoint();
+    res[1] = randomId();
     window.randomId = window.origRandomId;
 
     if (btnEnqueue) {
@@ -348,8 +374,9 @@ function initQueueHandler() {
   const btnImg2ImgEnqueue = document.querySelector<HTMLButtonElement>('#img2img_enqueue');
   window.submit_enqueue_img2img = function submit_enqueue_img2img(...args) {
     const res = create_submit_args(args);
-    res[0] = randomId();
-    res[1] = get_tab_index('mode_img2img');
+    res[0] = getUiCheckpoint(true);
+    res[1] = randomId();
+    res[2] = get_tab_index('mode_img2img');
     window.randomId = window.origRandomId;
 
     if (btnImg2ImgEnqueue) {
@@ -434,7 +461,7 @@ function initQueueHandler() {
   // context menu
   const queueWithTaskName = (img2img = false) => {
     const name = prompt('Enter task name');
-    window.randomId = () =>  name || window.origRandomId();
+    window.randomId = () => name || window.origRandomId();
     if (img2img) {
       btnImg2ImgEnqueue?.click();
     } else {
