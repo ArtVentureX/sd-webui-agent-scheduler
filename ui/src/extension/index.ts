@@ -836,10 +836,10 @@ function initHistoryTab() {
 
           const html = `
             <div class="inline-flex rounded-md shadow-sm mt-1.5" role="group">
-              <button type="button" title="Requeue" class="ts-btn-action ts-btn-run">
+              <button type="button" title="Requeue" class="ts-btn-action ts-btn-success ts-btn-run">
                 ${rotateIcon}
               </button>
-              <button type="button" title="Delete" class="ts-btn-action ts-btn-delete">
+              <button type="button" title="Delete" class="ts-btn-action ts-btn-danger ts-btn-delete">
                 ${deleteIcon}
               </button>
             </div>
