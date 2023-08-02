@@ -221,12 +221,10 @@ class Script(scripts.Script):
                     task_name = task_id
                     task_id = str(uuid4())
 
-                print("param checkpoint", checkpoint)
                 if checkpoint is None or checkpoint == "" or checkpoint == checkpoint_current:
                     checkpoint = shared.sd_model.sd_checkpoint_info.title
                 elif checkpoint == checkpoint_runtime:
                     checkpoint = None
-                print("final checkpoint", checkpoint)
 
                 task_runner.register_ui_task(
                     task_id,
