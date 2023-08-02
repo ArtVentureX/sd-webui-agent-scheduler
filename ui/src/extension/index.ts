@@ -320,6 +320,7 @@ function showTaskProgress(task_id: string, type: string | undefined, callback: (
   } else if (type === 'img2img') {
     window.submit_img2img();
   }
+  window.randomId = window.origRandomId;
 }
 
 function initQueueHandler() {
