@@ -200,7 +200,7 @@ const sharedGridOptions: GridOptions<Task> = {
           maxWidth: 110,
           editable: false,
           valueGetter: ({ data }) =>
-            data?.params?.width ? `${data.params.width}x${data.params.height}` : '',
+            data?.params?.width ? `${data.params.width} × ${data.params.height}` : '',
         },
         {
           field: 'params.batch',
@@ -209,7 +209,7 @@ const sharedGridOptions: GridOptions<Task> = {
           maxWidth: 100,
           editable: false,
           valueGetter: ({ data }) =>
-            data?.params?.n_iter ? `${data.params.n_iter}x${data.params.batch_size}` : '1x1',
+            data?.params?.n_iter ? `${data.params.batch_size} × ${data.params.n_iter}` : '1 × 1',
         },
       ],
     },
@@ -554,11 +554,11 @@ function initPendingTab() {
   // watch for queue status change
   store.subscribe((curr) => {
     if (curr.paused) {
-      pauseButton.classList.add('hide');
-      resumeButton.classList.remove('hide');
+      pauseButton.classList.add('hide', 'hidden');
+      resumeButton.classList.remove('hide', 'hidden');
     } else {
-      pauseButton.classList.remove('hide');
-      resumeButton.classList.add('hide');
+      pauseButton.classList.remove('hide', 'hidden');
+      resumeButton.classList.add('hide', 'hidden');
     }
   });
 

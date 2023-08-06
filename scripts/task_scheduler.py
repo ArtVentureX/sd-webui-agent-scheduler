@@ -293,7 +293,10 @@ def on_ui_tab(**_kwargs):
             ):
                 with gr.Row(elem_id="agent_scheduler_pending_tasks_wrapper"):
                     with gr.Column(scale=1):
-                        with gr.Group(elem_id="agent_scheduler_pending_tasks_actions"):
+                        with gr.Row(
+                            elem_id="agent_scheduler_pending_tasks_actions",
+                            elem_classes="flex-row"
+                        ):
                             paused = getattr(shared.opts, "queue_paused", False)
 
                             gr.Button(
@@ -318,7 +321,11 @@ def on_ui_tab(**_kwargs):
                                 elem_id="agent_scheduler_action_clear_queue",
                                 variant="stop",
                             )
-                            gr.HTML('<div id="agent_scheduler_action_search"></div>')
+
+                            with gr.Row(elem_classes=["flex-row", "ml-auto"]):
+                                gr.HTML(
+                                    '<div id="agent_scheduler_action_search"></div>'
+                                )
                         gr.HTML(
                             '<div id="agent_scheduler_pending_tasks_grid" class="ag-theme-alpine"></div>'
                         )
@@ -327,11 +334,16 @@ def on_ui_tab(**_kwargs):
                             elem_id="agent_scheduler_current_task_images",
                             label="Output",
                             show_label=False,
-                        ).style(columns=2, object_fit="contain")
+                            columns=2,
+                            object_fit="contain"
+                        )
             with gr.Tab("Task History", id=1, elem_id="agent_scheduler_history_tab"):
                 with gr.Row(elem_id="agent_scheduler_history_wrapper"):
                     with gr.Column(scale=1):
-                        with gr.Group(elem_id="agent_scheduler_history_actions"):
+                        with gr.Row(
+                            elem_id="agent_scheduler_history_actions",
+                            elem_classes="flex-row"
+                        ):
                             gr.Button(
                                 "Refresh",
                                 elem_id="agent_scheduler_action_refresh_history",
@@ -343,15 +355,19 @@ def on_ui_tab(**_kwargs):
                                 elem_id="agent_scheduler_action_clear_history",
                                 variant="stop",
                             )
-                            status = gr.Dropdown(
-                                elem_id="agent_scheduler_status_filter",
-                                choices=task_filter_choices,
-                                value="All",
-                                show_label=False,
-                            )
-                            gr.HTML(
-                                '<div id="agent_scheduler_action_search_history"></div>'
-                            )
+
+                            with gr.Row(elem_classes=["flex-row", "ml-auto"]):
+                                status = gr.Dropdown(
+                                    elem_id="agent_scheduler_status_filter",
+                                    choices=task_filter_choices,
+                                    value="All",
+                                    show_label=False,
+                                    scale=-1,  # unset flex-grow
+                                    min_width=0
+                                )
+                                gr.HTML(
+                                    '<div id="agent_scheduler_action_search_history"></div>'
+                                )
                         gr.HTML(
                             '<div id="agent_scheduler_history_tasks_grid" class="ag-theme-alpine"></div>'
                         )
@@ -360,7 +376,10 @@ def on_ui_tab(**_kwargs):
                             elem_id="agent_scheduler_history_gallery",
                             label="Output",
                             show_label=False,
-                        ).style(columns=2, object_fit="contain", preview=True)
+                            columns=2,
+                            preview=True,
+                            object_fit="contain"
+                        )
                         gen_info = gr.TextArea(
                             label="Generation Info",
                             elem_id=f"agent_scheduler_history_gen_info",
