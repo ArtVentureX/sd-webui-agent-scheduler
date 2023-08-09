@@ -134,13 +134,13 @@ class TaskRunner:
             }
         )
         script_params = serialize_script_args(script_args)
+        print("__serialize_ui_task_args", named_args, script_args)
 
         return (params, script_params)
 
     def __serialize_api_task_args(
         self,
         is_img2img: bool,
-        script_args: List = [],
         checkpoint: str = None,
         **api_args,
     ):
@@ -150,6 +150,7 @@ class TaskRunner:
         checkpoint = get_dict_attribute(
             named_args, "override_settings.sd_model_checkpoint", None
         )
+        script_args = named_args.pop("script_args", [])
 
         params = json.dumps(
             {
@@ -436,6 +437,7 @@ class TaskRunner:
             return self.__execute_api_task(
                 task_id,
                 is_img2img,
+                script_args=task_args.script_args,
                 **task_args.named_args,
             )
 

@@ -284,9 +284,7 @@ def map_controlnet_args_to_api_task_args(args: Dict):
     return args
 
 
-def map_ui_task_args_list_to_named_args(
-    args: List, is_img2img: bool
-):
+def map_ui_task_args_list_to_named_args(args: List, is_img2img: bool):
     args_name = []
     if is_img2img:
         args_name = inspect.getfullargspec(img2img).args
@@ -355,7 +353,6 @@ def map_named_args_to_ui_task_args_list(
 
 def map_script_args_list_to_named(script: scripts.Script, args: List):
     script_name = script.title().lower()
-    print("script", script_name, "is alwayson", script.alwayson)
 
     if script_name == "controlnet":
         for i, cnet_args in enumerate(args):
@@ -511,7 +508,7 @@ def serialize_api_task_args(
     params: Dict,
     is_img2img: bool,
     checkpoint: str = None,
-):
+) -> Dict:
     # handle named script args
     script_name = params.get("script_name", None)
     if script_name is not None:
@@ -524,36 +521,27 @@ def serialize_api_task_args(
 
     # handle named alwayson script args
     alwayson_scripts = get_dict_attribute(params, "alwayson_scripts", {})
-    valid_alwayson_scripts = {}
+    assert type(alwayson_scripts) is dict
+
     script_runner = scripts.scripts_img2img if is_img2img else scripts.scripts_txt2img
-    for script in script_runner.alwayson_scripts:
-        script_name = script.title()
+    allowed_alwayson_scripts = {
+        s.title().lower(): s for s in script_runner.alwayson_scripts
+    }
+
+    valid_alwayson_scripts = {}
+    for script_name, script_args in alwayson_scripts.items():
         if script_name.lower() == "agent scheduler":
             continue
 
-        script_args = get_dict_attribute(alwayson_scripts, f"{script_name}.args", None)
-        if script_args:
-            arg_list = map_named_script_args_to_list(script, script_args)
-            valid_alwayson_scripts[script_name] = {"args": arg_list}
+        if script_name.lower() not in allowed_alwayson_scripts:
+            log.warning(
+                f"Script {script_name} is not in script_runner.alwayson_scripts"
+            )
+            continue
 
-    # check if alwayson_scripts has script that is not in script_runner.alwayson_scripts
-    assert type(alwayson_scripts) is dict
-    for script in alwayson_scripts:
-        if script not in valid_alwayson_scripts:
-            # allow controlnet
-            if script == "ControlNet":
-                script_args = get_dict_attribute(
-                    alwayson_scripts, f"{script}.args", None
-                )
-                if script_args:
-                    arg_list = map_named_script_args_to_list(script, script_args)
-                    valid_alwayson_scripts[script] = {"args": arg_list}
-            else:
-                print(
-                    f"Warning: script {script} is not in script_runner.alwayson_scripts"
-                )
-                # print args
-                print(alwayson_scripts[script])
+        script = allowed_alwayson_scripts[script_name.lower()]
+        arg_list = map_named_script_args_to_list(script, script_args)
+        valid_alwayson_scripts[script_name] = {"args": arg_list}
 
     params["alwayson_scripts"] = valid_alwayson_scripts
 
