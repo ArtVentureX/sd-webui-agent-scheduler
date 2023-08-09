@@ -25,10 +25,6 @@
     @apply text-[--color-accent];
   }
 
-  .ag-cell.task-running {
-    @apply text-[--color-accent];
-  }
-
   @keyframes blink {
     0%,
     100% {
@@ -39,7 +35,8 @@
     }
   }
 
-  .ag-cell.task-running > .ag-cell-wrapper {
+  .ag-cell.task-running {
+    color: var(--color-accent);
     animation: 1s blink ease infinite;
   }
 
