@@ -26,17 +26,16 @@
   }
 
   .ag-cell.task-running {
-    color: #0060df;
-    color: var(--highlight-color, #0060df);
+    @apply text-[--color-accent];
   }
 
   @keyframes blink {
     0%,
     100% {
-      opacity: 0.1;
+      color: var(--color-accent);
     }
     50% {
-      opacity: 1;
+      color: var(--color-accent-soft);
     }
   }
 
