@@ -808,7 +808,7 @@ function initPendingTab() {
       }
 
       let index = -1, overIndex = -1;
-      const tasks = store.getState().pending_tasks.sort((t) => t.priority);
+      const tasks = [...store.getState().pending_tasks].sort((a, b) => a.priority - b.priority);
       for (let i = 0; i < tasks.length; i++) {
         if (tasks[i].id === id) {
           index = i;
