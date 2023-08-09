@@ -683,25 +683,25 @@ function initPendingTab() {
         cellRenderer: ({ api, value, data }: any) => {
           if (!data) return undefined;
           const html = `
-          <div class="inline-flex mt-1 edit-actions" role="group">
-            <button type="button" title="Save" class="ts-btn-action primary ts-btn-save">
-              ${saveIcon}
-            </button>
-            <button type="button" title="Cancel"
-              class="ts-btn-action secondary ts-btn-cancel">
-              ${cancelIcon}
-            </button>
-          </div>
-          <div class="inline-flex mt-1 control-actions" role="group">
-            <button type="button" title="Run" class="ts-btn-action primary ts-btn-run"
-              ${data.status === 'running' ? 'disabled' : ''}>
-              ${playIcon}
-            </button>
-            <button type="button" title="${data.status === 'pending' ? 'Delete' : 'Interrupt'}"
-              class="ts-btn-action stop ts-btn-delete">
-              ${data.status === 'pending' ? deleteIcon : cancelIcon}
-            </button>
-          </div>
+            <div class="inline-flex mt-1 edit-actions" role="group">
+              <button type="button" title="Save" class="ts-btn-action primary ts-btn-save">
+                ${saveIcon}
+              </button>
+              <button type="button" title="Cancel"
+                class="ts-btn-action secondary ts-btn-cancel">
+                ${cancelIcon}
+              </button>
+            </div>
+            <div class="inline-flex mt-1 control-actions" role="group">
+              <button type="button" title="Run" class="ts-btn-action primary ts-btn-run"
+                ${data.status === 'running' ? 'disabled' : ''}>
+                ${playIcon}
+              </button>
+              <button type="button" title="${data.status === 'pending' ? 'Delete' : 'Interrupt'}"
+                class="ts-btn-action stop ts-btn-delete">
+                ${data.status === 'pending' ? deleteIcon : cancelIcon}
+              </button>
+            </div>
             `;
 
           const node = document.createElement('div');
