@@ -2,57 +2,49 @@
 @tailwind utilities;
 
 @layer components {
-  .ts-search {
-    @apply relative w-full max-w-xs;
-  }
-  
   .ts-search-input {
-    @apply bg-gray-50 border border-gray-300 text-gray-900 text-sm !rounded-md focus:ring-blue-500 focus:border-blue-500 block !pl-10 !p-2 w-full dark:!bg-gray-700 dark:!border-gray-600 dark:!placeholder-gray-400 dark:!text-white dark:focus:ring-blue-500 dark:focus:border-blue-500;
+    padding-left: calc(var(--input-padding) + 24px + var(--spacing-sm)) !important;
   }
 
   .ts-search-icon {
-    @apply absolute inset-y-0 left-0 flex items-center dark:text-white pl-3 pointer-events-none;
+    @apply absolute text-[--body-text-color] left-[--input-padding] inset-y-[--input-padding] flex
+           items-center pointer-events-none;
   }
 
   .ts-btn-action {
-    @apply inline-flex items-center !px-2 !py-1 !m-0 text-sm font-medium border focus:z-10 focus:ring-2 disabled:opacity-50 disabled:hover:!bg-transparent disabled:cursor-not-allowed;
+    @apply inline-flex items-center !px-[--size-2] !py-[--size-1] !m-0 transition-[--button-transition]
+           first:rounded-l-[--button-small-radius] last:rounded-r-[--button-small-radius]
+           border-[--button-border-width];
   }
 
-  .ts-btn-success {
-    @apply !text-green-500 hover:!text-white border-green-500 hover:bg-green-600 rounded-l-md focus:ring-green-400 dark:border-green-500 dark:hover:bg-green-600 dark:focus:ring-green-900 disabled:hover:!text-green-500;
+  .ts-bookmark {
+    @apply text-[--body-text-color-subdued];
   }
 
-  .ts-btn-warning {
-    @apply !text-yellow-500 hover:!text-white border-yellow-600 hover:bg-yellow-600 rounded-r-md focus:ring-yellow-300 dark:border-yellow-500 dark:hover:bg-yellow-600 dark:focus:ring-yellow-900;
-  }
-
-  .ts-btn-danger {
-    @apply !text-red-500 hover:!text-white border-red-600 hover:bg-red-600 rounded-r-md focus:ring-red-300 dark:border-red-500 dark:hover:bg-red-600 dark:focus:ring-red-900;
+  .ts-bookmarked {
+    @apply text-[--color-accent];
   }
 
   @keyframes blink {
-    from,
-    to {
-      opacity: 0;
+    0%,
+    100% {
+      color: var(--color-accent);
     }
     50% {
-      opacity: 1;
+      color: var(--color-accent-soft);
     }
   }
 
   .ag-cell.task-running {
-    @apply !text-blue-500;
-  }
-
-  .ag-cell.task-running > .ag-cell-wrapper {
+    color: var(--color-accent);
     animation: 1s blink ease infinite;
   }
 
   .ag-cell.task-failed {
-    @apply !text-red-500;
+    @apply text-[--error-text-color];
   }
 
   .ag-cell.task-interrupted {
-    @apply !text-gray-400;
+    @apply text-[--body-text-color-subdued];
   }
 }

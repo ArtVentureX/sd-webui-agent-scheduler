@@ -323,11 +323,16 @@ def on_ui_tab(**_kwargs):
                             )
 
                             with gr.Row(elem_classes=["flex-row", "ml-auto"]):
-                                gr.HTML(
-                                    '<div id="agent_scheduler_action_search"></div>'
+                                gr.Textbox(
+                                    max_lines=1,
+                                    placeholder="Search",
+                                    label="Search",
+                                    show_label=False,
+                                    min_width=0,
+                                    elem_id="agent_scheduler_action_search"
                                 )
                         gr.HTML(
-                            '<div id="agent_scheduler_pending_tasks_grid" class="ag-theme-alpine"></div>'
+                            '<div id="agent_scheduler_pending_tasks_grid" class="ag-theme-gradio"></div>'
                         )
                     with gr.Column(scale=1):
                         gr.Gallery(
@@ -362,14 +367,18 @@ def on_ui_tab(**_kwargs):
                                     choices=task_filter_choices,
                                     value="All",
                                     show_label=False,
-                                    scale=-1,  # unset flex-grow
                                     min_width=0
                                 )
-                                gr.HTML(
-                                    '<div id="agent_scheduler_action_search_history"></div>'
+                                gr.Textbox(
+                                    max_lines=1,
+                                    placeholder="Search",
+                                    label="Search",
+                                    show_label=False,
+                                    min_width=0,
+                                    elem_id="agent_scheduler_action_search_history"
                                 )
                         gr.HTML(
-                            '<div id="agent_scheduler_history_tasks_grid" class="ag-theme-alpine"></div>'
+                            '<div id="agent_scheduler_history_tasks_grid" class="ag-theme-gradio"></div>'
                         )
                     with gr.Column(scale=1, elem_id="agent_scheduler_history_results"):
                         galerry = gr.Gallery(

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 
-import { Grid, GridOptions } from 'ag-grid-community';
+import { Grid, GridApi, GridOptions, RowHighlightPosition, RowNode } from 'ag-grid-community';
 import { Notyf } from 'notyf';
 
 import bookmark from '../assets/icons/bookmark.svg?raw';
@@ -14,6 +14,7 @@ import searchIcon from '../assets/icons/search.svg?raw';
 import { debounce } from '../utils/debounce';
 import { extractArgs } from '../utils/extract-args';
 import { formatDate } from '../utils/format-date';
+import { getHighlightPosition, getPixelOnRow, getRowNodeAtPixel } from '../utils/ag-grid';
 
 import { createHistoryTasksStore } from './stores/history.store';
 import { createPendingTasksStore } from './stores/pending.store';
@@ -244,16 +245,18 @@ function initSearchInput(selector: string) {
   if (!searchContainer) {
     throw new Error(`search container ${selector} not found`);
   }
+  const searchInput = searchContainer.getElementsByTagName('input')[0];
+  if (!searchInput) {
+    throw new Error(`search input not found`);
+  }
+  searchInput.classList.add('ts-search-input');
 
-  searchContainer.className = 'ts-search';
-  searchContainer.innerHTML = `
-    <div class="ts-search-icon">
-      ${searchIcon}
-    </div>
-    <input type="text" class="ts-search-input" placeholder="Search" required>
-  `;
+  const searchIconContainer = document.createElement('div');
+  searchIconContainer.className = 'ts-search-icon';
+  searchIconContainer.innerHTML = searchIcon;
+  searchInput.parentNode!.appendChild(searchIconContainer);
 
-  return searchContainer;
+  return searchInput;
 }
 
 async function notify(response: ResponseStatus) {
@@ -552,15 +555,104 @@ function initPendingTab() {
   });
 
   // watch for queue status change
-  store.subscribe((curr) => {
-    if (curr.paused) {
+  const updateUiState = (state: ReturnType<typeof store.getState>) => {
+    if (state.paused) {
       pauseButton.classList.add('hide', 'hidden');
       resumeButton.classList.remove('hide', 'hidden');
     } else {
       pauseButton.classList.remove('hide', 'hidden');
       resumeButton.classList.add('hide', 'hidden');
     }
-  });
+  };
+  store.subscribe(updateUiState);
+  updateUiState(store.getState());
+
+  let lastHighlightedRow: RowNode<Task> | null;
+
+  let pageMoveTimeout: ReturnType<typeof setTimeout> | null;
+
+  const PAGE_MOVE_TIMEOUT_MS = 1.5 * 1000;
+  const PAGE_MOVE_Y_MARGIN = 45 / 2;  // half of default (min) rowHeight
+
+  const clearPageMoveTimeout = () => {
+    if (pageMoveTimeout != null) {
+      clearTimeout(pageMoveTimeout);
+      pageMoveTimeout = null;
+    }
+  }
+  const updatePageMoveTimeout = (api: GridApi<Task>, pixel: number) => {
+    if (!lastHighlightedRow) {
+      clearPageMoveTimeout();
+      return;
+    }
+
+    const firstRowIndexOfPage = api.paginationGetPageSize() * api.paginationGetCurrentPage();
+    const lastRowIndexOfPage = Math.min(
+      api.paginationGetPageSize() * (api.paginationGetCurrentPage() + 1) - 1,
+      api.getDisplayedRowCount() - 1
+    );
+
+    const rowIndex = lastHighlightedRow.rowIndex!
+    if (rowIndex === firstRowIndexOfPage) {
+      if (getPixelOnRow(api, lastHighlightedRow, pixel) > PAGE_MOVE_Y_MARGIN) {
+        clearPageMoveTimeout();
+        return;
+      }
+      if (pageMoveTimeout == null) {
+        pageMoveTimeout = setTimeout(() => {
+          if (api.paginationGetCurrentPage() > 0) {
+            api.paginationGoToPreviousPage();
+            highlightRow(api);
+          }
+          pageMoveTimeout = null;
+        }, PAGE_MOVE_TIMEOUT_MS);
+      }
+    } else if (rowIndex === lastRowIndexOfPage) {
+      if (getPixelOnRow(api, lastHighlightedRow, pixel) < lastHighlightedRow.rowHeight! - PAGE_MOVE_Y_MARGIN) {
+        clearPageMoveTimeout();
+        return;
+      }
+      if (pageMoveTimeout == null) {
+        pageMoveTimeout = setTimeout(() => {
+          if (api.paginationGetCurrentPage() < api.paginationGetTotalPages() - 1) {
+            api.paginationGoToNextPage();
+            highlightRow(api);
+          }
+          pageMoveTimeout = null;
+        }, PAGE_MOVE_TIMEOUT_MS);
+      }
+    }
+  }
+
+  let lastPixel: number | null;
+
+  const clearHighlightedRow = () => {
+    clearPageMoveTimeout();
+    lastPixel = null;
+    if (lastHighlightedRow) {
+      lastHighlightedRow.setHighlighted(null);
+      lastHighlightedRow = null;
+    }
+  }
+  const highlightRow = (api: GridApi<Task>, pixel?: number) => {
+    if (pixel == undefined) {
+      if (lastPixel == null) return;
+      pixel = lastPixel;
+    } else {
+      lastPixel = pixel;
+    }
+
+    const rowNode = getRowNodeAtPixel(api, pixel) as RowNode<Task> | undefined;
+    if (!rowNode) return;
+
+    const highlight = getHighlightPosition(api, rowNode, pixel);
+    if (lastHighlightedRow && rowNode.id !== lastHighlightedRow.id) {
+      clearHighlightedRow();
+    }
+    rowNode.setHighlighted(highlight);
+    lastHighlightedRow = rowNode;
+    updatePageMoveTimeout(api, pixel);
+  }
 
   // init grid
   const gridOptions: GridOptions<Task> = {
@@ -591,30 +683,29 @@ function initPendingTab() {
         cellRenderer: ({ api, value, data }: any) => {
           if (!data) return undefined;
           const html = `
-            <div class="inline-flex rounded-md shadow-sm mt-1.5" role="group">
-              <!-- editing -->
-              <button type="button" title="Save" class="ts-btn-action ts-btn-success ts-btn-save">
+            <div class="inline-flex mt-1 edit-actions" role="group">
+              <button type="button" title="Save" class="ts-btn-action primary ts-btn-save">
                 ${saveIcon}
               </button>
               <button type="button" title="Cancel"
-                class="ts-btn-action ts-btn-warning ts-btn-cancel">
+                class="ts-btn-action secondary ts-btn-cancel">
                 ${cancelIcon}
               </button>
-              
-              <button type="button" title="Save" class="ts-btn-action ts-btn-success ts-btn-run"
+            </div>
+            <div class="inline-flex mt-1 control-actions" role="group">
+              <button type="button" title="Run" class="ts-btn-action primary ts-btn-run"
                 ${data.status === 'running' ? 'disabled' : ''}>
                 ${playIcon}
               </button>
               <button type="button" title="${data.status === 'pending' ? 'Delete' : 'Interrupt'}"
-                class="ts-btn-action ts-btn-danger ts-btn-delete">
+                class="ts-btn-action stop ts-btn-delete">
                 ${data.status === 'pending' ? deleteIcon : cancelIcon}
               </button>
             </div>
             `;
 
-          const placeholder = document.createElement('div');
-          placeholder.innerHTML = html;
-          const node = placeholder.firstElementChild!;
+          const node = document.createElement('div');
+          node.innerHTML = html;
 
           const btnSave = node.querySelector('button.ts-btn-save')!;
           btnSave.addEventListener('click', () => {
@@ -635,7 +726,6 @@ function initPendingTab() {
             api.showLoadingOverlay();
             store.runTask(value).then(() => api.hideOverlay());
           });
-
           const btnDelete = node.querySelector('button.ts-btn-delete')!;
           btnDelete.addEventListener('click', () => {
             api.showLoadingOverlay();
@@ -669,8 +759,7 @@ function initPendingTab() {
     },
     onGridReady: ({ api, columnApi }) => {
       // init quick search input
-      const searchContainer = initSearchInput('#agent_scheduler_action_search');
-      const searchInput: HTMLInputElement = searchContainer.querySelector('input.ts-search-input')!;
+      const searchInput = initSearchInput('#agent_scheduler_action_search');
       searchInput.addEventListener(
         'keyup',
         debounce((e: KeyboardEvent) => {
@@ -678,7 +767,7 @@ function initPendingTab() {
         }, 200),
       );
 
-      store.subscribe((state) => {
+      const updateRowData = (state: ReturnType<typeof store.getState>) => {
         api.setRowData(state.pending_tasks);
 
         if (state.current_task_id) {
@@ -688,8 +777,11 @@ function initPendingTab() {
           }
         }
 
+        api.clearFocusedCell();
         columnApi.autoSizeAllColumns();
-      });
+      }
+      store.subscribe(updateRowData);
+      updateRowData(store.getState());
 
       // restore col state
       const colStateStr = localStorage.getItem('agent_scheduler:queue_col_state');
@@ -698,13 +790,55 @@ function initPendingTab() {
         columnApi.applyColumnState({ state: colState, applyOrder: true });
       }
     },
-    onRowDragEnd: ({ api, node, overNode }) => {
-      const id = node.data?.id;
-      const overId = overNode?.data?.id;
-      if (id && overId && id !== overId) {
-        api.showLoadingOverlay();
-        store.moveTask(id, overId).then(() => api.hideOverlay());
+    onRowDragEnter: ({ api, y }) => highlightRow(api, y),
+    onRowDragMove: ({ api, y }) => highlightRow(api, y),
+    onRowDragLeave: (_) => clearHighlightedRow(),
+    onRowDragEnd: ({ api, node }) => {
+      const highlightedRow = lastHighlightedRow;
+      if (!highlightedRow) {
+        clearHighlightedRow();
+        return;
       }
+
+      const id = node.data?.id;
+      const highlightedId = highlightedRow.data?.id;
+      if (!id || !highlightedId || id === highlightedId) {
+        clearHighlightedRow();
+        return;
+      }
+
+      let index = -1, overIndex = -1;
+      const tasks = store.getState().pending_tasks.sort((t) => t.priority);
+      for (let i = 0; i < tasks.length; i++) {
+        if (tasks[i].id === id) {
+          index = i;
+        }
+        if (tasks[i].id === highlightedId) {
+          overIndex = i;
+        }
+        if (index !== -1 && overIndex !== -1) {
+          break;
+        }
+      }
+      if (index === -1 || overIndex === -1) {
+        clearHighlightedRow();
+        return;
+      }
+      if (highlightedRow.highlighted === RowHighlightPosition.Below) {
+        overIndex += 1;
+      }
+      if (overIndex === index || overIndex === index + 1) {
+        clearHighlightedRow();
+        return;
+      }
+
+      const overId = tasks[overIndex]?.id ?? 'bottom';
+
+      api.showLoadingOverlay();
+      store.moveTask(id, overId).then(() => {
+        clearHighlightedRow();
+        api.hideOverlay();
+      });
     },
     onRowEditingStarted: ({ api, data, node }) => {
       if (!data) return;
@@ -735,7 +869,6 @@ function initPendingTab() {
   const eGridDiv = gradioApp().querySelector<HTMLDivElement>(
     '#agent_scheduler_pending_tasks_grid',
   )!;
-  eGridDiv.style.height = 'calc(100vh - 300px)';
   new Grid(eGridDiv, gridOptions);
 }
 
@@ -799,8 +932,8 @@ function initHistoryTab() {
         cellRenderer: ({ data, value }: any) => {
           if (!data) return undefined;
           return value
-            ? `<span class="!text-yellow-400">${bookmarked}</span>`
-            : `<span class="!text-gray-400">${bookmark}</span>`;
+            ? `<span class="ts-bookmarked">${bookmarked}</span>`
+            : `<span class="ts-bookmark">${bookmark}</span>`;
         },
         onCellClicked: ({ data, event, api }) => {
           if (!data) return;
@@ -835,11 +968,11 @@ function initHistoryTab() {
           if (!data) return undefined;
 
           const html = `
-            <div class="inline-flex rounded-md shadow-sm mt-1.5" role="group">
-              <button type="button" title="Requeue" class="ts-btn-action ts-btn-success ts-btn-run">
+            <div class="inline-flex mt-1" role="group">
+              <button type="button" title="Requeue" class="ts-btn-action primary ts-btn-run">
                 ${rotateIcon}
               </button>
-              <button type="button" title="Delete" class="ts-btn-action ts-btn-danger ts-btn-delete">
+              <button type="button" title="Delete" class="ts-btn-action stop ts-btn-delete">
                 ${deleteIcon}
               </button>
             </div>
@@ -895,8 +1028,7 @@ function initHistoryTab() {
     },
     onGridReady: ({ api, columnApi }) => {
       // init quick search input
-      const searchContainer = initSearchInput('#agent_scheduler_action_search_history');
-      const searchInput: HTMLInputElement = searchContainer.querySelector('input.ts-search-input')!;
+      const searchInput = initSearchInput('#agent_scheduler_action_search_history');
       searchInput.addEventListener(
         'keyup',
         debounce((e: KeyboardEvent) => {
@@ -904,10 +1036,13 @@ function initHistoryTab() {
         }, 200),
       );
 
-      store.subscribe((state) => {
+      const updateRowData = (state: ReturnType<typeof store.getState>) => {
         api.setRowData(state.tasks);
+        api.clearFocusedCell();
         columnApi.autoSizeAllColumns();
-      });
+      }
+      store.subscribe(updateRowData);
+      updateRowData(store.getState());
 
       // restore col state
       const colStateStr = localStorage.getItem('agent_scheduler:history_col_state');
@@ -942,7 +1077,6 @@ function initHistoryTab() {
   const eGridDiv = gradioApp().querySelector<HTMLDivElement>(
     '#agent_scheduler_history_tasks_grid',
   )!;
-  eGridDiv.style.height = 'calc(100vh - 300px)';
   new Grid(eGridDiv, gridOptions);
 }
 
