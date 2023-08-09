@@ -11,8 +11,8 @@ export type Task = {
   result: string;
   bookmarked?: boolean;
   editing?: boolean;
-  created_at: string;
-  updated_at: string;
+  created_at: number;
+  updated_at: number;
 };
 
 export type ResponseStatus = {

@@ -219,6 +219,7 @@ const sharedGridOptions: GridOptions<Task> = {
       headerName: 'Queued At',
       minWidth: 170,
       editable: false,
+      valueGetter: ({ data }) => data && (data.created_at - new Date().getTimezoneOffset() * 60000),
       valueFormatter: ({ value }) => value && formatDate(new Date(value)),
     },
     {
@@ -226,6 +227,7 @@ const sharedGridOptions: GridOptions<Task> = {
       headerName: 'Updated At',
       minWidth: 170,
       editable: false,
+      valueGetter: ({ data }) => data && (data.created_at - new Date().getTimezoneOffset() * 60000),
       valueFormatter: ({ value }) => value && formatDate(new Date(value)),
     },
   ],
