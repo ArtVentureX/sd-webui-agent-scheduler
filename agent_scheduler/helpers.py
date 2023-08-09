@@ -12,28 +12,39 @@ from gradio.blocks import Block, BlockContext
 if logging.getLogger().hasHandlers():
     log = logging.getLogger("sd")
 else:
+    import copy
+    class ColoredFormatter(logging.Formatter):
+        COLORS = {
+            "DEBUG": "\033[0;36m",  # CYAN
+            "INFO": "\033[0;32m",  # GREEN
+            "WARNING": "\033[0;33m",  # YELLOW
+            "ERROR": "\033[0;31m",  # RED
+            "CRITICAL": "\033[0;37;41m",  # WHITE ON RED
+            "RESET": "\033[0m",  # RESET COLOR
+        }
 
-    class Log:
-        def __init__(self, level=logging.INFO) -> None:
-            self.level = level
+        def format(self, record):
+            colored_record = copy.copy(record)
+            levelname = colored_record.levelname
+            seq = self.COLORS.get(levelname, self.COLORS["RESET"])
+            colored_record.levelname = f"{seq}{levelname}{self.COLORS['RESET']}"
+            return super().format(colored_record)
 
-        def __log(self, level, *args, **kwargs):
-            if (level >= self.level):
-                print(*args, **kwargs)
+    # Create a new logger
+    logger = logging.getLogger("AgentScheduler")
+    logger.propagate = False
 
-        def info(self, *args, **kwargs):
-            self.__log(logging.INFO, *args, **kwargs)
+    # Add handler if we don't have one.
+    if not logger.handlers:
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setFormatter(ColoredFormatter("%(levelname)s - %(message)s"))
+        logger.addHandler(handler)
 
-        def debug(self, *args, **kwargs):
-            self.__log(logging.DEBUG, *args, **kwargs)
+    # Configure logger
+    loglevel = logging.INFO
+    logger.setLevel(loglevel)
 
-        def warning(self, *args, **kwargs):
-            self.__log(logging.WARNING, *args, **kwargs)
-
-        def error(self, *args, **kwargs):
-            self.__log(logging.ERROR, *args, **kwargs, file=sys.stderr)
-
-    log = Log()
+    log = logger
 
 
 class Singleton(abc.ABCMeta, type):
