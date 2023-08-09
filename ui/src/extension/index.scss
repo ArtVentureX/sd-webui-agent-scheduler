@@ -3,33 +3,98 @@
 
 /* ========================================================================= */
 
-.dark .ag-theme-alpine {
-  @extend .ag-theme-alpine-dark;
+.ag-theme-gradio {
+  @extend .ag-theme-alpine;
+  .dark & {
+    @extend .ag-theme-alpine-dark;
+  }
 }
-.ag-theme-alpine,
-.ag-theme-alpine-dark {
+.ag-theme-gradio,
+.dark .ag-theme-gradio {
+  * {
+    --body-text-color: 'inherit';
+  }
+
+  --ag-alpine-active-color: var(--color-accent);
+  --ag-selected-row-background-color: var(--table-row-focus);
+  --ag-modal-overlay-background-color: transparent;
+  --ag-row-hover-color: transparent;
+  --ag-column-hover-color: transparent;
+  --ag-input-focus-border-color: var(--input-border-color-focus);
+  --ag-background-color: var(--table-even-background-fill);
+  --ag-foreground-color: var(--body-text-color);
+  --ag-border-color: var(--border-color-primary);
+  --ag-secondary-border-color: var(--border-color-primary);
+  --ag-header-background-color: var(--table-even-background-fill);
+  --ag-tooltip-background-color: var(--table-even-background-fill);
+  --ag-odd-row-background-color: var(--table-even-background-fill);
+  --ag-control-panel-background-color: var(--table-even-background-fill);
+  --ag-invalid-color: var(--error-text-color);
+  --ag-input-border-color: var(--input-border-color);
+  --ag-disabled-foreground-color: var(--body-text-color-subdued);
+  --ag-row-border-color: var(--border-color-primary);
+
   --ag-row-height: 45px;
   --ag-header-height: 45px;
   --ag-cell-horizontal-padding: calc(var(--ag-grid-size) * 2);
-  --body-text-color: 'inherit';
-}
-.cell-span {
-  border-bottom-color: var(--ag-border-color);
-}
-.cell-not-span {
-  opacity: 0;
-}
-.ag-row-hover .ag-cell {
-  background-color: transparent;
-}
-.ag-cell {
-  .ag-input-field-input {
-    background-color: var(--input-background-fill);
 
-    .dark & {
-      background-color: var(--input-background-fill);
+  .ag-root-wrapper {
+    border-radius: var(--table-radius);
+  }
+  .ag-row-even {
+    background: var(--table-odd-background-fill);
+  }
+
+  .ag-row-highlight-above,
+  .ag-row-highlight-below {
+    &::after {
+      height: 2px;
+      z-index: 3;
     }
   }
+  .ag-row-highlight-above {
+    &::after {
+      top: -1.5px;
+    }
+    &.ag-row-first::after {
+      top: 0;
+    }
+  }
+  .ag-row-highlight-below {
+    &::after {
+      bottom: -1.5px;
+    }
+    &.ag-row-last::after {
+      bottom: 0;
+    }
+  }
+
+  .cell-span {
+    border-bottom-color: var(--ag-border-color);
+  }
+  .cell-not-span {
+    opacity: 0;
+  }
+  .ag-input-field-input {
+    background-color: var(--input-background-fill);
+  }
+  .ag-select .ag-picker-field-wrapper {
+    background-color: var(--input-background-fill);
+  }
+}
+.ag-center-cols-viewport {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+.ag-horizontal-left-spacer,
+.ag-horizontal-right-spacer {
+  overflow-x: hidden;
+}
+.ag-overlay {
+  z-index: 5;
 }
 
 .notyf {
@@ -40,11 +105,11 @@
     border-radius: 6px;
 
     &.notyf__toast--success .notyf__ripple {
-      background-color: rgb(34 197 94) !important;
+      background-color: #22c55e !important;
     }
 
     &.notyf__toast--error .notyf__ripple {
-      background-color: rgb(239 68 68) !important;
+      background-color: #ef4444 !important;
     }
   }
 
@@ -53,32 +118,94 @@
   }
 }
 
-.ml-auto {
-  margin-left: auto;
-}
-
 /* ========================================================================= */
 
 #tabs > #agent_scheduler_tabs {
   margin-top: var(--layout-gap);
 }
 
-#agent_scheduler_pending_tasks_grid {
-  .ag-cell.pending-actions {
-    &.editing {
-      .ts-btn-run,
-      .ts-btn-delete {
-        display: none;
-      }
-    }
-
-    &:not(.editing) {
-      .ts-btn-save,
-      .ts-btn-cancel {
-        display: none;
-      }
+.ag-cell.pending-actions {
+  &.editing {
+    .control-actions {
+      display: none;
     }
   }
+
+  &:not(.editing) {
+    .edit-actions {
+      display: none;
+    }
+  }
+}
+
+button.ts-btn-action {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  transition: var(--button-transition);
+  box-shadow: var(--button-shadow);
+  padding: var(--size-1) var(--size-2);
+  text-align: center;
+
+  &:hover,
+  &[disabled] {
+    box-shadow: var(--button-shadow-hover);
+  }
+
+  &[disabled] {
+    opacity: .5;
+    filter: grayscale(30%);
+    cursor: not-allowed;
+  }
+
+  &:active {
+    box-shadow: var(--button-shadow-active);
+  }
+
+  &.primary {
+    border: var(--button-border-width) solid var(--button-primary-border-color);
+    background: var(--button-primary-background-fill);
+    color: var(--button-primary-text-color);
+
+    &:hover,
+    &[disabled] {
+      border-color: var(--button-primary-border-color-hover);
+      background: var(--button-primary-background-fill-hover);
+      color: var(--button-primary-text-color-hover);
+    }
+  }
+
+  &.secondary {
+    border: var(--button-border-width) solid var(--button-secondary-border-color);
+    background: var(--button-secondary-background-fill);
+    color: var(--button-secondary-text-color);
+
+    &:hover,
+    &[disabled] {
+      border-color: var(--button-secondary-border-color-hover);
+      background: var(--button-secondary-background-fill-hover);
+      color: var(--button-secondary-text-color-hover);
+    }
+  }
+
+  &.stop {
+    border: var(--button-border-width) solid var(--button-cancel-border-color);
+    background: var(--button-cancel-background-fill);
+    color: var(--button-cancel-text-color);
+
+    &:hover,
+    &[disabled] {
+      border-color: var(--button-cancel-border-color-hover);
+      background: var(--button-cancel-background-fill-hover);
+      color: var(--button-cancel-text-color-hover);
+    }
+  }
+}
+
+#agent_scheduler_pending_tasks_grid,
+#agent_scheduler_history_tasks_grid {
+  height: calc(100vh - 300px);
+  min-height: 400px;
 }
 
 #agent_scheduler_pending_tasks_wrapper,
@@ -164,20 +291,26 @@
 }
 
 .gradio-row.flex-row {
-  > *, > .form {
+  > *,
+  > .form,
+  > .form > * {
     flex: initial;
-    width: auto;
-    min-width: auto;
+    width: initial;
+    min-width: initial;
   }
 }
 
 #agent_scheduler_status_filter {
-  width: var(--size-32);
+  width: var(--size-36);
 }
 
 #agent_scheduler_action_search,
 #agent_scheduler_action_search_history {
   width: var(--size-64);
+
+  > label {
+    position: relative;
+  }
 }
 
 #txt2img_enqueue_wrapper,
