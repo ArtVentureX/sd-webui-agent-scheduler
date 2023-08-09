@@ -1,12 +1,32 @@
 # Change Logs
 
+## 2023/08/10
+
+New features:
+- New API `/task/{id}/position` to get task position in queue [#105](https://github.com/ArtVentureX/sd-webui-agent-scheduler/issues/105)
+- Display task in local timezone [#95](https://github.com/ArtVentureX/sd-webui-agent-scheduler/issues/95)
+
+Bugs fixing:
+- `alwayson_scripts` should allow script name in all cases [#102](https://github.com/ArtVentureX/sd-webui-agent-scheduler/issues/102)
+- Fix `script_args` not working when queue task via API [#103](https://github.com/ArtVentureX/sd-webui-agent-scheduler/issues/103)
+
+## 2023/08/02
+
+Bugs fixing:
+- Fix task_id is duplicated [#97](https://github.com/ArtVentureX/sd-webui-agent-scheduler/issues/97)
+- Fix [#100](https://github.com/ArtVentureX/sd-webui-agent-scheduler/issues/100)
+
+## 2023/07/25
+
+New features:
+- Clear queue and clear history
+- Queue task with specific name & queue with all checkpoints [#88](https://github.com/ArtVentureX/sd-webui-agent-scheduler/issues/88)
+
 ## 2023/07/24
 
 New features:
 - New API `/task/{id}` to get single task (https://github.com/ArtVentureX/sd-webui-agent-scheduler/issues/86)
 - Update queued task
-- Clear queue and clear history
-- Queue task with specific name & queue with all
 - Minor change to support changes in SD webui 1.5.0-RC
 
 Bugs fixing:
@@ -15,6 +35,7 @@ Bugs fixing:
 ## 2023/07/16
 
 - Use pickle to serialize script args
+- Fix task re-ordering not working [#79](https://github.com/ArtVentureX/sd-webui-agent-scheduler/issues/79)
 
 ## 2023/07/12
 
