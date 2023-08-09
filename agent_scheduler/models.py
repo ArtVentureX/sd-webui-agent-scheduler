@@ -41,6 +41,7 @@ class TaskModel(BaseModel):
         title="Task Parameters", description="The parameters of the task in JSON format"
     )
     priority: Optional[int] = Field(title="Task Priority")
+    position: Optional[int] = Field(title="Task Position")
     result: Optional[str] = Field(
         title="Task Result", description="The result of the task in JSON format"
     )

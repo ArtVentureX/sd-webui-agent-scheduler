@@ -135,6 +135,7 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
         pending_tasks = task_manager.get_tasks(
             status=TaskStatus.PENDING, limit=limit, offset=offset
         )
+        position = offset
         parsed_tasks = []
         for task in pending_tasks:
             params = format_task_args(task)
@@ -143,7 +144,9 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
             if task.id == current_task_id:
                 task_data["status"] = "running"
 
+            task_data["position"] = position
             parsed_tasks.append(TaskModel(**task_data))
+            position += 1
 
         return QueueStatusResponse(
             current_task_id=current_task_id,
@@ -193,8 +196,23 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
         task_data["params"] = params
         if task.id == progress.current_task:
             task_data["status"] = "running"
+        if task_data["status"] == TaskStatus.PENDING:
+            task_data["position"] = task_manager.get_task_position(id)
 
         return {"success": True, "data": TaskModel(**task_data)}
+
+    @app.get("/agent-scheduler/v1/task/{id}/position")
+    def get_task_position(id: str):
+        task = task_manager.get_task(id)
+        if task is None:
+            return {"success": False, "message": "Task not found"}
+
+        position = (
+            None
+            if task.status != TaskStatus.PENDING
+            else task_manager.get_task_position(id)
+        )
+        return {"success": True, "data": {"status": task.status, "position": position}}
 
     @app.put("/agent-scheduler/v1/task/{id}")
     def update_task(id: str, body: UpdateTaskArgs):

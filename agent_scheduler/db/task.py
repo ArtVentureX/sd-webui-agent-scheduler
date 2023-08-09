@@ -117,6 +117,25 @@ class TaskManager(BaseTableManager):
         finally:
             session.close()
 
+    def get_task_position(self, id: str) -> int:
+        session = Session(self.engine)
+        try:
+            task = session.get(TaskTable, id)
+            if task:
+                return (
+                    session.query(func.count(TaskTable.id))
+                    .filter(TaskTable.status == TaskStatus.PENDING)
+                    .filter(TaskTable.priority < task.priority)
+                    .scalar()
+                )
+            else:
+                raise Exception(f"Task with id {id} not found")
+        except Exception as e:
+            print(f"Exception getting task position from database: {e}")
+            raise e
+        finally:
+            session.close()
+
     def get_tasks(
         self,
         type: str = None,

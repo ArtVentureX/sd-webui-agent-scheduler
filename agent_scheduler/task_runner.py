@@ -134,7 +134,6 @@ class TaskRunner:
             }
         )
         script_params = serialize_script_args(script_args)
-        print("__serialize_ui_task_args", named_args, script_args)
 
         return (params, script_params)
 
