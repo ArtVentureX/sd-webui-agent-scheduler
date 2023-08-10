@@ -540,6 +540,7 @@ def serialize_api_task_args(
             continue
 
         script = allowed_alwayson_scripts[script_name.lower()]
+        script_args = get_dict_attribute(script_args, "args", [])
         arg_list = map_named_script_args_to_list(script, script_args)
         valid_alwayson_scripts[script_name] = {"args": arg_list}
 
