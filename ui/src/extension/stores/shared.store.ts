@@ -23,17 +23,13 @@ export const createSharedStore = (initialState: SharedState) => {
     },
     getSamplers: async () => {
       return fetch('/sdapi/v1/samplers')
-        .then((response) => response.json())
-        .then((data) => {
-          return data.map((item: any) => item.name);
-        });
+        .then(response => response.json())
+        .then(data => data.map((item: any) => item.name));
     },
     getCheckpoints: async () => {
       return fetch('/sdapi/v1/sd-models')
-        .then((response) => response.json())
-        .then((data) => {
-          return data.map((item: any) => item.title);
-        });
+        .then(response => response.json())
+        .then(data => data.map((item: any) => item.title));
     },
   };
 

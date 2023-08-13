@@ -1,6 +1,4 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-
-import { Grid, GridApi, GridOptions, RowHighlightPosition, RowNode } from 'ag-grid-community';
+import { CellClassParams, CellClickedEvent, Grid, GridApi, GridOptions, ICellRendererParams, ITooltipParams, RowHighlightPosition, RowNode, ValueFormatterParams, ValueGetterParams } from 'ag-grid-community';
 import { Notyf } from 'notyf';
 
 import bookmark from '../assets/icons/bookmark.svg?raw';
@@ -11,10 +9,9 @@ import playIcon from '../assets/icons/play.svg?raw';
 import rotateIcon from '../assets/icons/rotate.svg?raw';
 import saveIcon from '../assets/icons/save.svg?raw';
 import searchIcon from '../assets/icons/search.svg?raw';
+import { getHighlightPosition, getPixelOnRow, getRowNodeAtPixel } from '../utils/ag-grid';
 import { debounce } from '../utils/debounce';
 import { extractArgs } from '../utils/extract-args';
-import { formatDate } from '../utils/format-date';
-import { getHighlightPosition, getPixelOnRow, getRowNodeAtPixel } from '../utils/ag-grid';
 
 import { createHistoryTasksStore } from './stores/history.store';
 import { createPendingTasksStore } from './stores/pending.store';
@@ -26,7 +23,7 @@ import 'ag-grid-community/styles/ag-theme-alpine.css';
 import 'notyf/notyf.min.css';
 import './index.scss';
 
-let notyf: Notyf;
+let notyf: Notyf | undefined;
 
 declare global {
   function gradioApp(): HTMLElement;
@@ -71,12 +68,8 @@ const historyStore = createHistoryTasksStore({
 // load samplers and checkpoints
 const samplers: string[] = [];
 const checkpoints: string[] = ['System'];
-sharedStore.getSamplers().then((res) => {
-  samplers.push(...res);
-});
-sharedStore.getCheckpoints().then((res) => {
-  checkpoints.push(...res);
-});
+sharedStore.getSamplers().then(res => samplers.push(...res));
+sharedStore.getCheckpoints().then(res => checkpoints.push(...res));
 
 const sharedGridOptions: GridOptions<Task> = {
   // default col def properties get applied to all columns
@@ -96,15 +89,30 @@ const sharedGridOptions: GridOptions<Task> = {
       maxWidth: 240,
       pinned: 'left',
       rowDrag: true,
-      valueGetter: ({ data }) => data?.name ?? data?.id,
-      cellClass: ({ data }) => [
-        'cursor-pointer',
-        data?.status === 'pending' ? 'task-pending' : '',
-        data?.status === 'running' ? 'task-running' : '',
-        data?.status === 'done' ? 'task-done' : '',
-        data?.status === 'failed' ? 'task-failed' : '',
-        data?.status === 'interrupted' ? 'task-interrupted' : '',
-      ],
+      valueGetter: ({ data }: ValueGetterParams<Task, string>) => data?.name ?? data?.id,
+      cellClass: ({ data }: CellClassParams<Task, string>) => {
+        if (data == null) return;
+
+        const classes = ['cursor-pointer'];
+        switch (data.status) {
+          case 'pending':
+            classes.push('task-pending');
+            break;
+          case 'running':
+            classes.push('task-running');
+            break;
+          case 'done':
+            classes.push('task-done');
+            break;
+          case 'failed':
+            classes.push('task-failed');
+            break;
+          case 'interrupted':
+            classes.push('task-interrupted');
+            break;
+        }
+        return classes;
+      },
     },
     {
       field: 'type',
@@ -129,7 +137,7 @@ const sharedGridOptions: GridOptions<Task> = {
           maxWidth: 400,
           autoHeight: true,
           wrapText: true,
-          cellStyle: { 'line-height': '24px', 'padding-top': '8px', 'padding-bottom': '8px' },
+          cellClass: 'wrap-cell',
         },
         {
           field: 'params.negative_prompt',
@@ -139,7 +147,7 @@ const sharedGridOptions: GridOptions<Task> = {
           maxWidth: 400,
           autoHeight: true,
           wrapText: true,
-          cellStyle: { 'line-height': '24px', 'padding-top': '8px', 'padding-bottom': '8px' },
+          cellClass: 'wrap-cell',
         },
         {
           field: 'params.checkpoint',
@@ -147,11 +155,9 @@ const sharedGridOptions: GridOptions<Task> = {
           cellDataType: 'text',
           minWidth: 150,
           maxWidth: 300,
-          valueFormatter: ({ value }) => value || 'System',
+          valueFormatter: ({ value }: ValueFormatterParams<Task, string | undefined>) => value ?? 'System',
           cellEditor: 'agSelectCellEditor',
-          cellEditorParams: () => ({
-            values: checkpoints,
-          }),
+          cellEditorParams: () => ({ values: checkpoints }),
         },
         {
           field: 'params.sampler_name',
@@ -160,9 +166,7 @@ const sharedGridOptions: GridOptions<Task> = {
           width: 150,
           minWidth: 150,
           cellEditor: 'agSelectCellEditor',
-          cellEditorParams: () => ({
-            values: samplers,
-          }),
+          cellEditorParams: () => ({ values: samplers }),
         },
         {
           field: 'params.steps',
@@ -200,8 +204,10 @@ const sharedGridOptions: GridOptions<Task> = {
           minWidth: 110,
           maxWidth: 110,
           editable: false,
-          valueGetter: ({ data }) =>
-            data?.params?.width ? `${data.params.width} × ${data.params.height}` : '',
+          valueGetter: ({ data }: ValueGetterParams<Task, string | undefined>) => {
+            const params = data?.params;
+            return params != null ? `${params.width} × ${params.height}` : undefined;
+          },
         },
         {
           field: 'params.batch',
@@ -209,26 +215,28 @@ const sharedGridOptions: GridOptions<Task> = {
           minWidth: 100,
           maxWidth: 100,
           editable: false,
-          valueGetter: ({ data }) =>
-            data?.params?.n_iter ? `${data.params.batch_size} × ${data.params.n_iter}` : '1 × 1',
+          valueGetter: ({ data }: ValueGetterParams<Task, string>) => {
+            const params = data?.params;
+            return params != null ? `${params.batch_size} × ${params.n_iter}` : '1 × 1';
+          },
         },
       ],
     },
     {
       field: 'created_at',
       headerName: 'Queued At',
-      minWidth: 170,
+      minWidth: 180,
       editable: false,
-      valueGetter: ({ data }) => data && (data.created_at - new Date().getTimezoneOffset() * 60000),
-      valueFormatter: ({ value }) => value && formatDate(new Date(value)),
+      valueFormatter: ({ value }: ValueFormatterParams<Task, number>) =>
+        value != null ? new Date(value).toLocaleString(document.documentElement.lang) : '',
     },
     {
       field: 'updated_at',
       headerName: 'Updated At',
-      minWidth: 170,
+      minWidth: 180,
       editable: false,
-      valueGetter: ({ data }) => data && (data.created_at - new Date().getTimezoneOffset() * 60000),
-      valueFormatter: ({ value }) => value && formatDate(new Date(value)),
+      valueFormatter: ({ value }: ValueFormatterParams<Task, number>) =>
+        value != null ? new Date(value).toLocaleString(document.documentElement.lang) : '',
     },
   ],
 
@@ -243,32 +251,29 @@ const sharedGridOptions: GridOptions<Task> = {
 };
 
 function initSearchInput(selector: string) {
-  const searchContainer = gradioApp().querySelector(selector);
-  if (!searchContainer) {
-    throw new Error(`search container ${selector} not found`);
+  const searchContainer = gradioApp().querySelector<HTMLDivElement>(selector);
+  if (searchContainer == null) {
+    throw new Error(`Search container '${selector}' not found.`);
   }
   const searchInput = searchContainer.getElementsByTagName('input')[0];
-  if (!searchInput) {
-    throw new Error(`search input not found`);
+  if (searchInput == null) {
+    throw new Error('Search input not found.');
   }
   searchInput.classList.add('ts-search-input');
 
   const searchIconContainer = document.createElement('div');
   searchIconContainer.className = 'ts-search-icon';
   searchIconContainer.innerHTML = searchIcon;
-  searchInput.parentNode!.appendChild(searchIconContainer);
+  searchInput.parentElement!.appendChild(searchIconContainer);
 
   return searchInput;
 }
 
 async function notify(response: ResponseStatus) {
-  if (!notyf) {
+  if (notyf == null) {
     const Notyf = await import('notyf');
     notyf = new Notyf.Notyf({
-      position: {
-        x: 'center',
-        y: 'bottom',
-      },
+      position: { x: 'center', y: 'bottom' },
       duration: 3000,
     });
   }
@@ -286,8 +291,8 @@ window.origRandomId = window.randomId;
 function showTaskProgress(task_id: string, type: string | undefined, callback: () => void) {
   const args = extractArgs(requestProgress);
 
-  const gallery: HTMLDivElement = gradioApp().querySelector(
-    '#agent_scheduler_current_task_images',
+  const gallery = gradioApp().querySelector<HTMLDivElement>(
+    '#agent_scheduler_current_task_images'
   )!;
 
   // A1111 version
@@ -297,24 +302,21 @@ function showTaskProgress(task_id: string, type: string | undefined, callback: (
     // Vlad version
     const progressDiv = document.createElement('div');
     progressDiv.className = 'progressDiv';
-    gallery.parentNode?.insertBefore(progressDiv, gallery);
+    gallery.parentElement!.insertBefore(progressDiv, gallery);
     requestProgress(
       task_id,
       gallery,
       gallery,
       () => {
-        gallery.parentNode?.removeChild(progressDiv);
+        progressDiv.remove();
         callback();
       },
-      (res) => {
-        if (!res) return;
-        const perc = res ? `${Math.round((res?.progress || 0) * 100.0)}%` : '';
-        const eta = res?.paused ? ' Paused' : ` ETA: ${Math.round(res?.eta || 0)}s`;
-        progressDiv.innerText = `${perc}${eta}`;
-        progressDiv.style.background = res
-          ? `linear-gradient(to right, var(--primary-500) 0%, var(--primary-800) ${perc}, var(--neutral-700) ${perc})`
-          : 'var(--button-primary-background-fill)';
-      },
+      res => {
+        const perc = `${Math.round(res.progress * 100.0)}%`;
+        const eta = res.paused ? 'Paused' : `ETA: ${Math.round(res.eta)}s`;
+        progressDiv.innerText = `${perc} ${eta}`;
+        progressDiv.style.background = `linear-gradient(to right, var(--primary-500) 0%, var(--primary-800) ${perc}, var(--neutral-700) ${perc})`;
+      }
     );
   }
 
@@ -329,42 +331,37 @@ function showTaskProgress(task_id: string, type: string | undefined, callback: (
 }
 
 function initQueueHandler() {
-  const getUiCheckpoint = (is_img2img?: boolean) => {
-    const enqueue_wrapper_id = is_img2img ? 'img2img_enqueue_wrapper' : 'txt2img_enqueue_wrapper';
+  const getUiCheckpoint = (is_img2img: boolean) => {
     const enqueue_wrapper_model = gradioApp().querySelector<HTMLInputElement>(
-      `#${enqueue_wrapper_id} input`,
+      `#${is_img2img ? 'img2img_enqueue_wrapper' : 'txt2img_enqueue_wrapper'} input`
     );
-    if (enqueue_wrapper_model) {
+    if (enqueue_wrapper_model != null) {
       const checkpoint = enqueue_wrapper_model.value;
-      if (checkpoint == 'Runtime Checkpoint') {
-        return checkpoint;
-      }
-      if (checkpoint != 'Current Checkpoint') {
+      if (
+        checkpoint === 'Runtime Checkpoint' ||
+        checkpoint !== 'Current Checkpoint'
+      ) {
         return checkpoint;
       }
     }
 
     const setting_sd_model = gradioApp().querySelector<HTMLInputElement>(
-      '#setting_sd_model_checkpoint input',
+      '#setting_sd_model_checkpoint input'
     );
-    if (setting_sd_model) {
-      return setting_sd_model.value;
-    }
-
-    return 'Current Checkpoint';
+    return setting_sd_model?.value ?? 'Current Checkpoint';
   };
 
-  const btnEnqueue = document.querySelector<HTMLButtonElement>('#txt2img_enqueue');
+  const btnEnqueue = gradioApp().querySelector<HTMLButtonElement>('#txt2img_enqueue')!;
   window.submit_enqueue = function submit_enqueue(...args) {
     const res = create_submit_args(args);
-    res[0] = getUiCheckpoint();
+    res[0] = getUiCheckpoint(false);
     res[1] = randomId();
     window.randomId = window.origRandomId;
 
-    if (btnEnqueue) {
-      btnEnqueue.innerHTML = 'Queued';
+    if (btnEnqueue != null) {
+      btnEnqueue.innerText = 'Queued';
       setTimeout(() => {
-        btnEnqueue.innerHTML = 'Enqueue';
+        btnEnqueue.innerText = 'Enqueue';
         if (!sharedStore.getState().uiAsTab) {
           if (sharedStore.getState().selectedTab === 'pending') {
             pendingStore.refresh();
@@ -376,7 +373,7 @@ function initQueueHandler() {
     return res;
   };
 
-  const btnImg2ImgEnqueue = document.querySelector<HTMLButtonElement>('#img2img_enqueue');
+  const btnImg2ImgEnqueue = gradioApp().querySelector<HTMLButtonElement>('#img2img_enqueue')!;
   window.submit_enqueue_img2img = function submit_enqueue_img2img(...args) {
     const res = create_submit_args(args);
     res[0] = getUiCheckpoint(true);
@@ -384,10 +381,10 @@ function initQueueHandler() {
     res[2] = get_tab_index('mode_img2img');
     window.randomId = window.origRandomId;
 
-    if (btnImg2ImgEnqueue) {
-      btnImg2ImgEnqueue.innerHTML = 'Queued';
+    if (btnImg2ImgEnqueue != null) {
+      btnImg2ImgEnqueue.innerText = 'Queued';
       setTimeout(() => {
-        btnImg2ImgEnqueue.innerHTML = 'Enqueue';
+        btnImg2ImgEnqueue.innerText = 'Enqueue';
         if (!sharedStore.getState().uiAsTab) {
           if (sharedStore.getState().selectedTab === 'pending') {
             pendingStore.refresh();
@@ -400,16 +397,16 @@ function initQueueHandler() {
   };
 
   // detect queue button placement
-  const interrogateCol: HTMLDivElement = gradioApp().querySelector('.interrogate-col')!;
-  if (interrogateCol && interrogateCol.childElementCount > 2) {
+  const interrogateCol = gradioApp().querySelector<HTMLDivElement>('.interrogate-col')!;
+  if (interrogateCol.childElementCount > 2) {
     interrogateCol.classList.add('has-queue-button');
   }
 
   // setup keyboard shortcut
-  const setting = gradioApp().querySelector(
-    '#setting_queue_keyboard_shortcut textarea',
-  ) as HTMLTextAreaElement;
-  if (setting?.value && !setting.value.includes('Disabled')) {
+  const setting = gradioApp().querySelector<HTMLTextAreaElement>(
+    '#setting_queue_keyboard_shortcut textarea'
+  )!;
+  if (!setting.value.includes('Disabled')) {
     const parts = setting.value.split('+');
     const code = parts.pop();
 
@@ -425,36 +422,30 @@ function initQueueHandler() {
 
       const activeTab = get_tab_index('tabs');
       if (activeTab === 0) {
-        const btn = gradioApp().querySelector<HTMLButtonElement>('#txt2img_enqueue');
-        btn?.click();
+        btnEnqueue.click();
       } else if (activeTab === 1) {
-        const btn = gradioApp().querySelector<HTMLButtonElement>('#img2img_enqueue');
-        btn?.click();
+        btnImg2ImgEnqueue.click();
       }
     };
 
     window.addEventListener('keydown', handleShortcut);
 
     const txt2imgPrompt = gradioApp().querySelector<HTMLTextAreaElement>(
-      '#txt2img_prompt textarea',
-    );
-    if (txt2imgPrompt) {
-      txt2imgPrompt.addEventListener('keydown', handleShortcut);
-    }
+      '#txt2img_prompt textarea'
+    )!;
+    txt2imgPrompt.addEventListener('keydown', handleShortcut);
 
     const img2imgPrompt = gradioApp().querySelector<HTMLTextAreaElement>(
-      '#img2img_prompt textarea',
-    );
-    if (img2imgPrompt) {
-      img2imgPrompt.addEventListener('keydown', handleShortcut);
-    }
+      '#img2img_prompt textarea'
+    )!;
+    img2imgPrompt.addEventListener('keydown', handleShortcut);
   }
 
   // watch for current task id change
   const onTaskIdChange = (id: string | null) => {
-    if (!id) return;
-    const task = pendingStore.getState().pending_tasks.find((t) => t.id === id);
+    if (id == null) return;
 
+    const task = pendingStore.getState().pending_tasks.find(t => t.id === id);
     showTaskProgress(id, task?.type, pendingStore.refresh);
   };
   pendingStore.subscribe((curr, prev) => {
@@ -466,31 +457,41 @@ function initQueueHandler() {
   // context menu
   const queueWithTaskName = (img2img = false) => {
     const name = prompt('Enter task name');
-    window.randomId = () => name || window.origRandomId();
+    window.randomId = () => name ?? window.origRandomId();
     if (img2img) {
-      btnImg2ImgEnqueue?.click();
+      btnImg2ImgEnqueue.click();
     } else {
-      btnEnqueue?.click();
+      btnEnqueue.click();
     }
   };
   const queueWithEveryCheckpoint = (img2img = false) => {
     window.randomId = () => '$$_queue_with_all_checkpoints_$$';
     if (img2img) {
-      btnImg2ImgEnqueue?.click();
+      btnImg2ImgEnqueue.click();
     } else {
-      btnEnqueue?.click();
+      btnEnqueue.click();
     }
   };
 
-  appendContextMenuOption('#txt2img_enqueue', 'Queue with task name', () => queueWithTaskName());
-  appendContextMenuOption('#txt2img_enqueue', 'Queue with all checkpoints', () =>
-    queueWithEveryCheckpoint(),
+  appendContextMenuOption(
+    '#txt2img_enqueue',
+    'Queue with task name',
+    () => queueWithTaskName()
   );
-  appendContextMenuOption('#img2img_enqueue', 'Queue with task name', () =>
-    queueWithTaskName(true),
+  appendContextMenuOption(
+    '#txt2img_enqueue',
+    'Queue with all checkpoints',
+    () => queueWithEveryCheckpoint()
   );
-  appendContextMenuOption('#img2img_enqueue', 'Queue with all checkpoints', () =>
-    queueWithEveryCheckpoint(true),
+  appendContextMenuOption(
+    '#img2img_enqueue',
+    'Queue with task name',
+    () => queueWithTaskName(true)
+  );
+  appendContextMenuOption(
+    '#img2img_enqueue',
+    'Queue with all checkpoints',
+    () => queueWithEveryCheckpoint(true)
   );
 }
 
@@ -507,53 +508,62 @@ function initTabChangeHandler() {
 
   // watch for tab activation
   const observer = new MutationObserver(function (mutationsList) {
-    mutationsList.forEach((styleChange) => {
+    mutationsList.forEach(styleChange => {
       const tab = styleChange.target as HTMLElement;
-      const visible = tab.style.display === 'block';
+      const visible = tab.style.display !== 'none';
       if (!visible) return;
 
-      if (tab.id === 'tab_agent_scheduler') {
-        if (sharedStore.getState().selectedTab === 'pending') {
-          pendingStore.refresh();
-        } else {
-          historyStore.refresh();
-        }
-      } else if (tab.id === 'agent_scheduler_pending_tasks_tab') {
-        sharedStore.setSelectedTab('pending');
-      } else if (tab.id === 'agent_scheduler_history_tab') {
-        sharedStore.setSelectedTab('history');
+      switch (tab.id) {
+        case 'tab_agent_scheduler':
+          if (sharedStore.getState().selectedTab === 'pending') {
+            pendingStore.refresh();
+          } else {
+            historyStore.refresh();
+          }
+          break;
+        case 'agent_scheduler_pending_tasks_tab':
+          sharedStore.setSelectedTab('pending');
+          break;
+        case 'agent_scheduler_history_tab':
+          sharedStore.setSelectedTab('history');
+          break;
       }
     });
   });
-  if (document.getElementById('tab_agent_scheduler')) {
-    observer.observe(document.getElementById('tab_agent_scheduler')!, {
-      attributeFilter: ['style'],
-    });
+  const tab = gradioApp().querySelector('#tab_agent_scheduler');
+  if (tab != null) {
+    observer.observe(tab, { attributeFilter: ['style'] });
   } else {
     sharedStore.setState({ uiAsTab: false });
   }
-  observer.observe(document.getElementById('agent_scheduler_pending_tasks_tab')!, {
-    attributeFilter: ['style'],
-  });
-  observer.observe(document.getElementById('agent_scheduler_history_tab')!, {
-    attributeFilter: ['style'],
-  });
+  observer.observe(
+    gradioApp().querySelector('#agent_scheduler_pending_tasks_tab')!,
+    { attributeFilter: ['style'] }
+  );
+  observer.observe(
+    gradioApp().querySelector('#agent_scheduler_history_tab')!,
+    { attributeFilter: ['style'] }
+  );
 }
 
 function initPendingTab() {
   const store = pendingStore;
 
   // init actions
-  const refreshButton = gradioApp().querySelector('#agent_scheduler_action_reload')!;
-  const pauseButton = gradioApp().querySelector('#agent_scheduler_action_pause')!;
-  const resumeButton = gradioApp().querySelector('#agent_scheduler_action_resume')!;
-  const clearButton = gradioApp().querySelector('#agent_scheduler_action_clear_queue')!;
-  refreshButton.addEventListener('click', store.refresh);
+  const refreshButton = gradioApp().querySelector<HTMLButtonElement>('#agent_scheduler_action_reload')!;
+  refreshButton.addEventListener('click', () => store.refresh);
+
+  const pauseButton = gradioApp().querySelector<HTMLButtonElement>('#agent_scheduler_action_pause')!;
   pauseButton.addEventListener('click', () => store.pauseQueue().then(notify));
+
+  const resumeButton = gradioApp().querySelector<HTMLButtonElement>('#agent_scheduler_action_resume')!;
   resumeButton.addEventListener('click', () => store.resumeQueue().then(notify));
+
+  const clearButton = gradioApp().querySelector<HTMLButtonElement>('#agent_scheduler_action_clear_queue')!;
   clearButton.addEventListener('click', () => {
-    if (!confirm('Are you sure you want to clear the queue?')) return;
-    store.clearQueue().then(notify);
+    if (confirm('Are you sure you want to clear the queue?')) {
+      store.clearQueue().then(notify);
+    }
   });
 
   // watch for queue status change
@@ -581,9 +591,9 @@ function initPendingTab() {
       clearTimeout(pageMoveTimeout);
       pageMoveTimeout = null;
     }
-  }
+  };
   const updatePageMoveTimeout = (api: GridApi<Task>, pixel: number) => {
-    if (!lastHighlightedRow) {
+    if (lastHighlightedRow == null) {
       clearPageMoveTimeout();
       return;
     }
@@ -594,7 +604,7 @@ function initPendingTab() {
       api.getDisplayedRowCount() - 1
     );
 
-    const rowIndex = lastHighlightedRow.rowIndex!
+    const rowIndex = lastHighlightedRow.rowIndex!;
     if (rowIndex === firstRowIndexOfPage) {
       if (getPixelOnRow(api, lastHighlightedRow, pixel) > PAGE_MOVE_Y_MARGIN) {
         clearPageMoveTimeout();
@@ -624,20 +634,20 @@ function initPendingTab() {
         }, PAGE_MOVE_TIMEOUT_MS);
       }
     }
-  }
+  };
 
   let lastPixel: number | null;
 
   const clearHighlightedRow = () => {
     clearPageMoveTimeout();
     lastPixel = null;
-    if (lastHighlightedRow) {
+    if (lastHighlightedRow != null) {
       lastHighlightedRow.setHighlighted(null);
       lastHighlightedRow = null;
     }
-  }
+  };
   const highlightRow = (api: GridApi<Task>, pixel?: number) => {
-    if (pixel == undefined) {
+    if (pixel == null) {
       if (lastPixel == null) return;
       pixel = lastPixel;
     } else {
@@ -645,16 +655,16 @@ function initPendingTab() {
     }
 
     const rowNode = getRowNodeAtPixel(api, pixel) as RowNode<Task> | undefined;
-    if (!rowNode) return;
+    if (rowNode == null) return;
 
     const highlight = getHighlightPosition(api, rowNode, pixel);
-    if (lastHighlightedRow && rowNode.id !== lastHighlightedRow.id) {
+    if (lastHighlightedRow != null && rowNode.id !== lastHighlightedRow.id) {
       clearHighlightedRow();
     }
     rowNode.setHighlighted(highlight);
     lastHighlightedRow = rowNode;
     updatePageMoveTimeout(api, pixel);
-  }
+  };
 
   // init grid
   const gridOptions: GridOptions<Task> = {
@@ -672,7 +682,7 @@ function initPendingTab() {
         hide: true,
         sort: 'asc',
       },
-      ...(sharedGridOptions.columnDefs || []),
+      ...sharedGridOptions.columnDefs!,
       {
         headerName: 'Action',
         pinned: 'right',
@@ -681,61 +691,56 @@ function initPendingTab() {
         resizable: false,
         editable: false,
         valueGetter: ({ data }) => data?.id,
-        cellClass: ({ data }) => (data?.editing ? 'pending-actions editing' : 'pending-actions'),
-        cellRenderer: ({ api, value, data }: any) => {
-          if (!data) return undefined;
-          const html = `
-            <div class="inline-flex mt-1 edit-actions" role="group">
-              <button type="button" title="Save" class="ts-btn-action primary ts-btn-save">
-                ${saveIcon}
-              </button>
-              <button type="button" title="Cancel"
-                class="ts-btn-action secondary ts-btn-cancel">
-                ${cancelIcon}
-              </button>
-            </div>
-            <div class="inline-flex mt-1 control-actions" role="group">
-              <button type="button" title="Run" class="ts-btn-action primary ts-btn-run"
-                ${data.status === 'running' ? 'disabled' : ''}>
-                ${playIcon}
-              </button>
-              <button type="button" title="${data.status === 'pending' ? 'Delete' : 'Interrupt'}"
-                class="ts-btn-action stop ts-btn-delete">
-                ${data.status === 'pending' ? deleteIcon : cancelIcon}
-              </button>
-            </div>
-            `;
+        cellClass: 'pending-actions',
+        cellRenderer: ({ api, value, data }: ICellRendererParams<Task, string>) => {
+          if (data == null || value == null) return;
 
           const node = document.createElement('div');
-          node.innerHTML = html;
+          node.innerHTML = `
+          <div class="inline-flex mt-1 edit-actions" role="group">
+            <button type="button" title="Save" class="ts-btn-action primary ts-btn-save">
+              ${saveIcon}
+            </button>
+            <button type="button" title="Cancel" class="ts-btn-action secondary ts-btn-cancel">
+              ${cancelIcon}
+            </button>
+          </div>
+          <div class="inline-flex mt-1 control-actions" role="group">
+            <button type="button" title="Run" class="ts-btn-action primary ts-btn-run"
+              ${data.status === 'running' ? 'disabled' : ''}>
+              ${playIcon}
+            </button>
+            <button type="button" title="${data.status === 'pending' ? 'Delete' : 'Interrupt'}"
+              class="ts-btn-action stop ts-btn-delete">
+              ${data.status === 'pending' ? deleteIcon : cancelIcon}
+            </button>
+          </div>
+          `;
 
-          const btnSave = node.querySelector('button.ts-btn-save')!;
+          const btnSave = node.querySelector<HTMLButtonElement>('button.ts-btn-save')!;
           btnSave.addEventListener('click', () => {
             api.showLoadingOverlay();
-            pendingStore.updateTask(data.id, data).then((res) => {
+            pendingStore.updateTask(data.id, data).then(res => {
               notify(res);
               api.hideOverlay();
               api.stopEditing(false);
             });
           });
-          const btnCancel = node.querySelector('button.ts-btn-cancel')!;
-          btnCancel.addEventListener('click', () => {
-            api.stopEditing(true);
-          });
 
-          const btnRun = node.querySelector('button.ts-btn-run')!;
+          const btnCancel = node.querySelector<HTMLButtonElement>('button.ts-btn-cancel')!;
+          btnCancel.addEventListener('click', () => api.stopEditing(true));
+
+          const btnRun = node.querySelector<HTMLButtonElement>('button.ts-btn-run')!;
           btnRun.addEventListener('click', () => {
             api.showLoadingOverlay();
             store.runTask(value).then(() => api.hideOverlay());
           });
-          const btnDelete = node.querySelector('button.ts-btn-delete')!;
+          const btnDelete = node.querySelector<HTMLButtonElement>('button.ts-btn-delete')!;
           btnDelete.addEventListener('click', () => {
             api.showLoadingOverlay();
-            store.deleteTask(value).then((res) => {
+            store.deleteTask(value).then(res => {
               notify(res);
-              api.applyTransaction({
-                remove: [data],
-              });
+              api.applyTransaction({ remove: [data] });
               api.hideOverlay();
             });
           });
@@ -744,17 +749,17 @@ function initPendingTab() {
         },
       },
     ],
-    onColumnMoved({ columnApi }) {
+    onColumnMoved: ({ columnApi }) => {
       const colState = columnApi.getColumnState();
       const colStateStr = JSON.stringify(colState);
       localStorage.setItem('agent_scheduler:queue_col_state', colStateStr);
     },
-    onSortChanged({ columnApi }) {
+    onSortChanged: ({ columnApi }) => {
       const colState = columnApi.getColumnState();
       const colStateStr = JSON.stringify(colState);
       localStorage.setItem('agent_scheduler:queue_col_state', colStateStr);
     },
-    onColumnResized({ columnApi }) {
+    onColumnResized: ({ columnApi }) => {
       const colState = columnApi.getColumnState();
       const colStateStr = JSON.stringify(colState);
       localStorage.setItem('agent_scheduler:queue_col_state', colStateStr);
@@ -764,47 +769,45 @@ function initPendingTab() {
       const searchInput = initSearchInput('#agent_scheduler_action_search');
       searchInput.addEventListener(
         'keyup',
-        debounce((e: KeyboardEvent) => {
-          api.setQuickFilter((e.target as HTMLInputElement).value);
-        }, 200),
+        debounce(function () { api.setQuickFilter(this.value); }, 200)
       );
 
       const updateRowData = (state: ReturnType<typeof store.getState>) => {
         api.setRowData(state.pending_tasks);
 
-        if (state.current_task_id) {
+        if (state.current_task_id != null) {
           const node = api.getRowNode(state.current_task_id);
-          if (node) {
+          if (node != null) {
             api.refreshCells({ rowNodes: [node], force: true });
           }
         }
 
         api.clearFocusedCell();
         columnApi.autoSizeAllColumns();
-      }
+      };
       store.subscribe(updateRowData);
       updateRowData(store.getState());
 
       // restore col state
       const colStateStr = localStorage.getItem('agent_scheduler:queue_col_state');
-      if (colStateStr) {
+      if (colStateStr != null) {
         const colState = JSON.parse(colStateStr);
         columnApi.applyColumnState({ state: colState, applyOrder: true });
       }
     },
     onRowDragEnter: ({ api, y }) => highlightRow(api, y),
     onRowDragMove: ({ api, y }) => highlightRow(api, y),
-    onRowDragLeave: (_) => clearHighlightedRow(),
+    onRowDragLeave: () => clearHighlightedRow(),
     onRowDragEnd: ({ api, node }) => {
       const highlightedRow = lastHighlightedRow;
-      if (!highlightedRow) {
+      if (highlightedRow == null) {
         clearHighlightedRow();
         return;
       }
 
       const id = node.data?.id;
       const highlightedId = highlightedRow.data?.id;
-      if (!id || !highlightedId || id === highlightedId) {
+      if (id == null || highlightedId == null || id === highlightedId) {
         clearHighlightedRow();
         return;
       }
@@ -843,25 +846,22 @@ function initPendingTab() {
       });
     },
     onRowEditingStarted: ({ api, data, node }) => {
-      if (!data) return;
+      if (data == null) return;
+
       node.setDataValue('editing', true);
-      api.refreshCells({
-        rowNodes: [node],
-        force: true,
-      });
+      api.refreshCells({ rowNodes: [node], force: true });
     },
     onRowEditingStopped: ({ api, data, node }) => {
-      if (!data) return;
+      if (data == null) return;
+
       node.setDataValue('editing', false);
-      api.refreshCells({
-        rowNodes: [node],
-        force: true,
-      });
+      api.refreshCells({ rowNodes: [node], force: true });
     },
-    onRowValueChanged: ({ data, api }) => {
-      if (!data) return;
+    onRowValueChanged: ({ api, data }) => {
+      if (data == null) return;
+
       api.showLoadingOverlay();
-      pendingStore.updateTask(data.id, data).then((res) => {
+      pendingStore.updateTask(data.id, data).then(res => {
         notify(res);
         api.hideOverlay();
       });
@@ -869,7 +869,7 @@ function initPendingTab() {
   };
 
   const eGridDiv = gradioApp().querySelector<HTMLDivElement>(
-    '#agent_scheduler_pending_tasks_grid',
+    '#agent_scheduler_pending_tasks_grid'
   )!;
   new Grid(eGridDiv, gridOptions);
 }
@@ -878,38 +878,41 @@ function initHistoryTab() {
   const store = historyStore;
 
   // init actions
-  const refreshButton = gradioApp().querySelector('#agent_scheduler_action_refresh_history')!;
-  const clearButton = gradioApp().querySelector('#agent_scheduler_action_clear_history')!;
-  refreshButton.addEventListener('click', () => {
-    store.refresh();
-  });
+  const refreshButton = gradioApp().querySelector<HTMLButtonElement>(
+    '#agent_scheduler_action_refresh_history'
+  )!;
+  refreshButton.addEventListener('click', () => store.refresh());
+  const clearButton = gradioApp().querySelector<HTMLButtonElement>(
+    '#agent_scheduler_action_clear_history'
+  )!;
   clearButton.addEventListener('click', () => {
     if (!confirm('Are you sure you want to clear the history?')) return;
     store.clearHistory().then(notify);
   });
-  const resultTaskId: HTMLTextAreaElement = gradioApp().querySelector(
-    '#agent_scheduler_history_selected_task textarea',
-  )!;
-  const resultImageId: HTMLTextAreaElement = gradioApp().querySelector(
-    '#agent_scheduler_history_selected_image textarea',
-  )!;
-  const resultGallery: HTMLDivElement = gradioApp().querySelector(
-    '#agent_scheduler_history_gallery',
-  )!;
 
-  resultGallery.addEventListener('click', (e) => {
-    const target = e.target as HTMLImageElement;
-    if (target.tagName === 'IMG') {
+  const resultTaskId = gradioApp().querySelector<HTMLTextAreaElement>(
+    '#agent_scheduler_history_selected_task textarea'
+  )!;
+  const resultImageId = gradioApp().querySelector<HTMLTextAreaElement>(
+    '#agent_scheduler_history_selected_image textarea'
+  )!;
+  const resultGallery = gradioApp().querySelector<HTMLDivElement>(
+    '#agent_scheduler_history_gallery'
+  )!;
+  resultGallery.addEventListener('click', e => {
+    const target = e.target as Element | null;
+    if (target?.tagName === 'IMG') {
       const imageIdx = Array.prototype.indexOf.call(
-        target.parentNode?.parentNode?.childNodes ?? [],
-        target.parentNode,
+        target.parentElement!.parentElement!.children,
+        target.parentElement!
       );
       resultImageId.value = imageIdx.toString();
       resultImageId.dispatchEvent(new Event('input', { bubbles: true }));
     }
   });
-  window.agent_scheduler_status_filter_changed = function (value) {
-    store.onFilterStatus(value?.toLowerCase() as TaskStatus);
+
+  window.agent_scheduler_status_filter_changed = value => {
+    store.onFilterStatus(value?.toLowerCase() as TaskStatus | undefined);
   };
 
   // init grid
@@ -930,21 +933,25 @@ function initHistoryTab() {
         maxWidth: 55,
         pinned: 'left',
         sort: 'desc',
-        cellClass: 'cursor-pointer pt-3',
-        cellRenderer: ({ data, value }: any) => {
-          if (!data) return undefined;
-          return value
-            ? `<span class="ts-bookmarked">${bookmarked}</span>`
-            : `<span class="ts-bookmark">${bookmark}</span>`;
-        },
-        onCellClicked: ({ data, event, api }) => {
-          if (!data) return;
-          event?.stopPropagation();
-          event?.preventDefault();
-          store.bookmarkTask(data.id, !data.bookmarked).then((res) => {
+        tooltipValueGetter: ({ value }: ITooltipParams<Task, boolean | undefined, any>) =>
+          value === true ? 'Unbookmark' : 'Bookmark',
+        cellClass: ({ value }: CellClassParams<Task, boolean | undefined>) =>
+          ['cursor-pointer', 'pt-3', value === true ? 'ts-bookmarked' : 'ts-bookmark'],
+        cellRenderer: ({ value }: ICellRendererParams<Task, boolean | undefined>) =>
+          value === true ? bookmarked : bookmark,
+        onCellClicked: ({ api, data, value, event }: CellClickedEvent<Task, boolean | undefined>) => {
+          if (data == null) return;
+
+          if (event != null) {
+            event.stopPropagation();
+            event.preventDefault();
+          }
+
+          const bookmarked = value === true;
+          store.bookmarkTask(data.id, !bookmarked).then(res => {
             notify(res);
             api.applyTransaction({
-              update: [{ ...data, bookmarked: !data.bookmarked }],
+              update: [{ ...data, bookmarked: !bookmarked }],
             });
           });
         },
@@ -955,10 +962,10 @@ function initHistoryTab() {
         sort: 'desc',
       },
       {
-        ...(sharedGridOptions.columnDefs || [])[0],
+        ...sharedGridOptions.columnDefs![0],
         rowDrag: false,
       },
-      ...(sharedGridOptions.columnDefs || []).slice(1),
+      ...sharedGridOptions.columnDefs!.slice(1),
       {
         headerName: 'Action',
         pinned: 'right',
@@ -966,43 +973,35 @@ function initHistoryTab() {
         maxWidth: 110,
         resizable: false,
         valueGetter: ({ data }) => data?.id,
-        cellRenderer: ({ api, data, value }: any) => {
-          if (!data) return undefined;
+        cellRenderer: ({ api, data, value }: ICellRendererParams<Task, string | undefined>) => {
+          if (data == null || value == null) return;
 
-          const html = `
-            <div class="inline-flex mt-1" role="group">
-              <button type="button" title="Requeue" class="ts-btn-action primary ts-btn-run">
-                ${rotateIcon}
-              </button>
-              <button type="button" title="Delete" class="ts-btn-action stop ts-btn-delete">
-                ${deleteIcon}
-              </button>
-            </div>
-            `;
+          const node = document.createElement('div');
+          node.innerHTML = `
+          <div class="inline-flex mt-1" role="group">
+            <button type="button" title="Requeue" class="ts-btn-action primary ts-btn-run">
+              ${rotateIcon}
+            </button>
+            <button type="button" title="Delete" class="ts-btn-action stop ts-btn-delete">
+              ${deleteIcon}
+            </button>
+          </div>
+          `;
 
-          const placeholder = document.createElement('div');
-          placeholder.innerHTML = html;
-          const node = placeholder.firstElementChild!;
-
-          const btnRun = node.querySelector('button.ts-btn-run')!;
-          btnRun.addEventListener('click', (e) => {
+          const btnRun = node.querySelector<HTMLButtonElement>('button.ts-btn-run')!;
+          btnRun.addEventListener('click', e => {
             e.preventDefault();
             e.stopPropagation();
-            store.requeueTask(value).then((res) => {
-              notify(res);
-            });
+            store.requeueTask(value).then(notify);
           });
-
-          const btnDelete = node.querySelector('button.ts-btn-delete')!;
-          btnDelete.addEventListener('click', (e) => {
+          const btnDelete = node.querySelector<HTMLButtonElement>('button.ts-btn-delete')!;
+          btnDelete.addEventListener('click', e => {
             e.preventDefault();
             e.stopPropagation();
             api.showLoadingOverlay();
-            pendingStore.deleteTask(value).then((res) => {
+            pendingStore.deleteTask(value).then(res => {
               notify(res);
-              api.applyTransaction({
-                remove: [data],
-              });
+              api.applyTransaction({ remove: [data] });
               api.hideOverlay();
             });
           });
@@ -1013,17 +1012,17 @@ function initHistoryTab() {
     ],
     rowSelection: 'single',
     suppressRowDeselection: true,
-    onColumnMoved({ columnApi }) {
+    onColumnMoved: ({ columnApi }) => {
       const colState = columnApi.getColumnState();
       const colStateStr = JSON.stringify(colState);
       localStorage.setItem('agent_scheduler:history_col_state', colStateStr);
     },
-    onSortChanged({ columnApi }) {
+    onSortChanged: ({ columnApi }) => {
       const colState = columnApi.getColumnState();
       const colStateStr = JSON.stringify(colState);
       localStorage.setItem('agent_scheduler:history_col_state', colStateStr);
     },
-    onColumnResized({ columnApi }) {
+    onColumnResized: ({ columnApi }) => {
       const colState = columnApi.getColumnState();
       const colStateStr = JSON.stringify(colState);
       localStorage.setItem('agent_scheduler:history_col_state', colStateStr);
@@ -1033,63 +1032,58 @@ function initHistoryTab() {
       const searchInput = initSearchInput('#agent_scheduler_action_search_history');
       searchInput.addEventListener(
         'keyup',
-        debounce((e: KeyboardEvent) => {
-          api.setQuickFilter((e.target as HTMLInputElement).value);
-        }, 200),
+        debounce(function () { api.setQuickFilter(this.value); }, 200)
       );
 
       const updateRowData = (state: ReturnType<typeof store.getState>) => {
         api.setRowData(state.tasks);
         api.clearFocusedCell();
         columnApi.autoSizeAllColumns();
-      }
+      };
       store.subscribe(updateRowData);
       updateRowData(store.getState());
 
       // restore col state
       const colStateStr = localStorage.getItem('agent_scheduler:history_col_state');
-      if (colStateStr) {
+      if (colStateStr != null) {
         const colState = JSON.parse(colStateStr);
         columnApi.applyColumnState({ state: colState, applyOrder: true });
       }
     },
-    onSelectionChanged: (e) => {
-      const [selected] = e.api.getSelectedRows();
-      if (selected) {
-        resultTaskId.value = selected.id;
-        resultTaskId.dispatchEvent(new Event('input', { bubbles: true }));
-      }
+    onSelectionChanged: ({ api }) => {
+      const [selected] = api.getSelectedRows();
+      resultTaskId.value = selected.id;
+      resultTaskId.dispatchEvent(new Event('input', { bubbles: true }));
     },
-    onCellEditRequest: ({ data, newValue, api, colDef }) => {
+    onCellEditRequest: ({ api, data, colDef, newValue }) => {
       if (colDef.field !== 'name') return;
-      if (!newValue) return;
+
+      const name = newValue as string | undefined;
+      if (name == null) return;
 
       api.showLoadingOverlay();
-      historyStore.renameTask(data.id, newValue).then((res) => {
+      historyStore.renameTask(data.id, name).then(res => {
         notify(res);
-        const newData = { ...data, name: newValue };
-        const tx = {
-          update: [newData],
-        };
-        api.applyTransaction(tx);
+        const newData = { ...data, name };
+        api.applyTransaction({ update: [newData] });
         api.hideOverlay();
       });
     },
   };
   const eGridDiv = gradioApp().querySelector<HTMLDivElement>(
-    '#agent_scheduler_history_tasks_grid',
+    '#agent_scheduler_history_tasks_grid'
   )!;
   new Grid(eGridDiv, gridOptions);
 }
 
 let agentSchedulerInitialized = false;
-
 onUiLoaded(function initAgentScheduler() {
   // delay ui init until dom is available
-  if (!document.getElementById('agent_scheduler_tabs')) {
+  if (gradioApp().querySelector('#agent_scheduler_tabs') == null) {
     setTimeout(initAgentScheduler, 500);
     return;
   }
+
   if (agentSchedulerInitialized) return;
   initQueueHandler();
   initTabChangeHandler();

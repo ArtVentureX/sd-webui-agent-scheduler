@@ -1,13 +1,15 @@
 from enum import Enum
-from datetime import datetime
-from typing import Union, List
+from datetime import datetime, timezone
+from typing import Optional, Union, List
 
 from sqlalchemy import (
+    TypeDecorator,
+    Dialect,
     Column,
     String,
     Text,
     Integer,
-    DateTime,
+    DateTime as DateTimeImpl,
     LargeBinary,
     Boolean,
     text,
@@ -17,6 +19,23 @@ from sqlalchemy.orm import Session
 
 from .base import BaseTableManager, Base
 from ..models import TaskModel
+
+
+class DateTime(TypeDecorator):
+    impl = DateTimeImpl
+    cache_ok = True
+
+    def process_bind_param(self, value: Optional[datetime], dialect: Dialect):
+        if value is None:
+            return None
+        return value.astimezone(timezone.utc)
+
+    def process_result_value(self, value: Optional[datetime], dialect: Dialect):
+        if value is None:
+            return None
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc)
 
 
 class TaskStatus(str, Enum):
@@ -32,7 +51,7 @@ class Task(TaskModel):
     params: str
 
     def __init__(self, **kwargs):
-        priority = kwargs.pop("priority", int(datetime.utcnow().timestamp() * 1000))
+        priority = kwargs.pop("priority", int(datetime.now(timezone.utc).timestamp() * 1000))
         super().__init__(priority=priority, **kwargs)
 
     class Config(TaskModel.__config__):
@@ -256,7 +275,7 @@ class TaskManager(BaseTableManager):
                         self.__get_min_priority(status=TaskStatus.PENDING) - 1
                     )
                 elif priority == -1:
-                    result.priority = int(datetime.utcnow().timestamp() * 1000)
+                    result.priority = int(datetime.now(timezone.utc).timestamp() * 1000)
                 else:
                     self.__move_tasks_down(priority)
                     session.execute(text("SELECT 1"))

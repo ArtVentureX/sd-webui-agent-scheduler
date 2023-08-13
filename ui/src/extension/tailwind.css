@@ -12,17 +12,7 @@
   }
 
   .ts-btn-action {
-    @apply inline-flex items-center !px-[--size-2] !py-[--size-1] !m-0 transition-[--button-transition]
-           first:rounded-l-[--button-small-radius] last:rounded-r-[--button-small-radius]
-           border-[--button-border-width];
-  }
-
-  .ts-bookmark {
-    @apply text-[--body-text-color-subdued];
-  }
-
-  .ts-bookmarked {
-    @apply text-[--color-accent];
+    @apply !m-0 first:rounded-l-[--button-small-radius] last:rounded-r-[--button-small-radius];
   }
 
   @keyframes blink {
