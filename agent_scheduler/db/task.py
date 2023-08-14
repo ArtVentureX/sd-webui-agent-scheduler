@@ -4,7 +4,6 @@ from typing import Optional, Union, List
 
 from sqlalchemy import (
     TypeDecorator,
-    Dialect,
     Column,
     String,
     Text,
@@ -25,12 +24,12 @@ class DateTime(TypeDecorator):
     impl = DateTimeImpl
     cache_ok = True
 
-    def process_bind_param(self, value: Optional[datetime], dialect: Dialect):
+    def process_bind_param(self, value: Optional[datetime], _):
         if value is None:
             return None
         return value.astimezone(timezone.utc)
 
-    def process_result_value(self, value: Optional[datetime], dialect: Dialect):
+    def process_result_value(self, value: Optional[datetime], _):
         if value is None:
             return None
         if value.tzinfo is None:
