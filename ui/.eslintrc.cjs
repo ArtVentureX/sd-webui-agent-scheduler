@@ -7,9 +7,29 @@ module.exports = {
     'plugin:react-hooks/recommended',
   ],
   parser: '@typescript-eslint/parser',
-  parserOptions: { ecmaVersion: 'latest', sourceType: 'module' },
+  parserOptions: {
+    ecmaVersion: 'latest',
+    sourceType: 'module',
+    project: 'tsconfig.json',
+  },
   plugins: ['react-refresh', 'simple-import-sort'],
   rules: {
+    'comma-dangle': [
+      'error',
+      {
+        'arrays': 'always-multiline',
+        'objects': 'always-multiline',
+        'imports': 'always-multiline',
+        'exports': 'always-multiline',
+      },
+    ],
+    'semi': ['error', 'always'],
+    'semi-spacing': ['error', { 'after': true, 'before': false }],
+    'semi-style': ['error', 'last'],
+    'no-extra-semi': 'error',
+    'no-unexpected-multiline': 'error',
+    'no-unreachable': 'error',
+    'no-irregular-whitespace': ['error', { 'skipTemplates': true }],
     'react-refresh/only-export-components': 'warn',
     'simple-import-sort/imports': [
       'error',
@@ -36,6 +56,15 @@ module.exports = {
         ],
       },
     ],
-    '@typescript-eslint/no-explicit-any': 'off'
+    '@typescript-eslint/no-explicit-any': 'off',
+    '@typescript-eslint/no-non-null-assertion': 'off',
+    '@typescript-eslint/strict-boolean-expressions': [
+      'error',
+      {
+        allowString: false,
+        allowNumber: false,
+        allowNullableObject: false,
+      },
+    ],
   },
 }

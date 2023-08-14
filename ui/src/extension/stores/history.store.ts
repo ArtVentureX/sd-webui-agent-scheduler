@@ -24,39 +24,39 @@ export const createHistoryTasksStore = (initialState: HistoryTasksState) => {
   const { getState, setState, subscribe } = store;
 
   const actions: HistoryTasksActions = {
-    refresh: async (options) => {
+    refresh: async options => {
       const { limit = 1000, offset = 0 } = options ?? {};
       const status = getState().status ?? '';
 
       return fetch(`/agent-scheduler/v1/history?status=${status}&limit=${limit}&offset=${offset}`)
-        .then((response) => response.json())
+        .then(response => response.json())
         .then((data: TaskHistoryResponse) => {
           setState({ ...data });
           return data;
         });
     },
-    onFilterStatus: (status) => {
+    onFilterStatus: status => {
       setState({ status });
       actions.refresh();
     },
     bookmarkTask: async (id: string, bookmarked: boolean) => {
       return fetch(`/agent-scheduler/v1/task/${id}/${bookmarked ? 'bookmark' : 'unbookmark'}`, {
         method: 'POST',
-      }).then((response) => response.json());
+      }).then(response => response.json());
     },
     renameTask: async (id: string, name: string) => {
       return fetch(`/agent-scheduler/v1/task/${id}/rename?name=${encodeURIComponent(name)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-      }).then((response) => response.json());
+      }).then(response => response.json());
     },
     requeueTask: async (id: string) => {
-      return fetch(`/agent-scheduler/v1/task/${id}/requeue`, { method: 'POST' }).then((response) =>
-        response.json(),
+      return fetch(`/agent-scheduler/v1/task/${id}/requeue`, { method: 'POST' }).then(response =>
+        response.json()
       );
     },
     clearHistory: async () => {
-      return fetch('/agent-scheduler/v1/history/clear', { method: 'POST' }).then((response) => {
+      return fetch('/agent-scheduler/v1/history/clear', { method: 'POST' }).then(response => {
         actions.refresh();
         return response.json();
       });

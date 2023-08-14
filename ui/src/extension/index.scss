@@ -11,7 +11,7 @@
 }
 .ag-theme-gradio,
 .dark .ag-theme-gradio {
-  * {
+  > * {
     --body-text-color: 'inherit';
   }
 
@@ -41,6 +41,7 @@
   .ag-root-wrapper {
     border-radius: var(--table-radius);
   }
+
   .ag-row-even {
     background: var(--table-odd-background-fill);
   }
@@ -125,17 +126,23 @@
 }
 
 .ag-cell.pending-actions {
-  &.editing {
+  .ag-row.ag-row-editing & {
     .control-actions {
       display: none;
     }
   }
 
-  &:not(.editing) {
+  .ag-row:not(.ag-row-editing) & {
     .edit-actions {
       display: none;
     }
   }
+}
+
+.ag-cell.wrap-cell {
+  line-height: var(--line-lg);
+  padding-top: calc(var(--ag-cell-horizontal-padding) - 1px);
+  padding-bottom: calc(var(--ag-cell-horizontal-padding) - 1px);
 }
 
 button.ts-btn-action {
@@ -144,7 +151,7 @@ button.ts-btn-action {
   align-items: center;
   transition: var(--button-transition);
   box-shadow: var(--button-shadow);
-  padding: var(--size-1) var(--size-2);
+  padding: var(--size-1) var(--size-2) !important;
   text-align: center;
 
   &:hover,
@@ -200,6 +207,13 @@ button.ts-btn-action {
       color: var(--button-cancel-text-color-hover);
     }
   }
+}
+
+.ts-bookmark {
+  color: var(--body-text-color-subdued) !important;
+}
+.ts-bookmarked {
+  color: var(--color-accent) !important;
 }
 
 #agent_scheduler_pending_tasks_grid,

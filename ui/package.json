@@ -6,31 +6,32 @@
     "dev": "vite",
     "build": "tsc && yarn build:extension",
     "build:extension": "vite build --config vite.extension.ts",
-    "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "lint": "eslint src --ext ts,tsx --fix --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
   },
   "dependencies": {
-    "ag-grid-community": "^30.0.5",
+    "ag-grid-community": "^30.0.6",
     "notyf": "^3.10.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "zustand": "^4.3.8"
+    "zustand": "^4.4.1"
   },
   "devDependencies": {
-    "@types/node": "^18",
-    "@types/react": "^18.0.37",
-    "@types/react-dom": "^18.0.11",
-    "@typescript-eslint/eslint-plugin": "^5.59.0",
-    "@typescript-eslint/parser": "^5.59.0",
-    "@vitejs/plugin-react": "^4.0.0",
+    "@types/node": "^20.4.9",
+    "@types/react": "^18.2.20",
+    "@types/react-dom": "^18.2.7",
+    "@typescript-eslint/eslint-plugin": "^6.3.0",
+    "@typescript-eslint/parser": "^6.3.0",
+    "@vitejs/plugin-react": "^4.0.4",
     "autoprefixer": "^10.4.14",
-    "eslint": "^8.38.0",
+    "eslint": "^8.46.0",
     "eslint-plugin-react-hooks": "^4.6.0",
-    "eslint-plugin-react-refresh": "^0.3.4",
-    "postcss": "^8.4.24",
-    "sass": "^1.62.1",
-    "tailwindcss": "^3.3.2",
-    "typescript": "^5.0.2",
-    "vite": "^4.3.9"
+    "eslint-plugin-react-refresh": "^0.4.3",
+    "eslint-plugin-simple-import-sort": "^10.0.0",
+    "postcss": "^8.4.27",
+    "sass": "^1.65.1",
+    "tailwindcss": "^3.3.3",
+    "typescript": "^5.1.6",
+    "vite": "^4.4.9"
   }
 }
