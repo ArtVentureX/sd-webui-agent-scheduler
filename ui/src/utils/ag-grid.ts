@@ -1,12 +1,12 @@
-import { CellFocusedParams, FocusService, GridApi, IRowNode, RowHighlightPosition } from 'ag-grid-community';
+import { FocusService, GridApi, IRowNode, RowHighlightPosition } from 'ag-grid-community';
 
 // patches to suppress scrolling when mouse down on a cell by default
 const setFocusedCell = FocusService.prototype.setFocusedCell;
-FocusService.prototype.setFocusedCell = function (params: CellFocusedParams) {
+FocusService.prototype.setFocusedCell = function (params) {
   if (params.preventScrollOnBrowserFocus == null) {
     params.preventScrollOnBrowserFocus = true;
   }
-  setFocusedCell.call(this, params);
+  return setFocusedCell.call(this, params);
 };
 
 export const getRowNodeAtPixel = <TData = any>(api: GridApi<TData>, pixel: number) => {

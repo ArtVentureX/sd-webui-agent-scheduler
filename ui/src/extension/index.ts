@@ -352,7 +352,7 @@ function initQueueHandler() {
   };
 
   const btnEnqueue = gradioApp().querySelector<HTMLButtonElement>('#txt2img_enqueue')!;
-  window.submit_enqueue = function submit_enqueue(...args) {
+  window.submit_enqueue = (...args) => {
     const res = create_submit_args(args);
     res[0] = getUiCheckpoint(false);
     res[1] = randomId();
@@ -374,7 +374,7 @@ function initQueueHandler() {
   };
 
   const btnImg2ImgEnqueue = gradioApp().querySelector<HTMLButtonElement>('#img2img_enqueue')!;
-  window.submit_enqueue_img2img = function submit_enqueue_img2img(...args) {
+  window.submit_enqueue_img2img = (...args) => {
     const res = create_submit_args(args);
     res[0] = getUiCheckpoint(true);
     res[1] = randomId();
@@ -442,15 +442,11 @@ function initQueueHandler() {
   }
 
   // watch for current task id change
-  const onTaskIdChange = (id: string | null) => {
-    if (id == null) return;
-
-    const task = pendingStore.getState().pending_tasks.find(t => t.id === id);
-    showTaskProgress(id, task?.type, pendingStore.refresh);
-  };
   pendingStore.subscribe((curr, prev) => {
-    if (prev.current_task_id !== curr.current_task_id) {
-      onTaskIdChange(curr.current_task_id);
+    const id = curr.current_task_id;
+    if (id !== prev.current_task_id && id != null) {
+      const task = curr.pending_tasks.find(t => t.id === id);
+      showTaskProgress(id, task?.type, pendingStore.refresh);
     }
   });
 
@@ -507,7 +503,7 @@ function initTabChangeHandler() {
   });
 
   // watch for tab activation
-  const observer = new MutationObserver(function (mutationsList) {
+  const observer = new MutationObserver(mutationsList => {
     mutationsList.forEach(styleChange => {
       const tab = styleChange.target as HTMLElement;
       const visible = tab.style.display !== 'none';
@@ -551,7 +547,7 @@ function initPendingTab() {
 
   // init actions
   const refreshButton = gradioApp().querySelector<HTMLButtonElement>('#agent_scheduler_action_reload')!;
-  refreshButton.addEventListener('click', () => store.refresh);
+  refreshButton.addEventListener('click', () => store.refresh());
 
   const pauseButton = gradioApp().querySelector<HTMLButtonElement>('#agent_scheduler_action_pause')!;
   pauseButton.addEventListener('click', () => store.pauseQueue().then(notify));
