@@ -290,6 +290,12 @@ window.notify = notify;
 window.origRandomId = window.randomId;
 
 function showTaskProgress(task_id: string, type: string | undefined, callback: () => void) {
+  // delay progress request until the options loaded
+  if (Object.keys(opts).length === 0) {
+    setTimeout(() => showTaskProgress(task_id, type, callback), 500);
+    return;
+  }
+
   const args = extractArgs(requestProgress);
 
   const gallery = gradioApp().querySelector<HTMLDivElement>(
@@ -1075,17 +1081,13 @@ function initHistoryTab() {
 
 let agentSchedulerInitialized = false;
 onUiLoaded(function initAgentScheduler() {
-  if (agentSchedulerInitialized) return;
-
-  // delay UI init until DOM is available and the options are loaded
-  if (
-    gradioApp().querySelector('#agent_scheduler_tabs') == null ||
-    Object.keys(opts).length === 0
-  ) {
+  // delay ui init until dom is available
+  if (gradioApp().querySelector('#agent_scheduler_tabs') == null) {
     setTimeout(initAgentScheduler, 500);
     return;
   }
 
+  if (agentSchedulerInitialized) return;
   initQueueHandler();
   initTabChangeHandler();
   initPendingTab();
