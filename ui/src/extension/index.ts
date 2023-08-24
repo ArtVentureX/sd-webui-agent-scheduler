@@ -26,6 +26,7 @@ import './index.scss';
 let notyf: Notyf | undefined;
 
 declare global {
+  let opts: object;
   function gradioApp(): HTMLElement;
   function randomId(): string;
   function origRandomId(): string;
@@ -1074,13 +1075,17 @@ function initHistoryTab() {
 
 let agentSchedulerInitialized = false;
 onUiLoaded(function initAgentScheduler() {
-  // delay ui init until dom is available
-  if (gradioApp().querySelector('#agent_scheduler_tabs') == null) {
+  if (agentSchedulerInitialized) return;
+
+  // delay UI init until DOM is available and the options are loaded
+  if (
+    gradioApp().querySelector('#agent_scheduler_tabs') == null ||
+    Object.keys(opts).length === 0
+  ) {
     setTimeout(initAgentScheduler, 500);
     return;
   }
 
-  if (agentSchedulerInitialized) return;
   initQueueHandler();
   initTabChangeHandler();
   initPendingTab();
