@@ -10,7 +10,7 @@ FocusService.prototype.setFocusedCell = function (params) {
 };
 
 export const getRowNodeAtPixel = <TData = any>(api: GridApi<TData>, pixel: number) => {
-  if (api.getDisplayedRowCount() <= 0) return;
+  if (api.getDisplayedRowCount() === 0) return;
 
   const firstRowIndexOfPage = api.paginationGetPageSize() * api.paginationGetCurrentPage();
   const firstRowNodeOfPage = api.getDisplayedRowAtIndex(firstRowIndexOfPage)!;
