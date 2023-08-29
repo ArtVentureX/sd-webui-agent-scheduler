@@ -26,6 +26,7 @@ import './index.scss';
 let notyf: Notyf | undefined;
 
 declare global {
+  let opts: object;
   function gradioApp(): HTMLElement;
   function randomId(): string;
   function origRandomId(): string;
@@ -289,6 +290,12 @@ window.notify = notify;
 window.origRandomId = window.randomId;
 
 function showTaskProgress(task_id: string, type: string | undefined, callback: () => void) {
+  // delay progress request until the options loaded
+  if (Object.keys(opts).length === 0) {
+    setTimeout(() => showTaskProgress(task_id, type, callback), 500);
+    return;
+  }
+
   const args = extractArgs(requestProgress);
 
   const gallery = gradioApp().querySelector<HTMLDivElement>(
