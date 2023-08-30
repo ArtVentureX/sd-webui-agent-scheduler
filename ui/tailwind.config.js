@@ -4,5 +4,8 @@ module.exports = {
     theme: {
         extend: {},
     },
+    corePlugins: {
+        container: false,
+    },
     plugins: [],
 }

@@ -162,7 +162,7 @@ button.ts-btn-action {
   }
 
   &[disabled] {
-    opacity: .5;
+    opacity: 0.5;
     filter: grayscale(30%);
     cursor: not-allowed;
   }
@@ -345,6 +345,7 @@ button.ts-btn-action {
     flex-wrap: nowrap;
     align-items: stretch;
     flex: 0 0 auto;
+    flex-grow: unset !important;
     margin-bottom: calc(var(--layout-gap) / 2);
   }
 
@@ -365,25 +366,31 @@ button.ts-btn-action {
   }
 }
 
-#enqueue_keyboard_shortcut_wrapper > .form {
-  display: flex;
-  flex-direction: row;
-  align-items: flex-end;
+#enqueue_keyboard_shortcut_wrapper {
+  .form {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-end;
+    flex-wrap: nowrap;
 
-  > div,
-  fieldset {
-    flex: 0 0 auto;
-    width: auto;
-  }
+    > div,
+    fieldset {
+      flex: 0 0 auto;
+      width: auto;
+    }
 
-  #enqueue_keyboard_shortcut_key {
-    width: 100px;
-  }
-  #setting_queue_keyboard_shortcut {
-    display: none;
-  }
-  #enqueue_keyboard_shortcut_disable {
-    width: 100%;
+    #enqueue_keyboard_shortcut_modifiers {
+      width: 300px;
+    }
+    #enqueue_keyboard_shortcut_key {
+      width: 100px;
+    }
+    #setting_queue_keyboard_shortcut {
+      display: none;
+    }
+    #enqueue_keyboard_shortcut_disable {
+      width: 100%;
+    }
   }
 }
 
