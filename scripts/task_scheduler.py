@@ -321,7 +321,19 @@ def on_ui_tab(**_kwargs):
                                 elem_id="agent_scheduler_action_clear_queue",
                                 variant="stop",
                             )
-
+                            gr.Button(
+                                "Export/Import",
+                                elem_id="agent_scheduler_action_export",
+                                variant="secondary",
+                            )
+                            gr.Textbox(
+                                max_lines=1,
+                                placeholder="Paste import here...",
+                                label="Import",
+                                show_label=False,
+                                min_width=0,
+                                elem_id="agent_scheduler_action_import"
+                            )
                             with gr.Row(elem_classes=["flex-row", "ml-auto"]):
                                 gr.Textbox(
                                     max_lines=1,

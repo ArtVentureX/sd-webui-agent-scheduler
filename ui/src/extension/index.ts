@@ -270,6 +270,18 @@ function initSearchInput(selector: string) {
   return searchInput;
 }
 
+function initImport(selector: string){
+  const importContainer = gradioApp().querySelector<HTMLDivElement>(selector);
+  if (importContainer == null) {
+    throw new Error(`Import container '${selector}' not found.`);
+  }
+  const importInput = importContainer.getElementsByTagName('input')[0];
+  if (importInput == null) {
+    throw new Error('Import input not found.');
+  }
+  return importInput;
+}
+
 async function notify(response: ResponseStatus) {
   if (notyf == null) {
     const Notyf = await import('notyf');
@@ -568,6 +580,22 @@ function initPendingTab() {
       store.clearQueue().then(notify);
     }
   });
+
+  const importTextBox = initImport('#agent_scheduler_action_import');
+  
+  const exportButton = gradioApp().querySelector<HTMLButtonElement>('#agent_scheduler_action_export')!;
+  exportButton.addEventListener('click', () => { 
+    var importText = importTextBox?.value;
+    if (importText.length == 0){
+      store.exportQueue().then(json => {
+        importTextBox.value = json;
+      });
+    }
+    else{
+      store.importQueue(importText).then(notify);
+    }
+  });
+
 
   // watch for queue status change
   const updateUiState = (state: ReturnType<typeof store.getState>) => {

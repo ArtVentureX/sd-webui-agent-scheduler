@@ -1,5 +1,6 @@
 from enum import Enum
 from datetime import datetime, timezone
+import json
 from typing import Optional, Union, List
 
 from sqlalchemy import (
@@ -87,6 +88,24 @@ class Task(TaskModel):
             status=self.status,
             result=self.result,
             bookmarked=self.bookmarked,
+        )
+    
+    def from_json(json_obj):
+        return Task(
+            id=json_obj.get("id"),
+            api_task_id=json_obj.get("api_task_id"),
+            api_task_callback=json_obj.get("api_task_callback"),
+            name=json_obj.get("name"),
+            type=json_obj.get("type"),
+            status=json_obj.get("status"),
+            params=json_obj.get("params"),
+            script_params= bytes([int(s.strip()) for s in json_obj.get("script_params").strip('[]').split(',')]),
+            priority=json_obj.get("priority"),
+            position=json_obj.get("position"),
+            result=json_obj.get("result"),
+            bookmarked=json_obj.get("bookmarked"),
+            created_at=datetime.fromtimestamp(json_obj.get("created_at")),
+            updated_at=datetime.fromtimestamp(json_obj.get("updated_at")),
         )
 
 

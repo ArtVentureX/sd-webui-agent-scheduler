@@ -10,6 +10,7 @@ from typing import Optional, Dict
 from gradio.routes import App
 from PIL import Image
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 
 from modules import shared, progress
 
@@ -154,6 +155,43 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
             total_pending_tasks=total_pending_tasks,
             paused=TaskRunner.instance.paused,
         )
+    
+    @app.get("/agent-scheduler/v1/export")
+    def export_queue(limit: int = 1000, offset: int = 0):
+        pending_tasks = task_manager.get_tasks(
+            status=TaskStatus.PENDING, limit=limit, offset=offset
+        )
+        for task in pending_tasks:
+            task.created_at = int(task.created_at.timestamp())
+            task.updated_at = int(task.updated_at.timestamp())
+            task.script_params = [int(byte) for byte in task.script_params]
+            task.script_params = str(task.script_params).replace(' ', '')
+        json_string = json.dumps([ob.__dict__ for ob in pending_tasks])
+        return json_string
+    
+    class StringRequestBody(BaseModel):
+        content: str
+
+    @app.post("/agent-scheduler/v1/import/")
+    def import_queue(queue: StringRequestBody):
+        try:
+            objList = json.loads(queue.content)
+            taskList = []
+            for obj in objList:
+                obj['id'] = str(uuid4())
+                obj['result'] =  None
+                obj['status'] =  TaskStatus.PENDING
+                obj['bookmarked'] =  False
+                obj['name'] =  None
+                task = Task.from_json(obj)
+                taskList.append(task)
+            task_manager.delete_tasks(status=TaskStatus.PENDING)
+            for task in taskList:
+                task_manager.add_task(task)
+            return {"success": True, "message": "Queue imported"}
+        except Exception as e:
+            print(e)
+            return {"success": False, "message": "Import Failed"}
 
     @app.get("/agent-scheduler/v1/history", response_model=HistoryResponse)
     def history_api(status: str = None, limit: int = 20, offset: int = 0):
