@@ -69,8 +69,6 @@ const historyStore = createHistoryTasksStore({
 // load samplers and checkpoints
 const samplers: string[] = [];
 const checkpoints: string[] = ['System'];
-sharedStore.getSamplers().then(res => samplers.push(...res));
-sharedStore.getCheckpoints().then(res => checkpoints.push(...res));
 
 const sharedGridOptions: GridOptions<Task> = {
   // default col def properties get applied to all columns
@@ -551,6 +549,10 @@ function initTabChangeHandler() {
 
 function initPendingTab() {
   const store = pendingStore;
+
+  // load data for edit
+  sharedStore.getSamplers().then(res => samplers.push(...res));
+  sharedStore.getCheckpoints().then(res => checkpoints.push(...res));
 
   // init actions
   const refreshButton = gradioApp().querySelector<HTMLButtonElement>('#agent_scheduler_action_reload')!;

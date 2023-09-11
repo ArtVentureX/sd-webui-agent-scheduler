@@ -76,7 +76,7 @@ git clone "https://github.com/ArtVentureX/sd-webui-agent-scheduler.git" extensio
 
 8️⃣ **Bookmark** task to easier filtering.
 
-9️⃣ Double click the task id to **rename**. Click ↩️ to **Requeue** old task.
+9️⃣ Double click the task id to **rename** and quickly update basic parameters. Click ↩️ to **Requeue** old task.
 
 🔟 Click on each task to **view** the generation results.
 
