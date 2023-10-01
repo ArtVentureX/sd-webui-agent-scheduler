@@ -52,7 +52,7 @@ git clone "https://github.com/ArtVentureX/sd-webui-agent-scheduler.git" extensio
 
 (The second argument specifies the name of the folder, you can choose whatever you like).
 
-## Functionality [as of current version]
+## Basic Features
 
 ![Extension Walkthrough 1](https://github.com/ArtVentureX/sd-webui-agent-scheduler/assets/133728487/a5a039a7-d98b-4186-9131-6775f0812c39)
 
@@ -81,6 +81,28 @@ git clone "https://github.com/ArtVentureX/sd-webui-agent-scheduler.git" extensio
 🔟 Click on each task to **view** the generation results.
 
 https://github.com/ArtVentureX/sd-webui-agent-scheduler/assets/133728487/50c74922-b85f-493c-9be8-b8e78f0cd061
+
+## Hidden Features:
+
+#### Queue all checkpoints at the same time
+
+Right click the `Enqueue` button and select `Queue with all checkpoints` to quickly queue the current setting with all available checkpoints.
+
+![image](https://github.com/ArtVentureX/sd-webui-agent-scheduler/assets/133728487/c75276e8-6d0c-4f72-91db-817f38a3fea6)
+
+#### Queue with a subset of checkpoints
+
+![image](https://github.com/ArtVentureX/sd-webui-agent-scheduler/assets/133728487/b776d09d-c789-47f1-8884-975848bb766d)
+
+![image](https://github.com/ArtVentureX/sd-webui-agent-scheduler/assets/133728487/bdb2b41a-5ae8-41c1-bece-7dbff67e38b7)
+
+With the custom checkpoint select enabled (see [Extension Settings](#extension-settings) section below), you can select a folder (or subfolder) to queue task with all checkpoints inside. Eg: Select `anime` will queue `anime\AOM3A1B_oragemixs`, `anime\counterfeit\Counterfeit-V2.5_fp16` and `anime\counterfeit\Counterfeit-V2.5_pruned`.
+
+#### Edit queued task
+
+Double click a queued task to edit. You can name a task by changing `task_id` or update some basic parameters: `prompt`, `negative prompt`, `sampler`, `checkpoint`, `steps`, `cfg scale`.
+
+![image](https://github.com/ArtVentureX/sd-webui-agent-scheduler/assets/133728487/57535174-2f66-4ee7-8f3c-9f1dd3882eff)
 
 ## Extension Settings
 
