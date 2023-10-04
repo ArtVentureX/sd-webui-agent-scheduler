@@ -6,9 +6,10 @@ from PIL import Image
 from uuid import uuid4
 from typing import List
 from collections import defaultdict
-from modules import shared, script_callbacks, scripts
+from modules import call_queue, shared, script_callbacks, scripts
 from modules.shared import list_checkpoint_tiles, refresh_checkpoints
 from modules.ui import create_refresh_button
+from modules.ui_common import save_files
 from modules.generation_parameters_copypaste import (
     registered_param_bindings,
     create_buttons,
@@ -183,12 +184,12 @@ class Script(scripts.Script):
             checkpoint: str = args[0]
             task_id = args[1]
             args = args[1:]
+            task_name = None
 
             if task_id == queue_with_every_checkpoints:
                 task_id = str(uuid4())
                 checkpoint = list_checkpoint_tiles()
             else:
-                task_name = None
                 if not task_id.startswith("task("):
                     task_name = task_id
                     task_id = str(uuid4())
@@ -377,6 +378,18 @@ def on_ui_tab(**_kwargs):
                             elem_id="agent_scheduler_history_result_actions",
                             visible=False,
                         ) as result_actions:
+                            save = gr.Button(
+                                "💾 Save",
+                                elem_id=f"agent_scheduler_save",
+                                tooltip=f"Save the image to a dedicated directory ({shared.opts.outdir_save}).",
+                            )
+                            save_zip = gr.Button(
+                                "🗃️ Save ZIP",
+                                elem_id=f"agent_scheduler_save_zip",
+                                tooltip=f"Save zip archive with images to a dedicated directory ({shared.opts.outdir_save})",
+                            )
+                            download_files = gr.File(None, file_count="multiple", interactive=False, show_label=False, visible=False, elem_id=f'agent_scheduler_download_files')
+                            html_log = gr.HTML(elem_id=f'agent_scheduler_html_log', elem_classes="html-log")
                             try:
                                 send_to_buttons = create_buttons(["txt2img", "img2img", "inpaint", "extras"])
                             except:
@@ -407,6 +420,35 @@ def on_ui_tab(**_kwargs):
             fn=lambda x, y: get_task_results(x, image_idx=int(y)),
             inputs=[selected_task, selected_task_id],
             outputs=[gen_info, result_actions],
+        )
+        save.click(
+            fn=call_queue.wrap_gradio_call(save_files),
+            _js="(x, y, z, w) => [x, y, false, selected_gallery_index()]",
+            inputs=[
+                gen_info,
+                galerry,
+                gen_info, # dummy input
+                gen_info, # dummy input
+            ],
+            outputs=[
+                download_files,
+                html_log,
+            ],
+            show_progress=False,
+        )
+        save_zip.click(
+            fn=call_queue.wrap_gradio_call(save_files),
+            _js="(x, y, z, w) => [x, y, true, selected_gallery_index()]",
+            inputs=[
+                gen_info,
+                galerry,
+                gen_info, # dummy input
+                gen_info, # dummy input
+            ],
+            outputs=[
+                download_files,
+                html_log,
+            ],
         )
         try:
             for paste_tabname, paste_button in send_to_buttons.items():
