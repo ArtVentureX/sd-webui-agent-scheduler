@@ -13,6 +13,7 @@ if logging.getLogger().hasHandlers():
     log = logging.getLogger("sd")
 else:
     import copy
+
     class ColoredFormatter(logging.Formatter):
         COLORS = {
             "DEBUG": "\033[0;36m",  # CYAN
@@ -62,9 +63,7 @@ class Singleton(abc.ABCMeta, type):
 
 
 def compare_components_with_ids(components: List[Block], ids: List[int]):
-    return len(components) == len(ids) and all(
-        component._id == _id for component, _id in zip(components, ids)
-    )
+    return len(components) == len(ids) and all(component._id == _id for component, _id in zip(components, ids))
 
 
 def get_component_by_elem_id(root: Block, elem_id: str):
@@ -98,19 +97,20 @@ def get_components_by_ids(root: Block, ids: List[int]):
 def detect_control_net(root: gr.Blocks, submit: gr.Button):
     UiControlNetUnit = None
 
-    dependencies: List[dict] = [
-        x
-        for x in root.dependencies
-        if x["trigger"] == "click" and submit._id in x["targets"]
-    ]
+    dependencies: List[dict] = []
+    for x in root.dependencies:
+        if isinstance(x["targets"][0], tuple):
+            for target, trigger in x["targets"]:
+                if trigger == "click" and submit._id == target:
+                    dependencies.append(x)
+        elif x["trigger"] == "click" and submit._id in x["targets"]:
+            dependencies.append(x)
+
     for d in dependencies:
         if len(d["outputs"]) == 1:
             outputs = get_components_by_ids(root, d["outputs"])
             output = outputs[0]
-            if (
-                isinstance(output, gr.State)
-                and type(output.value).__name__ == "UiControlNetUnit"
-            ):
+            if isinstance(output, gr.State) and type(output.value).__name__ == "UiControlNetUnit":
                 UiControlNetUnit = type(output.value)
 
     return UiControlNetUnit

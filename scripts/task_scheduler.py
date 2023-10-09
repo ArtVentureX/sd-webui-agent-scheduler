@@ -6,9 +6,10 @@ from PIL import Image
 from uuid import uuid4
 from typing import List
 from collections import defaultdict
-from modules import shared, script_callbacks, scripts
+from modules import call_queue, shared, script_callbacks, scripts
 from modules.shared import list_checkpoint_tiles, refresh_checkpoints
 from modules.ui import create_refresh_button
+from modules.ui_common import save_files
 from modules.generation_parameters_copypaste import (
     registered_param_bindings,
     create_buttons,
@@ -128,9 +129,15 @@ class Script(scripts.Script):
     def bind_enqueue_button(self, root: gr.Blocks):
         generate = self.generate_button
         is_img2img = self.is_img2img
-        dependencies: List[dict] = [
-            x for x in root.dependencies if x["trigger"] == "click" and generate._id in x["targets"]
-        ]
+        dependencies: List[dict] = []
+
+        for x in root.dependencies:
+            if isinstance(x["targets"][0], tuple):
+                for target, trigger in x["targets"]:
+                    if trigger == "click" and generate._id == target:
+                        dependencies.append(x)
+            elif x["trigger"] == "click" and generate._id in x["targets"]:
+                dependencies.append(x)
 
         dependency: dict = None
         cnet_dependency: dict = None
@@ -377,8 +384,6 @@ def on_ui_tab(**_kwargs):
                             elem_id="agent_scheduler_history_result_actions",
                             visible=False,
                         ) as result_actions:
-                            download_files = gr.File(None, file_count="multiple", interactive=False, show_label=False, visible=False, elem_id=f'agent_scheduler_download_files')
-                            html_log = gr.HTML(elem_id=f'agent_scheduler_html_log', elem_classes="html-log")
                             try:
                                 send_to_buttons = create_buttons(["txt2img", "img2img", "inpaint", "extras"])
                             except:
