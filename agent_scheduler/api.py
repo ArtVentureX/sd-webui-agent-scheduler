@@ -78,6 +78,7 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
         task_id = str(uuid4())
         args = body.dict()
         checkpoint = args.pop("checkpoint", None)
+        vae = args.pop("vae", None)
         callback_url = args.pop("callback_url", None)
         task = task_runner.register_api_task(
             task_id,
@@ -85,6 +86,7 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
             is_img2img=False,
             args=args,
             checkpoint=checkpoint,
+            vae=vae,
         )
         if callback_url:
             task.api_task_callback = callback_url
@@ -99,6 +101,7 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
         task_id = str(uuid4())
         args = body.dict()
         checkpoint = args.pop("checkpoint", None)
+        vae = args.pop("vae", None)
         callback_url = args.pop("callback_url", None)
         task = task_runner.register_api_task(
             task_id,
@@ -106,6 +109,7 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
             is_img2img=True,
             args=args,
             checkpoint=checkpoint,
+            vae=vae,
         )
         if callback_url:
             task.api_task_callback = callback_url
@@ -132,9 +136,7 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
     def queue_status_api(limit: int = 20, offset: int = 0):
         current_task_id = progress.current_task
         total_pending_tasks = task_manager.count_tasks(status="pending")
-        pending_tasks = task_manager.get_tasks(
-            status=TaskStatus.PENDING, limit=limit, offset=offset
-        )
+        pending_tasks = task_manager.get_tasks(status=TaskStatus.PENDING, limit=limit, offset=offset)
         position = offset
         parsed_tasks = []
         for task in pending_tasks:
@@ -207,11 +209,7 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
         if task is None:
             return {"success": False, "message": "Task not found"}
 
-        position = (
-            None
-            if task.status != TaskStatus.PENDING
-            else task_manager.get_task_position(id)
-        )
+        position = None if task.status != TaskStatus.PENDING else task_manager.get_task_position(id)
         return {"success": True, "data": {"status": task.status, "position": position}}
 
     @app.put("/agent-scheduler/v1/task/{id}")
@@ -383,9 +381,7 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
             return StreamingResponse(
                 zip_buffer,
                 media_type="application/zip",
-                headers={
-                    "Content-Disposition": f"attachment; filename=results-{id}.zip"
-                },
+                headers={"Content-Disposition": f"attachment; filename=results-{id}.zip"},
             )
         else:
             data = [
