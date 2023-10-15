@@ -6,7 +6,6 @@ import threading
 import gradio as gr
 
 from pydantic import BaseModel
-from datetime import datetime, timedelta
 from typing import Any, Callable, Union, Optional, List, Dict, Tuple
 from fastapi import FastAPI
 from PIL import Image
@@ -49,15 +48,6 @@ class OutOfMemoryError(Exception):
 class FakeRequest:
     def __init__(self, username: str = None):
         self.username = username
-
-
-task_history_retenion_map = {
-    "7 days": 7,
-    "14 days": 14,
-    "30 days": 30,
-    "90 days": 90,
-    "Keep forever": 0,
-}
 
 
 class ParsedTaskArgs(BaseModel):
@@ -500,18 +490,18 @@ class TaskRunner:
             log.info("[AgentScheduler] Runner is paused")
             return None
 
-        # delete task that are too old
-        retention_days = 30
-        if (
-            getattr(shared.opts, "queue_history_retention_days", None)
-            and shared.opts.queue_history_retention_days in task_history_retenion_map
-        ):
-            retention_days = task_history_retenion_map[shared.opts.queue_history_retention_days]
+        # # delete task that are too old
+        # retention_days = 30
+        # if (
+        #     getattr(shared.opts, "queue_history_retention_days", None)
+        #     and shared.opts.queue_history_retention_days in task_history_retenion_map
+        # ):
+        #     retention_days = task_history_retenion_map[shared.opts.queue_history_retention_days]
 
-        if retention_days > 0:
-            deleted_rows = task_manager.delete_tasks(before=datetime.now() - timedelta(days=retention_days))
-            if deleted_rows > 0:
-                log.debug(f"[AgentScheduler] Deleted {deleted_rows} tasks older than {retention_days} days")
+        # if retention_days > 0:
+        #     deleted_rows = task_manager.delete_tasks(before=datetime.now() - timedelta(days=retention_days))
+        #     if deleted_rows > 0:
+        #         log.debug(f"[AgentScheduler] Deleted {deleted_rows} tasks older than {retention_days} days")
 
         self.__total_pending_tasks = task_manager.count_tasks(status="pending")
 
