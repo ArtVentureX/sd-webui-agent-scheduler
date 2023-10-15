@@ -5,6 +5,7 @@ import gradio as gr
 from PIL import Image
 from uuid import uuid4
 from typing import List
+from collections import defaultdict
 from modules import shared, script_callbacks, scripts
 from modules.shared import list_checkpoint_tiles, refresh_checkpoints
 from modules.ui import create_refresh_button
@@ -51,12 +52,8 @@ enqueue_key_modifiers = [
 ]
 enqueue_default_hotkey = enqueue_key_modifiers[0] + "+KeyE"
 enqueue_key_codes = {}
-enqueue_key_codes.update(
-    {chr(i): "Key" + chr(i) for i in range(ord("A"), ord("Z") + 1)}
-)
-enqueue_key_codes.update(
-    {chr(i): "Digit" + chr(i) for i in range(ord("0"), ord("9") + 1)}
-)
+enqueue_key_codes.update({chr(i): "Key" + chr(i) for i in range(ord("A"), ord("Z") + 1)})
+enqueue_key_codes.update({chr(i): "Digit" + chr(i) for i in range(ord("0"), ord("9") + 1)})
 enqueue_key_codes.update({"`": "Backquote", "Enter": "Enter"})
 
 init_db()
@@ -87,10 +84,7 @@ class Script(scripts.Script):
 
         if component.elem_id == generate_id:
             self.generate_button = component
-            if (
-                getattr(shared.opts, "queue_button_placement", placement_under_generate)
-                == placement_under_generate
-            ):
+            if getattr(shared.opts, "queue_button_placement", placement_under_generate) == placement_under_generate:
                 self.add_enqueue_button()
                 component.parent.children.pop()
                 component.parent.parent.add(self.enqueue_row)
@@ -129,17 +123,13 @@ class Script(scripts.Script):
                     lambda: {"choices": get_checkpoint_choices()},
                     f"refresh_{id_part}_checkpoint",
                 )
-            self.submit_button = gr.Button(
-                "Enqueue", elem_id=f"{id_part}_enqueue", variant="primary"
-            )
+            self.submit_button = gr.Button("Enqueue", elem_id=f"{id_part}_enqueue", variant="primary")
 
     def bind_enqueue_button(self, root: gr.Blocks):
         generate = self.generate_button
         is_img2img = self.is_img2img
         dependencies: List[dict] = [
-            x
-            for x in root.dependencies
-            if x["trigger"] == "click" and generate._id in x["targets"]
+            x for x in root.dependencies if x["trigger"] == "click" and generate._id in x["targets"]
         ]
 
         dependency: dict = None
@@ -149,10 +139,7 @@ class Script(scripts.Script):
             if len(d["outputs"]) == 1:
                 outputs = get_components_by_ids(root, d["outputs"])
                 output = outputs[0]
-                if (
-                    isinstance(output, gr.State)
-                    and type(output.value).__name__ == "UiControlNetUnit"
-                ):
+                if isinstance(output, gr.State) and type(output.value).__name__ == "UiControlNetUnit":
                     cnet_dependency = d
                     UiControlNetUnit = type(output.value)
 
@@ -161,15 +148,9 @@ class Script(scripts.Script):
 
         with root:
             if self.checkpoint_dropdown is not None:
-                self.checkpoint_dropdown.change(
-                    fn=self.on_checkpoint_changed, inputs=[self.checkpoint_dropdown]
-                )
+                self.checkpoint_dropdown.change(fn=self.on_checkpoint_changed, inputs=[self.checkpoint_dropdown])
 
-            fn_block = next(
-                fn
-                for fn in root.fns
-                if compare_components_with_ids(fn.inputs, dependency["inputs"])
-            )
+            fn_block = next(fn for fn in root.fns if compare_components_with_ids(fn.inputs, dependency["inputs"]))
             fn = self.wrap_register_ui_task()
             inputs = fn_block.inputs.copy()
             inputs.insert(0, self.checkpoint_dropdown)
@@ -185,9 +166,7 @@ class Script(scripts.Script):
 
             if cnet_dependency is not None:
                 cnet_fn_block = next(
-                    fn
-                    for fn in root.fns
-                    if compare_components_with_ids(fn.inputs, cnet_dependency["inputs"])
+                    fn for fn in root.fns if compare_components_with_ids(fn.inputs, cnet_dependency["inputs"])
                 )
                 self.submit_button.click(
                     fn=UiControlNetUnit,
@@ -201,36 +180,36 @@ class Script(scripts.Script):
             if len(args) == 0:
                 raise Exception("Invalid call")
 
-            checkpoint = args[0]
+            checkpoint: str = args[0]
             task_id = args[1]
             args = args[1:]
+            task_name = None
 
             if task_id == queue_with_every_checkpoints:
-                for checkpoint in list_checkpoint_tiles():
-                    task_id = str(uuid4())
-                    task_runner.register_ui_task(
-                        task_id,
-                        self.is_img2img,
-                        *args,
-                        checkpoint=checkpoint,
-                        request=request,
-                    )
+                task_id = str(uuid4())
+                checkpoint = list_checkpoint_tiles()
             else:
-                task_name = None
                 if not task_id.startswith("task("):
                     task_name = task_id
                     task_id = str(uuid4())
 
                 if checkpoint is None or checkpoint == "" or checkpoint == checkpoint_current:
-                    checkpoint = shared.sd_model.sd_checkpoint_info.title
+                    checkpoint = [shared.sd_model.sd_checkpoint_info.title]
                 elif checkpoint == checkpoint_runtime:
-                    checkpoint = None
+                    checkpoint = [None]
+                elif checkpoint.endswith(" checkpoints)"):
+                    checkpoint_dir = " ".join(checkpoint.split(" ")[0:-2])
+                    checkpoint = list(filter(lambda c: c.startswith(checkpoint_dir), list_checkpoint_tiles()))
+                else:
+                    checkpoint = [checkpoint]
 
+            for i, c in enumerate(checkpoint):
+                t_id = task_id if i == 0 else f"{task_id}.{i}"
                 task_runner.register_ui_task(
-                    task_id,
+                    t_id,
                     self.is_img2img,
                     *args,
-                    checkpoint=checkpoint,
+                    checkpoint=c,
                     task_name=task_name,
                     request=request,
                 )
@@ -241,8 +220,22 @@ class Script(scripts.Script):
 
 
 def get_checkpoint_choices():
-    choices = [checkpoint_current, checkpoint_runtime]
-    choices.extend(list_checkpoint_tiles())
+    checkpoints = list_checkpoint_tiles()
+
+    checkpoint_dirs = defaultdict(lambda: 0)
+    for checkpoint in checkpoints:
+        checkpoint_dir = os.path.dirname(checkpoint)
+        while checkpoint_dir != "":
+            checkpoint_dirs[checkpoint_dir] += 1
+            checkpoint_dir = os.path.dirname(checkpoint_dir)
+
+    choices = checkpoints
+    choices.extend([f"{d} ({checkpoint_dirs[d]} checkpoints)" for d in checkpoint_dirs.keys()])
+    choices = sorted(choices)
+
+    choices.insert(0, checkpoint_runtime)
+    choices.insert(0, checkpoint_current)
+
     return choices
 
 
@@ -262,11 +255,7 @@ def get_task_results(task_id: str, image_idx: int = None):
             result: dict = json.loads(task.result)
             images = result.get("images", [])
             infos = result.get("infotexts", [])
-            galerry = (
-                [Image.open(i) for i in images if os.path.exists(i)]
-                if image_idx is None
-                else gr.update()
-            )
+            galerry = [Image.open(i) for i in images if os.path.exists(i)] if image_idx is None else gr.update()
             idx = image_idx if image_idx is not None else 0
             if len(infos) == len(images):
                 infotexts = infos[idx]
@@ -288,15 +277,10 @@ def get_task_results(task_id: str, image_idx: int = None):
 def on_ui_tab(**_kwargs):
     with gr.Blocks(analytics_enabled=False) as scheduler_tab:
         with gr.Tabs(elem_id="agent_scheduler_tabs"):
-            with gr.Tab(
-                "Task Queue", id=0, elem_id="agent_scheduler_pending_tasks_tab"
-            ):
+            with gr.Tab("Task Queue", id=0, elem_id="agent_scheduler_pending_tasks_tab"):
                 with gr.Row(elem_id="agent_scheduler_pending_tasks_wrapper"):
                     with gr.Column(scale=1):
-                        with gr.Row(
-                            elem_id="agent_scheduler_pending_tasks_actions",
-                            elem_classes="flex-row"
-                        ):
+                        with gr.Row(elem_id="agent_scheduler_pending_tasks_actions", elem_classes="flex-row"):
                             paused = getattr(shared.opts, "queue_paused", False)
 
                             gr.Button(
@@ -341,26 +325,21 @@ def on_ui_tab(**_kwargs):
                                     label="Search",
                                     show_label=False,
                                     min_width=0,
-                                    elem_id="agent_scheduler_action_search"
+                                    elem_id="agent_scheduler_action_search",
                                 )
-                        gr.HTML(
-                            '<div id="agent_scheduler_pending_tasks_grid" class="ag-theme-gradio"></div>'
-                        )
+                        gr.HTML('<div id="agent_scheduler_pending_tasks_grid" class="ag-theme-gradio"></div>')
                     with gr.Column(scale=1):
                         gr.Gallery(
                             elem_id="agent_scheduler_current_task_images",
                             label="Output",
                             show_label=False,
                             columns=2,
-                            object_fit="contain"
+                            object_fit="contain",
                         )
             with gr.Tab("Task History", id=1, elem_id="agent_scheduler_history_tab"):
                 with gr.Row(elem_id="agent_scheduler_history_wrapper"):
                     with gr.Column(scale=1):
-                        with gr.Row(
-                            elem_id="agent_scheduler_history_actions",
-                            elem_classes="flex-row"
-                        ):
+                        with gr.Row(elem_id="agent_scheduler_history_actions", elem_classes="flex-row"):
                             gr.Button(
                                 "Refresh",
                                 elem_id="agent_scheduler_action_refresh_history",
@@ -379,7 +358,7 @@ def on_ui_tab(**_kwargs):
                                     choices=task_filter_choices,
                                     value="All",
                                     show_label=False,
-                                    min_width=0
+                                    min_width=0,
                                 )
                                 gr.Textbox(
                                     max_lines=1,
@@ -387,11 +366,9 @@ def on_ui_tab(**_kwargs):
                                     label="Search",
                                     show_label=False,
                                     min_width=0,
-                                    elem_id="agent_scheduler_action_search_history"
+                                    elem_id="agent_scheduler_action_search_history",
                                 )
-                        gr.HTML(
-                            '<div id="agent_scheduler_history_tasks_grid" class="ag-theme-gradio"></div>'
-                        )
+                        gr.HTML('<div id="agent_scheduler_history_tasks_grid" class="ag-theme-gradio"></div>')
                     with gr.Column(scale=1, elem_id="agent_scheduler_history_results"):
                         galerry = gr.Gallery(
                             elem_id="agent_scheduler_history_gallery",
@@ -399,7 +376,7 @@ def on_ui_tab(**_kwargs):
                             show_label=False,
                             columns=2,
                             preview=True,
-                            object_fit="contain"
+                            object_fit="contain",
                         )
                         gen_info = gr.TextArea(
                             label="Generation Info",
@@ -412,10 +389,10 @@ def on_ui_tab(**_kwargs):
                             elem_id="agent_scheduler_history_result_actions",
                             visible=False,
                         ) as result_actions:
+                            download_files = gr.File(None, file_count="multiple", interactive=False, show_label=False, visible=False, elem_id=f'agent_scheduler_download_files')
+                            html_log = gr.HTML(elem_id=f'agent_scheduler_html_log', elem_classes="html-log")
                             try:
-                                send_to_buttons = create_buttons(
-                                    ["txt2img", "img2img", "inpaint", "extras"]
-                                )
+                                send_to_buttons = create_buttons(["txt2img", "img2img", "inpaint", "extras"])
                             except:
                                 pass
                         selected_task = gr.Textbox(
@@ -607,10 +584,7 @@ def on_app_started(block: gr.Blocks, app):
     task_runner.execute_pending_tasks_threading()
     regsiter_apis(app, task_runner)
 
-    if (
-        getattr(shared.opts, "queue_ui_placement", "") == ui_placement_append_to_main
-        and block
-    ):
+    if getattr(shared.opts, "queue_ui_placement", "") == ui_placement_append_to_main and block:
         with block:
             with block.children[1]:
                 bindings = registered_param_bindings.copy()

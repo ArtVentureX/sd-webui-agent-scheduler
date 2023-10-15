@@ -18,12 +18,8 @@ def transform_to_utc_datetime(dt: datetime) -> datetime:
 
 
 class QueueStatusAPI(BaseModel):
-    limit: Optional[int] = Field(
-        title="Limit", description="The maximum number of tasks to return", default=20
-    )
-    offset: Optional[int] = Field(
-        title="Offset", description="The offset of the tasks to return", default=0
-    )
+    limit: Optional[int] = Field(title="Limit", description="The maximum number of tasks to return", default=20)
+    offset: Optional[int] = Field(title="Offset", description="The offset of the tasks to return", default=0)
 
 
 class TaskModel(BaseModel):
@@ -37,14 +33,10 @@ class TaskModel(BaseModel):
         title="Task Status",
         description="Either pending, running, done or failed",
     )
-    params: Dict[str, Any] = Field(
-        title="Task Parameters", description="The parameters of the task in JSON format"
-    )
+    params: Dict[str, Any] = Field(title="Task Parameters", description="The parameters of the task in JSON format")
     priority: Optional[int] = Field(title="Task Priority")
     position: Optional[int] = Field(title="Task Position")
-    result: Optional[str] = Field(
-        title="Task Result", description="The result of the task in JSON format"
-    )
+    result: Optional[str] = Field(title="Task Result", description="The result of the task in JSON format")
     bookmarked: Optional[bool] = Field(title="Is task bookmarked")
     created_at: Optional[datetime] = Field(
         title="Task Created At",
@@ -64,9 +56,12 @@ class Txt2ImgApiTaskArgs(StableDiffusionTxt2ImgProcessingAPI):
         title="Custom checkpoint.",
         description="Custom checkpoint hash. If not specified, the latest checkpoint will be used.",
     )
-    sampler_index: Optional[str] = Field(
-        sd_samplers.samplers[0].name, title="Sampler name", alias="sampler_name"
+    vae: Optional[str] = Field(
+        None,
+        title="Custom VAE.",
+        description="Custom VAE. If not specified, the current VAE will be used.",
     )
+    sampler_index: Optional[str] = Field(sd_samplers.samplers[0].name, title="Sampler name", alias="sampler_name")
     callback_url: Optional[str] = Field(
         None,
         title="Callback URL",
@@ -87,9 +82,12 @@ class Img2ImgApiTaskArgs(StableDiffusionImg2ImgProcessingAPI):
         title="Custom checkpoint.",
         description="Custom checkpoint hash. If not specified, the latest checkpoint will be used.",
     )
-    sampler_index: Optional[str] = Field(
-        sd_samplers.samplers[0].name, title="Sampler name", alias="sampler_name"
+    vae: Optional[str] = Field(
+        None,
+        title="Custom VAE.",
+        description="Custom VAE. If not specified, the current VAE will be used.",
     )
+    sampler_index: Optional[str] = Field(sd_samplers.samplers[0].name, title="Sampler name", alias="sampler_name")
     callback_url: Optional[str] = Field(
         None,
         title="Callback URL",
@@ -109,15 +107,9 @@ class QueueTaskResponse(BaseModel):
 
 
 class QueueStatusResponse(BaseModel):
-    current_task_id: Optional[str] = Field(
-        title="Current Task Id", description="The on progress task id"
-    )
-    pending_tasks: List[TaskModel] = Field(
-        title="Pending Tasks", description="The pending tasks in the queue"
-    )
-    total_pending_tasks: int = Field(
-        title="Queue length", description="The total pending tasks in the queue"
-    )
+    current_task_id: Optional[str] = Field(title="Current Task Id", description="The on progress task id")
+    pending_tasks: List[TaskModel] = Field(title="Pending Tasks", description="The pending tasks in the queue")
+    total_pending_tasks: int = Field(title="Queue length", description="The total pending tasks in the queue")
     paused: bool = Field(title="Paused", description="Whether the queue is paused")
 
     class Config:

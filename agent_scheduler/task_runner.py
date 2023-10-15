@@ -65,6 +65,7 @@ class ParsedTaskArgs(BaseModel):
     named_args: Dict[str, Any]
     script_args: List[Any]
     checkpoint: Optional[str] = None
+    vae: Optional[str] = None
 
 
 class TaskRunner:
@@ -112,11 +113,10 @@ class TaskRunner:
         is_img2img: bool,
         *args,
         checkpoint: str = None,
+        vae: str = None,
         request: gr.Request = None,
     ):
-        named_args, script_args = map_ui_task_args_list_to_named_args(
-            list(args), is_img2img
-        )
+        named_args, script_args = map_ui_task_args_list_to_named_args(list(args), is_img2img)
 
         # loop through named_args and serialize images
         if is_img2img:
@@ -129,6 +129,7 @@ class TaskRunner:
             {
                 "args": named_args,
                 "checkpoint": checkpoint,
+                "vae": vae,
                 "is_ui": True,
                 "is_img2img": is_img2img,
             }
@@ -141,14 +142,11 @@ class TaskRunner:
         self,
         is_img2img: bool,
         checkpoint: str = None,
+        vae: str = None,
         **api_args,
     ):
-        named_args = serialize_api_task_args(
-            api_args, is_img2img, checkpoint=checkpoint
-        )
-        checkpoint = get_dict_attribute(
-            named_args, "override_settings.sd_model_checkpoint", None
-        )
+        named_args = serialize_api_task_args(api_args, is_img2img, checkpoint=checkpoint, vae=vae)
+        checkpoint = get_dict_attribute(named_args, "override_settings.sd_model_checkpoint", None)
         script_args = named_args.pop("script_args", [])
 
         params = json.dumps(
@@ -168,6 +166,7 @@ class TaskRunner:
         named_args: Dict,
         script_args: List,
         checkpoint: str = None,
+        vae: str = None,
     ):
         """
         Deserialize UI task arguments
@@ -180,6 +179,13 @@ class TaskRunner:
             override = [x for x in override if not x.startswith("Model hash: ")]
             if checkpoint != "System":
                 override.append("Model hash: " + checkpoint)
+            named_args["override_settings_texts"] = override
+
+        # Apply VAE override
+        if vae is not None:
+            override: List[str] = named_args.get("override_settings_texts", [])
+            override = [x for x in override if not x.startswith("VAE: ")]
+            override.append("VAE: " + vae)
             named_args["override_settings_texts"] = override
 
         # A1111 1.5.0-RC has new request field
@@ -201,6 +207,7 @@ class TaskRunner:
         named_args: Dict,
         script_args: List,
         checkpoint: str = None,
+        vae: str = None,
     ):
         # Apply checkpoint override
         if checkpoint is not None:
@@ -209,6 +216,12 @@ class TaskRunner:
                 override["sd_model_checkpoint"] = checkpoint
             else:
                 override.pop("sd_model_checkpoint", None)
+            named_args["override_settings"] = override
+
+        # Apply VAE override
+        if vae is not None:
+            override: Dict = named_args.get("override_settings", {})
+            override["sd_vae"] = vae
             named_args["override_settings"] = override
 
         # load images from disk
@@ -231,16 +244,17 @@ class TaskRunner:
         is_ui = parsed.get("is_ui", True)
         is_img2img = parsed.get("is_img2img", None)
         checkpoint = parsed.get("checkpoint", None)
+        vae = parsed.get("vae", None)
         named_args: Dict[str, Any] = parsed["args"]
         script_args: List[Any] = parsed.get("script_args", task.script_params)
 
         if is_ui and deserialization:
             named_args, script_args = self.__deserialize_ui_task_args(
-                is_img2img, named_args, script_args, checkpoint=checkpoint
+                is_img2img, named_args, script_args, checkpoint=checkpoint, vae=vae
             )
         elif deserialization:
             named_args, script_args = self.__deserialize_api_task_args(
-                is_img2img, named_args, script_args, checkpoint=checkpoint
+                is_img2img, named_args, script_args, checkpoint=checkpoint, vae=vae
             )
         else:
             # ignore script_args if not deserialization
@@ -251,6 +265,7 @@ class TaskRunner:
             named_args=named_args,
             script_args=script_args,
             checkpoint=checkpoint,
+            vae=vae,
         )
 
     def register_ui_task(
@@ -264,8 +279,10 @@ class TaskRunner:
     ):
         progress.add_task_to_queue(task_id)
 
+        vae = shared.opts.sd_vae
+
         (params, script_args) = self.__serialize_ui_task_args(
-            is_img2img, *args, checkpoint=checkpoint, request=request
+            is_img2img, *args, checkpoint=checkpoint, vae=vae, request=request
         )
 
         task_type = "img2img" if is_img2img else "txt2img"
@@ -278,9 +295,7 @@ class TaskRunner:
         )
         task_manager.add_task(task)
 
-        self.__run_callbacks(
-            "task_registered", task_id, is_img2img=is_img2img, is_ui=True, args=params
-        )
+        self.__run_callbacks("task_registered", task_id, is_img2img=is_img2img, is_ui=True, args=params)
         self.__total_pending_tasks += 1
 
         return task
@@ -292,12 +307,11 @@ class TaskRunner:
         is_img2img: bool,
         args: Dict,
         checkpoint: str = None,
+        vae: str = None,
     ):
         progress.add_task_to_queue(task_id)
 
-        (params, script_params) = self.__serialize_api_task_args(
-            is_img2img, checkpoint=checkpoint, **args
-        )
+        (params, script_params) = self.__serialize_api_task_args(is_img2img, checkpoint=checkpoint, vae=vae, **args)
 
         task_type = "img2img" if is_img2img else "txt2img"
         task = Task(
@@ -309,9 +323,7 @@ class TaskRunner:
         )
         task_manager.add_task(task)
 
-        self.__run_callbacks(
-            "task_registered", task_id, is_img2img=is_img2img, is_ui=False, args=params
-        )
+        self.__run_callbacks("task_registered", task_id, is_img2img=is_img2img, is_ui=False, args=params)
         self.__total_pending_tasks += 1
 
         return task
@@ -348,9 +360,7 @@ class TaskRunner:
 
                 if not res or isinstance(res, Exception):
                     if isinstance(res, OutOfMemoryError):
-                        log.error(
-                            f"[AgentScheduler] Task {task_id} failed: CUDA OOM. Queue will be paused."
-                        )
+                        log.error(f"[AgentScheduler] Task {task_id} failed: CUDA OOM. Queue will be paused.")
                         shared.opts.queue_paused = True
                     else:
                         log.error(f"[AgentScheduler] Task {task_id} failed: {res}")
@@ -359,9 +369,7 @@ class TaskRunner:
                     task.status = TaskStatus.FAILED
                     task.result = str(res) if res else None
                     task_manager.update_task(task)
-                    self.__run_callbacks(
-                        "task_finished", task_id, status=TaskStatus.FAILED, **task_meta
-                    )
+                    self.__run_callbacks("task_finished", task_id, status=TaskStatus.FAILED, **task_meta)
                 else:
                     is_interrupted = self.interrupted == task_id
                     if is_interrupted:
@@ -427,9 +435,7 @@ class TaskRunner:
 
     def __execute_task(self, task_id: str, is_img2img: bool, task_args: ParsedTaskArgs):
         if task_args.is_ui:
-            ui_args = map_named_args_to_ui_task_args_list(
-                task_args.named_args, task_args.script_args, is_img2img
-            )
+            ui_args = map_named_args_to_ui_task_args_list(task_args.named_args, task_args.script_args, is_img2img)
 
             return self.__execute_ui_task(task_id, is_img2img, *ui_args)
         else:
@@ -450,11 +456,7 @@ class TaskRunner:
             res = None
             try:
                 result = func(*args)
-                if (
-                    result[0] is None
-                    and hasattr(shared.state, "oom")
-                    and shared.state.oom
-                ):
+                if result[0] is None and hasattr(shared.state, "oom") and shared.state.oom:
                     res = OutOfMemoryError()
                 elif "CUDA out of memory" in result[2]:
                     res = OutOfMemoryError()
@@ -477,9 +479,7 @@ class TaskRunner:
             result = (
                 self.__api.img2imgapi(StableDiffusionImg2ImgProcessingAPI(**kwargs))
                 if is_img2img
-                else self.__api.text2imgapi(
-                    StableDiffusionTxt2ImgProcessingAPI(**kwargs)
-                )
+                else self.__api.text2imgapi(StableDiffusionTxt2ImgProcessingAPI(**kwargs))
             )
             res = result.info
         except Exception as e:
@@ -506,26 +506,18 @@ class TaskRunner:
             getattr(shared.opts, "queue_history_retention_days", None)
             and shared.opts.queue_history_retention_days in task_history_retenion_map
         ):
-            retention_days = task_history_retenion_map[
-                shared.opts.queue_history_retention_days
-            ]
+            retention_days = task_history_retenion_map[shared.opts.queue_history_retention_days]
 
         if retention_days > 0:
-            deleted_rows = task_manager.delete_tasks(
-                before=datetime.now() - timedelta(days=retention_days)
-            )
+            deleted_rows = task_manager.delete_tasks(before=datetime.now() - timedelta(days=retention_days))
             if deleted_rows > 0:
-                log.debug(
-                    f"[AgentScheduler] Deleted {deleted_rows} tasks older than {retention_days} days"
-                )
+                log.debug(f"[AgentScheduler] Deleted {deleted_rows} tasks older than {retention_days} days")
 
         self.__total_pending_tasks = task_manager.count_tasks(status="pending")
 
         # get more task if needed
         if self.__total_pending_tasks > 0:
-            log.info(
-                f"[AgentScheduler] Total pending tasks: {self.__total_pending_tasks}"
-            )
+            log.info(f"[AgentScheduler] Total pending tasks: {self.__total_pending_tasks}")
             pending_tasks = task_manager.get_tasks(status="pending", limit=1)
             if len(pending_tasks) > 0:
                 return pending_tasks[0]
@@ -534,9 +526,7 @@ class TaskRunner:
             self.__run_callbacks("task_cleared")
 
     def __on_image_saved(self, data: script_callbacks.ImageSaveParams):
-        self.__saved_images_path.append(
-            (data.filename, data.pnginfo.get("parameters", ""))
-        )
+        self.__saved_images_path.append((data.filename, data.pnginfo.get("parameters", "")))
 
     def on_task_registered(self, callback: Callable):
         """Callback when a task is registered
