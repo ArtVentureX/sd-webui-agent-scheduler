@@ -8,11 +8,11 @@ import numpy as np
 import torch
 from typing import Union, List, Dict
 from enum import Enum
-from PIL import Image, ImageOps, ImageChops, ImageEnhance, ImageFilter
+from PIL import Image, ImageOps, ImageChops, ImageEnhance, ImageFilter, PngImagePlugin
 from numpy import ndarray
 from torch import Tensor
 
-from modules import sd_samplers, scripts, shared, sd_vae
+from modules import sd_samplers, scripts, shared, sd_vae, images
 from modules.generation_parameters_copypaste import create_override_settings_dict
 from modules.sd_models import CheckpointInfo, get_closet_checkpoint_match
 from modules.txt2img import txt2img
@@ -63,8 +63,12 @@ def encode_image_to_base64(image):
     if not isinstance(image, Image.Image):
         return image
 
+    geninfo, _ = images.read_info_from_image(image)
+    pnginfo = PngImagePlugin.PngInfo()
+    pnginfo.add_text("parameters", geninfo)
+
     with io.BytesIO() as output_bytes:
-        image.save(output_bytes, format="PNG")
+        image.save(output_bytes, format="PNG", pnginfo=pnginfo)
         bytes_data = output_bytes.getvalue()
         return "data:image/png;base64," + base64.b64encode(bytes_data).decode("utf-8")
 
