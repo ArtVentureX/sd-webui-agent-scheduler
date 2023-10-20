@@ -7,12 +7,12 @@ from sqlalchemy.orm import declarative_base
 from modules import scripts
 from modules import shared
 
-if hasattr(shared.cmd_opts, "sqlite_file"):
+if hasattr(shared.cmd_opts, "agent_scheduler_sqlite_file"):
     # if relative path, join with basedir
-    if not os.path.isabs(shared.cmd_opts.sqlite_file):
-        db_file = os.path.join(scripts.basedir(), shared.cmd_opts.sqlite_file)
+    if not os.path.isabs(shared.cmd_opts.agent_scheduler_sqlite_file):
+        db_file = os.path.join(scripts.basedir(), shared.cmd_opts.agent_scheduler_sqlite_file)
     else:
-        db_file = os.path.abspath(shared.cmd_opts.sqlite_file)
+        db_file = os.path.abspath(shared.cmd_opts.agent_scheduler_sqlite_file)
 
 print(f"Using sqlite file: {db_file}")
 
