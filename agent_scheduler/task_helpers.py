@@ -69,7 +69,7 @@ def encode_image_to_base64(image):
         pnginfo.add_text("parameters", geninfo)
 
     with io.BytesIO() as output_bytes:
-        if pnginfo:
+        if geninfo:
             image.save(output_bytes, format="PNG", pnginfo=pnginfo)
         else:
             image.save(output_bytes, format="PNG") # remove pnginfo to save space
