@@ -6,6 +6,7 @@ from PIL import Image
 from uuid import uuid4
 from typing import List
 from collections import defaultdict
+from datetime import datetime, timedelta
 from modules import shared, script_callbacks, scripts
 from modules.shared import list_checkpoint_tiles, refresh_checkpoints
 from modules.ui import create_refresh_button
@@ -17,16 +18,8 @@ from modules.generation_parameters_copypaste import (
     ParamBinding,
 )
 
-from agent_scheduler.task_runner import (
-    TaskRunner,
-    get_instance,
-    task_history_retenion_map,
-)
-from agent_scheduler.helpers import (
-    log,
-    compare_components_with_ids,
-    get_components_by_ids,
-)
+from agent_scheduler.task_runner import TaskRunner, get_instance
+from agent_scheduler.helpers import log, compare_components_with_ids, get_components_by_ids
 from agent_scheduler.db import init as init_db, task_manager, TaskStatus
 from agent_scheduler.api import regsiter_apis
 
@@ -55,6 +48,16 @@ enqueue_key_codes = {}
 enqueue_key_codes.update({chr(i): "Key" + chr(i) for i in range(ord("A"), ord("Z") + 1)})
 enqueue_key_codes.update({chr(i): "Digit" + chr(i) for i in range(ord("0"), ord("9") + 1)})
 enqueue_key_codes.update({"`": "Backquote", "Enter": "Enter"})
+
+task_history_retenion_map = {
+    "1 day": 1,
+    "3 days": 3,
+    "7 days": 7,
+    "14 days": 14,
+    "30 days": 30,
+    "90 days": 90,
+    "Keep forever": 0,
+}
 
 init_db()
 
@@ -274,6 +277,22 @@ def get_task_results(task_id: str, image_idx: int = None):
     return res if image_idx is not None else (galerry,) + res
 
 
+def remove_old_tasks():
+    # delete task that are too old
+
+    retention_days = 30
+    if (
+        getattr(shared.opts, "queue_history_retention_days", None)
+        and shared.opts.queue_history_retention_days in task_history_retenion_map
+    ):
+        retention_days = task_history_retenion_map[shared.opts.queue_history_retention_days]
+
+    if retention_days > 0:
+        deleted_rows = task_manager.delete_tasks(before=datetime.now() - timedelta(days=retention_days))
+        if deleted_rows > 0:
+            log.debug(f"[AgentScheduler] Deleted {deleted_rows} tasks older than {retention_days} days")
+
+
 def on_ui_tab(**_kwargs):
     with gr.Blocks(analytics_enabled=False) as scheduler_tab:
         with gr.Tabs(elem_id="agent_scheduler_tabs"):
@@ -389,8 +408,15 @@ def on_ui_tab(**_kwargs):
                             elem_id="agent_scheduler_history_result_actions",
                             visible=False,
                         ) as result_actions:
-                            download_files = gr.File(None, file_count="multiple", interactive=False, show_label=False, visible=False, elem_id=f'agent_scheduler_download_files')
-                            html_log = gr.HTML(elem_id=f'agent_scheduler_html_log', elem_classes="html-log")
+                            download_files = gr.File(
+                                None,
+                                file_count="multiple",
+                                interactive=False,
+                                show_label=False,
+                                visible=False,
+                                elem_id=f"agent_scheduler_download_files",
+                            )
+                            html_log = gr.HTML(elem_id=f"agent_scheduler_html_log", elem_classes="html-log")
                             try:
                                 send_to_buttons = create_buttons(["txt2img", "img2img", "inpaint", "extras"])
                             except:
@@ -583,6 +609,7 @@ def on_app_started(block: gr.Blocks, app):
     task_runner = get_instance(block)
     task_runner.execute_pending_tasks_threading()
     regsiter_apis(app, task_runner)
+    task_runner.on_task_cleared(lambda: remove_old_tasks())
 
     if getattr(shared.opts, "queue_ui_placement", "") == ui_placement_append_to_main and block:
         with block:
