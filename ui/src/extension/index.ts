@@ -1,4 +1,16 @@
-import { CellClassParams, CellClickedEvent, Grid, GridApi, GridOptions, ICellRendererParams, ITooltipParams, RowHighlightPosition, RowNode, ValueFormatterParams, ValueGetterParams } from 'ag-grid-community';
+import {
+  CellClassParams,
+  CellClickedEvent,
+  Grid,
+  GridApi,
+  GridOptions,
+  ICellRendererParams,
+  ITooltipParams,
+  RowHighlightPosition,
+  RowNode,
+  ValueFormatterParams,
+  ValueGetterParams,
+} from 'ag-grid-community';
 import { Notyf } from 'notyf';
 
 import bookmark from '../assets/icons/bookmark.svg?raw';
@@ -37,7 +49,7 @@ declare global {
     progressContainer: HTMLElement,
     imagesContainer: HTMLElement,
     onDone?: () => void,
-    onProgress?: (res: ProgressResponse) => void,
+    onProgress?: (res: ProgressResponse) => void
   ): void;
   function onUiLoaded(callback: () => void): void;
   function notify(response: ResponseStatus): void;
@@ -47,6 +59,7 @@ declare global {
   function submit_enqueue_img2img(...args: any[]): any[];
   function agent_scheduler_status_filter_changed(value: string): void;
   function appendContextMenuOption(selector: string, label: string, callback: () => void): void;
+  function modalSaveImage(event: Event): void;
 }
 
 const sharedStore = createSharedStore({
@@ -154,7 +167,8 @@ const sharedGridOptions: GridOptions<Task> = {
           cellDataType: 'text',
           minWidth: 150,
           maxWidth: 300,
-          valueFormatter: ({ value }: ValueFormatterParams<Task, string | undefined>) => value ?? 'System',
+          valueFormatter: ({ value }: ValueFormatterParams<Task, string | undefined>) =>
+            value ?? 'System',
           cellEditor: 'agSelectCellEditor',
           cellEditorParams: () => ({ values: checkpoints }),
         },
@@ -342,10 +356,7 @@ function initQueueHandler() {
     );
     if (enqueue_wrapper_model != null) {
       const checkpoint = enqueue_wrapper_model.value;
-      if (
-        checkpoint === 'Runtime Checkpoint' ||
-        checkpoint !== 'Current Checkpoint'
-      ) {
+      if (checkpoint === 'Runtime Checkpoint' || checkpoint !== 'Current Checkpoint') {
         return checkpoint;
       }
     }
@@ -474,26 +485,28 @@ function initQueueHandler() {
     }
   };
 
-  appendContextMenuOption(
-    '#txt2img_enqueue',
-    'Queue with task name',
-    () => queueWithTaskName()
+  appendContextMenuOption('#txt2img_enqueue', 'Queue with task name', () => queueWithTaskName());
+  appendContextMenuOption('#txt2img_enqueue', 'Queue with all checkpoints', () =>
+    queueWithEveryCheckpoint()
   );
-  appendContextMenuOption(
-    '#txt2img_enqueue',
-    'Queue with all checkpoints',
-    () => queueWithEveryCheckpoint()
+  appendContextMenuOption('#img2img_enqueue', 'Queue with task name', () =>
+    queueWithTaskName(true)
   );
-  appendContextMenuOption(
-    '#img2img_enqueue',
-    'Queue with task name',
-    () => queueWithTaskName(true)
+  appendContextMenuOption('#img2img_enqueue', 'Queue with all checkpoints', () =>
+    queueWithEveryCheckpoint(true)
   );
-  appendContextMenuOption(
-    '#img2img_enqueue',
-    'Queue with all checkpoints',
-    () => queueWithEveryCheckpoint(true)
-  );
+
+  // preview modal save button
+  const origModalSaveImage = window.modalSaveImage;
+  window.modalSaveImage = (event: Event) => {
+    const tab = gradioApp().querySelector<HTMLDivElement>('#tab_agent_scheduler')!;
+    if (tab.style.display !== 'none') {
+      gradioApp().querySelector<HTMLButtonElement>('#agent_scheduler_save')!.click();
+      event.preventDefault();
+    } else {
+      origModalSaveImage(event);
+    }
+  };
 }
 
 function initTabChangeHandler() {
@@ -537,14 +550,12 @@ function initTabChangeHandler() {
   } else {
     sharedStore.setState({ uiAsTab: false });
   }
-  observer.observe(
-    gradioApp().querySelector('#agent_scheduler_pending_tasks_tab')!,
-    { attributeFilter: ['style'] }
-  );
-  observer.observe(
-    gradioApp().querySelector('#agent_scheduler_history_tab')!,
-    { attributeFilter: ['style'] }
-  );
+  observer.observe(gradioApp().querySelector('#agent_scheduler_pending_tasks_tab')!, {
+    attributeFilter: ['style'],
+  });
+  observer.observe(gradioApp().querySelector('#agent_scheduler_history_tab')!, {
+    attributeFilter: ['style'],
+  });
 }
 
 function initPendingTab() {
@@ -555,16 +566,24 @@ function initPendingTab() {
   sharedStore.getCheckpoints().then(res => checkpoints.push(...res));
 
   // init actions
-  const refreshButton = gradioApp().querySelector<HTMLButtonElement>('#agent_scheduler_action_reload')!;
+  const refreshButton = gradioApp().querySelector<HTMLButtonElement>(
+    '#agent_scheduler_action_reload'
+  )!;
   refreshButton.addEventListener('click', () => store.refresh());
 
-  const pauseButton = gradioApp().querySelector<HTMLButtonElement>('#agent_scheduler_action_pause')!;
+  const pauseButton = gradioApp().querySelector<HTMLButtonElement>(
+    '#agent_scheduler_action_pause'
+  )!;
   pauseButton.addEventListener('click', () => store.pauseQueue().then(notify));
 
-  const resumeButton = gradioApp().querySelector<HTMLButtonElement>('#agent_scheduler_action_resume')!;
+  const resumeButton = gradioApp().querySelector<HTMLButtonElement>(
+    '#agent_scheduler_action_resume'
+  )!;
   resumeButton.addEventListener('click', () => store.resumeQueue().then(notify));
 
-  const clearButton = gradioApp().querySelector<HTMLButtonElement>('#agent_scheduler_action_clear_queue')!;
+  const clearButton = gradioApp().querySelector<HTMLButtonElement>(
+    '#agent_scheduler_action_clear_queue'
+  )!;
   clearButton.addEventListener('click', () => {
     if (confirm('Are you sure you want to clear the queue?')) {
       store.clearQueue().then(notify);
@@ -589,7 +608,7 @@ function initPendingTab() {
   let pageMoveTimeout: ReturnType<typeof setTimeout> | null;
 
   const PAGE_MOVE_TIMEOUT_MS = 1.5 * 1000;
-  const PAGE_MOVE_Y_MARGIN = 45 / 2;  // half of default (min) rowHeight
+  const PAGE_MOVE_Y_MARGIN = 45 / 2; // half of default (min) rowHeight
 
   const clearPageMoveTimeout = () => {
     if (pageMoveTimeout != null) {
@@ -625,7 +644,10 @@ function initPendingTab() {
         }, PAGE_MOVE_TIMEOUT_MS);
       }
     } else if (rowIndex === lastRowIndexOfPage) {
-      if (getPixelOnRow(api, lastHighlightedRow, pixel) < lastHighlightedRow.rowHeight! - PAGE_MOVE_Y_MARGIN) {
+      if (
+        getPixelOnRow(api, lastHighlightedRow, pixel) <
+        lastHighlightedRow.rowHeight! - PAGE_MOVE_Y_MARGIN
+      ) {
         clearPageMoveTimeout();
         return;
       }
@@ -774,7 +796,9 @@ function initPendingTab() {
       const searchInput = initSearchInput('#agent_scheduler_action_search');
       searchInput.addEventListener(
         'keyup',
-        debounce(function () { api.setQuickFilter(this.value); }, 200)
+        debounce(function () {
+          api.setQuickFilter(this.value);
+        }, 200)
       );
 
       const updateRowData = (state: ReturnType<typeof store.getState>) => {
@@ -817,7 +841,8 @@ function initPendingTab() {
         return;
       }
 
-      let index = -1, overIndex = -1;
+      let index = -1,
+        overIndex = -1;
       const tasks = [...store.getState().pending_tasks].sort((a, b) => a.priority - b.priority);
       for (let i = 0; i < tasks.length; i++) {
         if (tasks[i].id === id) {
@@ -940,11 +965,19 @@ function initHistoryTab() {
         sort: 'desc',
         tooltipValueGetter: ({ value }: ITooltipParams<Task, boolean | undefined, any>) =>
           value === true ? 'Unbookmark' : 'Bookmark',
-        cellClass: ({ value }: CellClassParams<Task, boolean | undefined>) =>
-          ['cursor-pointer', 'pt-3', value === true ? 'ts-bookmarked' : 'ts-bookmark'],
+        cellClass: ({ value }: CellClassParams<Task, boolean | undefined>) => [
+          'cursor-pointer',
+          'pt-3',
+          value === true ? 'ts-bookmarked' : 'ts-bookmark',
+        ],
         cellRenderer: ({ value }: ICellRendererParams<Task, boolean | undefined>) =>
           value === true ? bookmarked : bookmark,
-        onCellClicked: ({ api, data, value, event }: CellClickedEvent<Task, boolean | undefined>) => {
+        onCellClicked: ({
+          api,
+          data,
+          value,
+          event,
+        }: CellClickedEvent<Task, boolean | undefined>) => {
           if (data == null) return;
 
           if (event != null) {
@@ -1037,7 +1070,9 @@ function initHistoryTab() {
       const searchInput = initSearchInput('#agent_scheduler_action_search_history');
       searchInput.addEventListener(
         'keyup',
-        debounce(function () { api.setQuickFilter(this.value); }, 200)
+        debounce(function () {
+          api.setQuickFilter(this.value);
+        }, 200)
       );
 
       const updateRowData = (state: ReturnType<typeof store.getState>) => {

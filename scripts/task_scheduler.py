@@ -7,14 +7,17 @@ from uuid import uuid4
 from typing import List
 from collections import defaultdict
 from datetime import datetime, timedelta
-from modules import shared, script_callbacks, scripts
+
+from modules import call_queue, shared, script_callbacks, scripts, ui_components
 from modules.shared import list_checkpoint_tiles, refresh_checkpoints
+from modules.cmd_args import parser
 from modules.ui import create_refresh_button
+from modules.ui_common import save_files
 from modules.generation_parameters_copypaste import (
     registered_param_bindings,
-    create_buttons,
     register_paste_params_button,
     connect_paste_params_buttons,
+    parse_generation_parameters,
     ParamBinding,
 )
 
@@ -22,6 +25,9 @@ from agent_scheduler.task_runner import TaskRunner, get_instance
 from agent_scheduler.helpers import log, compare_components_with_ids, get_components_by_ids
 from agent_scheduler.db import init as init_db, task_manager, TaskStatus
 from agent_scheduler.api import regsiter_apis
+
+is_sdnext = parser.description == "SD.Next"
+ToolButton = gr.Button if is_sdnext else ui_components.ToolButton
 
 task_runner: TaskRunner = None
 
@@ -242,39 +248,103 @@ def get_checkpoint_choices():
     return choices
 
 
+def create_send_to_buttons():
+    return {
+        "txt2img": ToolButton(
+            "➠ text" if is_sdnext else "📝",
+            elem_id="agent_scheduler_send_to_txt2img",
+            tooltip="Send generation parameters to txt2img tab.",
+        ),
+        "img2img": ToolButton(
+            "➠ image" if is_sdnext else "🖼️",
+            elem_id="agent_scheduler_send_to_img2img",
+            tooltip="Send image and generation parameters to img2img tab.",
+        ),
+        "inpaint": ToolButton(
+            "➠ inpaint" if is_sdnext else "🎨️",
+            elem_id="agent_scheduler_send_to_inpaint",
+            tooltip="Send image and generation parameters to img2img inpaint tab.",
+        ),
+        "extras": ToolButton(
+            "➠ process" if is_sdnext else "📐",
+            elem_id="agent_scheduler_send_to_extras",
+            tooltip="Send image and generation parameters to extras tab.",
+        ),
+    }
+
+
+def infotexts_to_geninfo(infotexts: List[str]):
+    all_promts = []
+    all_seeds = []
+
+    geninfo = {"infotexts": infotexts, "all_prompts": all_promts, "all_seeds": all_seeds, "index_of_first_image": 0}
+
+    for infotext in infotexts:
+        params = parse_generation_parameters(infotext)
+
+        if "prompt" not in params:
+            geninfo["prompt"] = params["Prompt"]
+            geninfo["negative_prompt"] = params["Negative prompt"]
+            geninfo["seed"] = params["Seed"]
+            geninfo["sampler_name"] = params["Sampler"]
+            geninfo["cfg_scale"] = params["CFG scale"]
+            geninfo["steps"] = params["Steps"]
+            geninfo["width"] = params["Size-1"]
+            geninfo["height"] = params["Size-2"]
+
+        all_promts.append(params["Prompt"])
+        all_seeds.append(params["Seed"])
+
+    return geninfo
+
+
 def get_task_results(task_id: str, image_idx: int = None):
     task = task_manager.get_task(task_id)
 
     galerry = None
-    infotexts = None
+    geninfo = None
+    infotext = None
     if task is None:
         pass
     elif task.status != TaskStatus.DONE:
-        infotexts = f"Status: {task.status}"
+        infotext = f"Status: {task.status}"
         if task.status == TaskStatus.FAILED and task.result:
-            infotexts += f"\nError: {task.result}"
+            infotext += f"\nError: {task.result}"
     elif task.status == TaskStatus.DONE:
         try:
             result: dict = json.loads(task.result)
             images = result.get("images", [])
-            infos = result.get("infotexts", [])
+            geninfo = result.get("geninfo", None)
+            if isinstance(geninfo, dict):
+                infotexts = geninfo.get("infotexts", [])
+            else:
+                infotexts = result.get("infotexts", [])
+                geninfo = infotexts_to_geninfo(infotexts)
+
             galerry = [Image.open(i) for i in images if os.path.exists(i)] if image_idx is None else gr.update()
             idx = image_idx if image_idx is not None else 0
-            if len(infos) == len(images):
-                infotexts = infos[idx]
-            else:
-                infotexts = "\n".join(infos).split("Prompt: ")[1:][idx]
-
+            if idx < len(infotexts):
+                infotext = infotexts[idx]
         except Exception as e:
             log.error(f"[AgentScheduler] Failed to load task result")
             log.error(e)
-            infotexts = f"Failed to load task result: {str(e)}"
+            infotext = f"Failed to load task result: {str(e)}"
 
     res = (
-        gr.Textbox.update(infotexts, visible=infotexts is not None),
+        gr.Textbox.update(infotext, visible=infotext is not None),
         gr.Row.update(visible=galerry is not None),
     )
-    return res if image_idx is not None else (galerry,) + res
+
+    if image_idx is None:
+        geninfo = json.dumps(geninfo) if geninfo else None
+        res += (
+            galerry,
+            gr.Textbox.update(geninfo),
+            gr.File.update(None, visible=False),
+            gr.HTML.update(None),
+        )
+
+    return res
 
 
 def remove_old_tasks():
@@ -325,7 +395,7 @@ def on_ui_tab(**_kwargs):
                                 variant="stop",
                             )
 
-                            with gr.Row(elem_classes=["flex-row", "ml-auto"]):
+                            with gr.Row(elem_classes=["agent_scheduler_filter_container", "flex-row", "ml-auto"]):
                                 gr.Textbox(
                                     max_lines=1,
                                     placeholder="Search",
@@ -359,7 +429,7 @@ def on_ui_tab(**_kwargs):
                                 variant="stop",
                             )
 
-                            with gr.Row(elem_classes=["flex-row", "ml-auto"]):
+                            with gr.Row(elem_classes=["agent_scheduler_filter_container", "flex-row", "ml-auto"]):
                                 status = gr.Dropdown(
                                     elem_id="agent_scheduler_status_filter",
                                     choices=task_filter_choices,
@@ -385,17 +455,39 @@ def on_ui_tab(**_kwargs):
                             preview=True,
                             object_fit="contain",
                         )
-                        gen_info = gr.TextArea(
-                            label="Generation Info",
-                            elem_id=f"agent_scheduler_history_gen_info",
-                            interactive=False,
-                            visible=True,
-                            lines=3,
-                        )
                         with gr.Row(
                             elem_id="agent_scheduler_history_result_actions",
                             visible=False,
                         ) as result_actions:
+                            if is_sdnext:
+                                with gr.Group():
+                                    save = ToolButton(
+                                        "💾",
+                                        elem_id="agent_scheduler_save",
+                                        tooltip=f"Save the image to a dedicated directory ({shared.opts.outdir_save}).",
+                                    )
+                                    save_zip = None
+                            else:
+                                save = ToolButton(
+                                    "💾",
+                                    elem_id="agent_scheduler_save",
+                                    tooltip=f"Save the image to a dedicated directory ({shared.opts.outdir_save}).",
+                                )
+                                save_zip = ToolButton(
+                                    "🗃️",
+                                    elem_id="agent_scheduler_save_zip",
+                                    tooltip=f"Save zip archive with images to a dedicated directory ({shared.opts.outdir_save})",
+                                )
+                            send_to_buttons = create_send_to_buttons()
+                        with gr.Group():
+                            generation_info = gr.Textbox(visible=False, elem_id=f"agent_scheduler_generation_info")
+                            infotext = gr.TextArea(
+                                label="Generation Info",
+                                elem_id=f"agent_scheduler_history_infotext",
+                                interactive=False,
+                                visible=True,
+                                lines=3,
+                            )
                             download_files = gr.File(
                                 None,
                                 file_count="multiple",
@@ -405,20 +497,16 @@ def on_ui_tab(**_kwargs):
                                 elem_id=f"agent_scheduler_download_files",
                             )
                             html_log = gr.HTML(elem_id=f"agent_scheduler_html_log", elem_classes="html-log")
-                            try:
-                                send_to_buttons = create_buttons(["txt2img", "img2img", "inpaint", "extras"])
-                            except:
-                                pass
-                        selected_task = gr.Textbox(
-                            elem_id="agent_scheduler_history_selected_task",
-                            visible=False,
-                            show_label=False,
-                        )
-                        selected_task_id = gr.Textbox(
-                            elem_id="agent_scheduler_history_selected_image",
-                            visible=False,
-                            show_label=False,
-                        )
+                            selected_task = gr.Textbox(
+                                elem_id="agent_scheduler_history_selected_task",
+                                visible=False,
+                                show_label=False,
+                            )
+                            selected_image_id = gr.Textbox(
+                                elem_id="agent_scheduler_history_selected_image",
+                                visible=False,
+                                show_label=False,
+                            )
 
         # register event handlers
         status.change(
@@ -426,15 +514,29 @@ def on_ui_tab(**_kwargs):
             _js="agent_scheduler_status_filter_changed",
             inputs=[status],
         )
+        save.click(
+            fn=lambda x, y, z: call_queue.wrap_gradio_call(save_files)(x, y, False, int(z)),
+            _js="(x, y, z) => [x, y, selected_gallery_index()]",
+            inputs=[generation_info, galerry, infotext],
+            outputs=[download_files, html_log],
+            show_progress=False,
+        )
+        if save_zip:
+            save_zip.click(
+                fn=lambda x, y, z: call_queue.wrap_gradio_call(save_files)(x, y, True, int(z)),
+                _js="(x, y, z) => [x, y, selected_gallery_index()]",
+                inputs=[generation_info, galerry, infotext],
+                outputs=[download_files, html_log],
+            )
         selected_task.change(
             fn=lambda x: get_task_results(x, None),
             inputs=[selected_task],
-            outputs=[galerry, gen_info, result_actions],
+            outputs=[infotext, result_actions, galerry, generation_info, download_files, html_log],
         )
-        selected_task_id.change(
+        selected_image_id.change(
             fn=lambda x, y: get_task_results(x, image_idx=int(y)),
-            inputs=[selected_task, selected_task_id],
-            outputs=[gen_info, result_actions],
+            inputs=[selected_task, selected_image_id],
+            outputs=[infotext, result_actions],
         )
         try:
             for paste_tabname, paste_button in send_to_buttons.items():
@@ -442,7 +544,7 @@ def on_ui_tab(**_kwargs):
                     ParamBinding(
                         paste_button=paste_button,
                         tabname=paste_tabname,
-                        source_text_component=gen_info,
+                        source_text_component=infotext,
                         source_image_component=galerry,
                     )
                 )
