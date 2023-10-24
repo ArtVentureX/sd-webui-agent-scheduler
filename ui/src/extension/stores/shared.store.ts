@@ -22,14 +22,10 @@ export const createSharedStore = (initialState: SharedState) => {
       setState({ selectedTab: tab });
     },
     getSamplers: async () => {
-      return fetch('/sdapi/v1/samplers')
-        .then(response => response.json())
-        .then(data => data.map((item: any) => item.name));
+      return fetch('/agent-scheduler/v1/samplers').then(response => response.json());
     },
     getCheckpoints: async () => {
-      return fetch('/sdapi/v1/sd-models')
-        .then(response => response.json())
-        .then(data => data.map((item: any) => item.title));
+      return fetch('/agent-scheduler/v1/sd-models').then(response => response.json());
     },
   };
 
