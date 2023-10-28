@@ -251,6 +251,24 @@ button.ts-btn-action {
   }
 }
 
+#agent_scheduler_history_actions,
+#agent_scheduler_pending_tasks_actions {
+  gap: calc(var(--layout-gap) / 2);
+}
+
+#agent_scheduler_history_result_actions {
+  display: flex;
+  justify-content: center;
+
+  > div.form {
+    flex: 0 0 auto !important;
+  }
+
+  > div.gr-group {
+    flex: 1 1 100% !important;
+  }
+}
+
 #agent_scheduler_pending_tasks_wrapper {
   .livePreview {
     margin: 0;
@@ -320,16 +338,32 @@ button.ts-btn-action {
   }
 }
 
+.agent_scheduler_filter_container {
+  > div.form {
+    margin: 0;
+  }
+}
+
 #agent_scheduler_status_filter {
   width: var(--size-36);
+  padding: 0 !important;
+
+  label > div {
+    height: 100%;
+  }
 }
 
 #agent_scheduler_action_search,
 #agent_scheduler_action_search_history {
   width: var(--size-64);
+  padding: 0 !important;
 
   > label {
     position: relative;
+  }
+
+  input.ts-search-input {
+    padding: var(--block-padding);
   }
 }
 

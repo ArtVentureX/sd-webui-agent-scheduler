@@ -7,7 +7,7 @@ from uuid import uuid4
 from zipfile import ZipFile
 from pathlib import Path
 from secrets import compare_digest
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 from gradio.routes import App
 from PIL import Image
 from fastapi import Depends
@@ -16,7 +16,7 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.exceptions import HTTPException
 from pydantic import BaseModel
 
-from modules import shared, progress
+from modules import shared, progress, sd_models, sd_samplers
 
 from .db import Task, TaskStatus, task_manager
 from .models import (
@@ -98,6 +98,14 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
         deps = [Depends(auth)]
 
     log.info("[AgentScheduler] Registering APIs")
+
+    @app.get("/agent-scheduler/v1/samplers", response_model=List[str])
+    def get_samplers():
+        return [sampler[0] for sampler in sd_samplers.all_samplers]
+
+    @app.get("/agent-scheduler/v1/sd-models", response_model=List[str])
+    def get_sd_models():
+        return [x.title for x in sd_models.checkpoints_list.values()]
 
     @app.post("/agent-scheduler/v1/queue/txt2img", response_model=QueueTaskResponse, dependencies=deps)
     def queue_txt2img(body: Txt2ImgApiTaskArgs):
