@@ -8,6 +8,7 @@ from zipfile import ZipFile
 from pathlib import Path
 from secrets import compare_digest
 from typing import Optional, Dict, List
+from datetime import datetime, timezone
 from gradio.routes import App
 from PIL import Image
 from fastapi import Depends
@@ -353,6 +354,20 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
         task_runner.execute_pending_tasks_threading()
 
         return {"success": True, "message": "Task requeued"}
+
+    @app.post("/agent-scheduler/v1/task/requeue-failed", dependencies=deps)
+    def requeue_failed_tasks():
+        failed_tasks = task_manager.get_tasks(status=TaskStatus.FAILED)
+        if (len(failed_tasks)) == 0:
+            return {"success": False, "message": "No failed tasks"}
+
+        for task in failed_tasks:
+            task.status = TaskStatus.PENDING
+            task.result = None
+            task.priority = int(datetime.now(timezone.utc).timestamp() * 1000)
+            task_manager.update_task(task)
+
+        return {"success": True, "message": f"Requeued {len(failed_tasks)} failed tasks"}
 
     @app.post("/agent-scheduler/v1/delete/{id}", dependencies=deps, deprecated=True)
     @app.delete("/agent-scheduler/v1/task/{id}", dependencies=deps)

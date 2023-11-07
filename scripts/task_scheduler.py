@@ -13,6 +13,7 @@ from modules.shared import list_checkpoint_tiles, refresh_checkpoints
 from modules.cmd_args import parser
 from modules.ui import create_refresh_button
 from modules.ui_common import save_files
+from modules.sd_models import model_path
 from modules.generation_parameters_copypaste import (
     registered_param_bindings,
     register_paste_params_button,
@@ -229,12 +230,12 @@ class Script(scripts.Script):
 
 
 def get_checkpoint_choices():
-    checkpoints = list_checkpoint_tiles()
+    checkpoints: List[str] = list_checkpoint_tiles()
 
     checkpoint_dirs = defaultdict(lambda: 0)
     for checkpoint in checkpoints:
         checkpoint_dir = os.path.dirname(checkpoint)
-        while checkpoint_dir != "":
+        while checkpoint_dir != "" and checkpoint_dir != "/":
             checkpoint_dirs[checkpoint_dir] += 1
             checkpoint_dir = os.path.dirname(checkpoint_dir)
 
@@ -280,20 +281,26 @@ def infotexts_to_geninfo(infotexts: List[str]):
     geninfo = {"infotexts": infotexts, "all_prompts": all_promts, "all_seeds": all_seeds, "index_of_first_image": 0}
 
     for infotext in infotexts:
+        # Dynamic prompt breaks layout of infotext
+        if "Template: " in infotext:
+            lines = infotext.split("\n")
+            lines = [l for l in lines if not (l.startswith("Template: ") or l.startswith("Negative Template: "))]
+            infotext = "\n".join(lines)
+
         params = parse_generation_parameters(infotext)
 
-        if "prompt" not in params:
-            geninfo["prompt"] = params["Prompt"]
-            geninfo["negative_prompt"] = params["Negative prompt"]
-            geninfo["seed"] = params["Seed"]
-            geninfo["sampler_name"] = params["Sampler"]
-            geninfo["cfg_scale"] = params["CFG scale"]
-            geninfo["steps"] = params["Steps"]
-            geninfo["width"] = params["Size-1"]
-            geninfo["height"] = params["Size-2"]
+        if "prompt" not in geninfo:
+            geninfo["prompt"] = params.get("Prompt", "")
+            geninfo["negative_prompt"] = params.get("Negative prompt", "")
+            geninfo["seed"] = params.get("Seed", "-1")
+            geninfo["sampler_name"] = params.get("Sampler", "")
+            geninfo["cfg_scale"] = params.get("CFG scale", "")
+            geninfo["steps"] = params.get("Steps", "0")
+            geninfo["width"] = params.get("Size-1", "512")
+            geninfo["height"] = params.get("Size-2", "512")
 
-        all_promts.append(params["Prompt"])
-        all_seeds.append(params["Seed"])
+        all_promts.append(params.get("Prompt", ""))
+        all_seeds.append(params.get("Seed", "-1"))
 
     return geninfo
 
@@ -364,6 +371,8 @@ def remove_old_tasks():
 
 
 def on_ui_tab(**_kwargs):
+    grid_page_size = getattr(shared.opts, "queue_grid_page_size", 0)
+
     with gr.Blocks(analytics_enabled=False) as scheduler_tab:
         with gr.Tabs(elem_id="agent_scheduler_tabs"):
             with gr.Tab("Task Queue", id=0, elem_id="agent_scheduler_pending_tasks_tab"):
@@ -417,7 +426,9 @@ def on_ui_tab(**_kwargs):
                                     min_width=0,
                                     elem_id="agent_scheduler_action_search",
                                 )
-                        gr.HTML('<div id="agent_scheduler_pending_tasks_grid" class="ag-theme-gradio"></div>')
+                        gr.HTML(
+                            f'<div id="agent_scheduler_pending_tasks_grid" class="ag-theme-gradio" data-page-size="{grid_page_size}"></div>'
+                        )
                     with gr.Column(scale=1):
                         gr.Gallery(
                             elem_id="agent_scheduler_current_task_images",
@@ -430,6 +441,11 @@ def on_ui_tab(**_kwargs):
                 with gr.Row(elem_id="agent_scheduler_history_wrapper"):
                     with gr.Column(scale=1):
                         with gr.Row(elem_id="agent_scheduler_history_actions", elem_classes="flex-row"):
+                            gr.Button(
+                                "Requeue Failed",
+                                elem_id="agent_scheduler_action_requeue",
+                                variant="primary",
+                            )
                             gr.Button(
                                 "Refresh",
                                 elem_id="agent_scheduler_action_refresh_history",
@@ -458,7 +474,9 @@ def on_ui_tab(**_kwargs):
                                     min_width=0,
                                     elem_id="agent_scheduler_action_search_history",
                                 )
-                        gr.HTML('<div id="agent_scheduler_history_tasks_grid" class="ag-theme-gradio"></div>')
+                        gr.HTML(
+                            f'<div id="agent_scheduler_history_tasks_grid" class="ag-theme-gradio" data-page-size="{grid_page_size}"></div>'
+                        )
                     with gr.Column(scale=1, elem_id="agent_scheduler_history_results"):
                         galerry = gr.Gallery(
                             elem_id="agent_scheduler_history_gallery",
@@ -580,6 +598,16 @@ def on_ui_settings():
         ),
     )
     shared.opts.add_option(
+        "queue_button_hide_checkpoint",
+        shared.OptionInfo(
+            True,
+            "Hide the custom checkpoint dropdown",
+            gr.Checkbox,
+            {},
+            section=section,
+        ),
+    )
+    shared.opts.add_option(
         "queue_button_placement",
         shared.OptionInfo(
             placement_under_generate,
@@ -595,12 +623,17 @@ def on_ui_settings():
         ),
     )
     shared.opts.add_option(
-        "queue_button_hide_checkpoint",
+        "queue_ui_placement",
         shared.OptionInfo(
-            True,
-            "Hide the checkpoint dropdown",
-            gr.Checkbox,
-            {},
+            ui_placement_as_tab,
+            "Task queue UI placement",
+            gr.Radio,
+            lambda: {
+                "choices": [
+                    ui_placement_as_tab,
+                    ui_placement_append_to_main,
+                ]
+            },
             section=section,
         ),
     )
@@ -613,6 +646,26 @@ def on_ui_settings():
             lambda: {
                 "choices": list(task_history_retenion_map.keys()),
             },
+            section=section,
+        ),
+    )
+    shared.opts.add_option(
+        "queue_automatic_requeue_failed_task",
+        shared.OptionInfo(
+            False,
+            "Auto requeue failed tasks",
+            gr.Checkbox,
+            {},
+            section=section,
+        ),
+    )
+    shared.opts.add_option(
+        "queue_grid_page_size",
+        shared.OptionInfo(
+            0,
+            "Task list page size (0 for auto)",
+            gr.Slider,
+            {"minimum": 0, "maximum": 200, "step": 1},
             section=section,
         ),
     )
@@ -685,22 +738,6 @@ def on_ui_settings():
             enqueue_keyboard_shortcut_ui,
             {
                 "interactive": False,
-            },
-            section=section,
-        ),
-    )
-
-    shared.opts.add_option(
-        "queue_ui_placement",
-        shared.OptionInfo(
-            ui_placement_as_tab,
-            "Task queue UI placement",
-            gr.Radio,
-            lambda: {
-                "choices": [
-                    ui_placement_as_tab,
-                    ui_placement_append_to_main,
-                ]
             },
             section=section,
         ),

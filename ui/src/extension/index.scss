@@ -254,6 +254,7 @@ button.ts-btn-action {
 #agent_scheduler_history_actions,
 #agent_scheduler_pending_tasks_actions {
   gap: calc(var(--layout-gap) / 2);
+  min-height: 36px;
 }
 
 #agent_scheduler_history_result_actions {
@@ -360,10 +361,12 @@ button.ts-btn-action {
 
   > label {
     position: relative;
+    height: 100%;
   }
 
   input.ts-search-input {
     padding: var(--block-padding);
+    height: 100%;
   }
 }
 
@@ -401,6 +404,8 @@ button.ts-btn-action {
 }
 
 #enqueue_keyboard_shortcut_wrapper {
+  flex-wrap: wrap;
+
   .form {
     display: flex;
     flex-direction: row;
