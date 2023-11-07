@@ -646,6 +646,16 @@ def on_ui_settings():
             section=section,
         ),
     )
+    shared.opts.add_option(
+        "queue_grid_page_size",
+        shared.OptionInfo(
+            0,
+            "Task list page size (0 for auto)",
+            gr.Slider,
+            {"minimum": 0, "maximum": 200, "step": 1},
+            section=section,
+        ),
+    )
 
     def enqueue_keyboard_shortcut(disabled: bool, modifiers, key_code: str):
         if disabled:
@@ -716,17 +726,6 @@ def on_ui_settings():
             {
                 "interactive": False,
             },
-            section=section,
-        ),
-    )
-
-    shared.opts.add_option(
-        "queue_grid_page_size",
-        shared.OptionInfo(
-            0,
-            "Task list page size (0 for auto)",
-            gr.Number,
-            {"minimum": 0, "maximum": 200},
             section=section,
         ),
     )
