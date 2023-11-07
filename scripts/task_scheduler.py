@@ -13,6 +13,7 @@ from modules.shared import list_checkpoint_tiles, refresh_checkpoints
 from modules.cmd_args import parser
 from modules.ui import create_refresh_button
 from modules.ui_common import save_files
+from modules.sd_models import model_path
 from modules.generation_parameters_copypaste import (
     registered_param_bindings,
     register_paste_params_button,
@@ -229,12 +230,12 @@ class Script(scripts.Script):
 
 
 def get_checkpoint_choices():
-    checkpoints = list_checkpoint_tiles()
+    checkpoints: List[str] = list_checkpoint_tiles()
 
     checkpoint_dirs = defaultdict(lambda: 0)
     for checkpoint in checkpoints:
         checkpoint_dir = os.path.dirname(checkpoint)
-        while checkpoint_dir != "":
+        while checkpoint_dir != "" and checkpoint_dir != "/":
             checkpoint_dirs[checkpoint_dir] += 1
             checkpoint_dir = os.path.dirname(checkpoint_dir)
 
