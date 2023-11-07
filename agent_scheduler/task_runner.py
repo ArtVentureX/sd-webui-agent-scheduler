@@ -68,7 +68,7 @@ class TaskRunner:
         self.__current_thread: threading.Thread = None
         self.__api = Api(FastAPI(), queue_lock)
 
-        self.__saved_images_path: List[Tuple[str, str]] = []
+        self.__saved_images_path: List[str] = []
         script_callbacks.on_image_saved(self.__on_image_saved)
 
         self.script_callbacks = {
@@ -356,10 +356,15 @@ class TaskRunner:
                         log.error(f"[AgentScheduler] Task {task_id} failed: {res}")
                         log.debug(traceback.format_exc())
 
-                    task.status = TaskStatus.FAILED
-                    task.result = str(res) if res else None
-                    task_manager.update_task(task)
-                    self.__run_callbacks("task_finished", task_id, status=TaskStatus.FAILED, **task_meta)
+                    if getattr(shared.opts, "queue_automatic_requeue_failed_task", False):
+                        log.info(f"[AgentScheduler] Requeue task {task_id}")
+                        task.status = TaskStatus.PENDING
+                        task_manager.update_task(task)
+                    else:
+                        task.status = TaskStatus.FAILED
+                        task.result = str(res) if res else None
+                        task_manager.update_task(task)
+                        self.__run_callbacks("task_finished", task_id, status=TaskStatus.FAILED, **task_meta)
                 else:
                     is_interrupted = self.interrupted == task_id
                     if is_interrupted:
@@ -373,13 +378,11 @@ class TaskRunner:
                             **task_meta,
                         )
                     else:
+                        geninfo = json.loads(res)
                         result = {
-                            "images": [],
-                            "infotexts": [],
+                            "images": self.__saved_images_path.copy(),
+                            "geninfo": geninfo,
                         }
-                        for filename, pnginfo in self.__saved_images_path:
-                            result["images"].append(filename)
-                            result["infotexts"].append(pnginfo)
 
                         task.status = TaskStatus.DONE
                         task.result = json.dumps(result)
@@ -516,7 +519,10 @@ class TaskRunner:
             self.__run_callbacks("task_cleared")
 
     def __on_image_saved(self, data: script_callbacks.ImageSaveParams):
-        self.__saved_images_path.append((data.filename, data.pnginfo.get("parameters", "")))
+        if data.filename.startswith(data.p.outpath_grids):
+            self.__saved_images_path.insert(0, data.filename)
+        else:
+            self.__saved_images_path.append(data.filename)
 
     def on_task_registered(self, callback: Callable):
         """Callback when a task is registered

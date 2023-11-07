@@ -901,6 +901,16 @@ function initPendingTab() {
   const eGridDiv = gradioApp().querySelector<HTMLDivElement>(
     '#agent_scheduler_pending_tasks_grid'
   )!;
+
+  if (typeof eGridDiv.dataset.pageSize === 'string') {
+    const pageSize = parseInt(eGridDiv.dataset.pageSize, 10);
+
+    if (pageSize > 0) {
+      gridOptions.paginationAutoPageSize = false;
+      gridOptions.paginationPageSize = pageSize;
+    }
+  }
+
   new Grid(eGridDiv, gridOptions);
 }
 
@@ -918,6 +928,12 @@ function initHistoryTab() {
   clearButton.addEventListener('click', () => {
     if (!confirm('Are you sure you want to clear the history?')) return;
     store.clearHistory().then(notify);
+  });
+  const requeueButton = gradioApp().querySelector<HTMLButtonElement>(
+    '#agent_scheduler_action_requeue'
+  )!;
+  requeueButton.addEventListener('click', () => {
+    store.requeueFailedTasks().then(notify);
   });
 
   const resultTaskId = gradioApp().querySelector<HTMLTextAreaElement>(
@@ -1113,6 +1129,16 @@ function initHistoryTab() {
   const eGridDiv = gradioApp().querySelector<HTMLDivElement>(
     '#agent_scheduler_history_tasks_grid'
   )!;
+
+  if (typeof eGridDiv.dataset.pageSize === 'string') {
+    const pageSize = parseInt(eGridDiv.dataset.pageSize, 10);
+
+    if (pageSize > 0) {
+      gridOptions.paginationAutoPageSize = false;
+      gridOptions.paginationPageSize = pageSize;
+    }
+  }
+
   new Grid(eGridDiv, gridOptions);
 }
 
