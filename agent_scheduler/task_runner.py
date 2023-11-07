@@ -5,8 +5,9 @@ import traceback
 import threading
 import gradio as gr
 
+from datetime import datetime, timezone
 from pydantic import BaseModel
-from typing import Any, Callable, Union, Optional, List, Dict, Tuple
+from typing import Any, Callable, Union, Optional, List, Dict
 from fastapi import FastAPI
 from PIL import Image
 
@@ -359,6 +360,7 @@ class TaskRunner:
                     if getattr(shared.opts, "queue_automatic_requeue_failed_task", False):
                         log.info(f"[AgentScheduler] Requeue task {task_id}")
                         task.status = TaskStatus.PENDING
+                        task.priority = int(datetime.now(timezone.utc).timestamp() * 1000)
                         task_manager.update_task(task)
                     else:
                         task.status = TaskStatus.FAILED

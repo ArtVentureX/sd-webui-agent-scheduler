@@ -8,6 +8,7 @@ from zipfile import ZipFile
 from pathlib import Path
 from secrets import compare_digest
 from typing import Optional, Dict, List
+from datetime import datetime, timezone
 from gradio.routes import App
 from PIL import Image
 from fastapi import Depends
@@ -325,6 +326,7 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
         for task in failed_tasks:
             task.status = TaskStatus.PENDING
             task.result = None
+            task.priority = int(datetime.now(timezone.utc).timestamp() * 1000)
             task_manager.update_task(task)
 
         return {"success": True, "message": f"Requeued {len(failed_tasks)} failed tasks"}
