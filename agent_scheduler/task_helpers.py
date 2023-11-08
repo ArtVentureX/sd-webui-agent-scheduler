@@ -480,7 +480,7 @@ def serialize_api_task_args(
 ) -> Dict:
     # handle named script args
     script_name = params.get("script_name", None)
-    if script_name is not None:
+    if script_name is not None and script_name != "":
         script = get_script_by_name(script_name, is_img2img)
         if script is None:
             raise Exception(f"Not found script {script_name}")
