@@ -1,7 +1,8 @@
+import json
+import base64
 from enum import Enum
 from datetime import datetime, timezone
-import json
-from typing import Optional, Union, List
+from typing import Optional, Union, List, Dict
 
 from sqlalchemy import (
     TypeDecorator,
@@ -89,24 +90,40 @@ class Task(TaskModel):
             result=self.result,
             bookmarked=self.bookmarked,
         )
-    
-    def from_json(json_obj):
+
+    def from_json(json_obj: Dict):
         return Task(
             id=json_obj.get("id"),
-            api_task_id=json_obj.get("api_task_id"),
-            api_task_callback=json_obj.get("api_task_callback"),
-            name=json_obj.get("name"),
+            api_task_id=json_obj.get("api_task_id", None),
+            api_task_callback=json_obj.get("api_task_callback", None),
+            name=json_obj.get("name", None),
             type=json_obj.get("type"),
-            status=json_obj.get("status"),
-            params=json_obj.get("params"),
-            script_params= bytes([int(s.strip()) for s in json_obj.get("script_params").strip('[]').split(',')]),
-            priority=json_obj.get("priority"),
-            position=json_obj.get("position"),
-            result=json_obj.get("result"),
-            bookmarked=json_obj.get("bookmarked"),
-            created_at=datetime.fromtimestamp(json_obj.get("created_at")),
-            updated_at=datetime.fromtimestamp(json_obj.get("updated_at")),
+            status=json_obj.get("status", TaskStatus.PENDING),
+            params=json.dumps(json_obj.get("params")),
+            script_params=base64.b64decode(json_obj.get("script_params")),
+            priority=json_obj.get("priority", int(datetime.now(timezone.utc).timestamp() * 1000)),
+            result=json_obj.get("result", None),
+            bookmarked=json_obj.get("bookmarked", False),
+            created_at=datetime.fromtimestamp(json_obj.get("created_at", datetime.now(timezone.utc).timestamp())),
+            updated_at=datetime.fromtimestamp(json_obj.get("updated_at", datetime.now(timezone.utc).timestamp())),
         )
+
+    def to_json(self):
+        return {
+            "id": self.id,
+            "api_task_id": self.api_task_id,
+            "api_task_callback": self.api_task_callback,
+            "name": self.name,
+            "type": self.type,
+            "status": self.status,
+            "params": json.loads(self.params),
+            "script_params": base64.b64encode(self.script_params).decode("utf-8"),
+            "priority": self.priority,
+            "result": self.result,
+            "bookmarked": self.bookmarked,
+            "created_at": int(self.created_at.timestamp()),
+            "updated_at": int(self.updated_at.timestamp()),
+        }
 
 
 class TaskTable(Base):
@@ -120,9 +137,7 @@ class TaskTable(Base):
     params = Column(Text, nullable=False)  # task args
     script_params = Column(LargeBinary, nullable=False)  # script args
     priority = Column(Integer, nullable=False)
-    status = Column(
-        String(20), nullable=False, default="pending"
-    )  # pending, running, done, failed
+    status = Column(String(20), nullable=False, default="pending")  # pending, running, done, failed
     result = Column(Text)  # task result
     bookmarked = Column(Boolean, nullable=True, default=False)
     created_at = Column(
@@ -203,11 +218,7 @@ class TaskManager(BaseTableManager):
             else:
                 query = query.order_by(TaskTable.bookmarked.asc())
 
-            query = query.order_by(
-                TaskTable.priority.asc()
-                if order == "asc"
-                else TaskTable.priority.desc()
-            )
+            query = query.order_by(TaskTable.priority.asc() if order == "asc" else TaskTable.priority.desc())
 
             if limit:
                 query = query.limit(limit)
@@ -289,9 +300,7 @@ class TaskManager(BaseTableManager):
             result = session.get(TaskTable, id)
             if result:
                 if priority == 0:
-                    result.priority = (
-                        self.__get_min_priority(status=TaskStatus.PENDING) - 1
-                    )
+                    result.priority = self.__get_min_priority(status=TaskStatus.PENDING) - 1
                 elif priority == -1:
                     result.priority = int(datetime.now(timezone.utc).timestamp() * 1000)
                 else:

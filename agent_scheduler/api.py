@@ -1,6 +1,7 @@
 import io
 import os
 import json
+import base64
 import requests
 import threading
 from uuid import uuid4
@@ -191,37 +192,28 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
             total_pending_tasks=total_pending_tasks,
             paused=TaskRunner.instance.paused,
         )
-    
+
     @app.get("/agent-scheduler/v1/export")
     def export_queue(limit: int = 1000, offset: int = 0):
-        pending_tasks = task_manager.get_tasks(
-            status=TaskStatus.PENDING, limit=limit, offset=offset
-        )
-        for task in pending_tasks:
-            task.created_at = int(task.created_at.timestamp())
-            task.updated_at = int(task.updated_at.timestamp())
-            task.script_params = [int(byte) for byte in task.script_params]
-            task.script_params = str(task.script_params).replace(' ', '')
-        json_string = json.dumps([ob.__dict__ for ob in pending_tasks])
-        return json_string
-    
+        pending_tasks = task_manager.get_tasks(status=TaskStatus.PENDING, limit=limit, offset=offset)
+        pending_tasks = [Task.from_table(t).to_json() for t in pending_tasks]
+        return pending_tasks
+
     class StringRequestBody(BaseModel):
         content: str
 
-    @app.post("/agent-scheduler/v1/import/")
+    @app.post("/agent-scheduler/v1/import")
     def import_queue(queue: StringRequestBody):
         try:
             objList = json.loads(queue.content)
             taskList = []
             for obj in objList:
-                obj['id'] = str(uuid4())
-                obj['result'] =  None
-                obj['status'] =  TaskStatus.PENDING
-                obj['bookmarked'] =  False
-                obj['name'] =  None
+                obj["id"] = str(uuid4())
+                obj["result"] = None
+                obj["status"] = TaskStatus.PENDING
+                obj["bookmarked"] = False
                 task = Task.from_json(obj)
                 taskList.append(task)
-            task_manager.delete_tasks(status=TaskStatus.PENDING)
             for task in taskList:
                 task_manager.add_task(task)
             return {"success": True, "message": "Queue imported"}

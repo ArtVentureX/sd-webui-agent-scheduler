@@ -282,17 +282,17 @@ function initSearchInput(selector: string) {
   return searchInput;
 }
 
-function initImport(selector: string){
-  const importContainer = gradioApp().querySelector<HTMLDivElement>(selector);
-  if (importContainer == null) {
-    throw new Error(`Import container '${selector}' not found.`);
-  }
-  const importInput = importContainer.getElementsByTagName('input')[0];
-  if (importInput == null) {
-    throw new Error('Import input not found.');
-  }
-  return importInput;
-}
+// function initImport(selector: string) {
+//   const importContainer = gradioApp().querySelector<HTMLDivElement>(selector);
+//   if (importContainer == null) {
+//     throw new Error(`Import container '${selector}' not found.`);
+//   }
+//   const importInput = importContainer.getElementsByTagName('input')[0];
+//   if (importInput == null) {
+//     throw new Error('Import input not found.');
+//   }
+//   return importInput;
+// }
 
 async function notify(response: ResponseStatus) {
   if (notyf == null) {
@@ -602,21 +602,41 @@ function initPendingTab() {
     }
   });
 
-  const importTextBox = initImport('#agent_scheduler_action_import');
-  
-  const exportButton = gradioApp().querySelector<HTMLButtonElement>('#agent_scheduler_action_export')!;
-  exportButton.addEventListener('click', () => { 
-    var importText = importTextBox?.value;
-    if (importText.length == 0){
-      store.exportQueue().then(json => {
-        importTextBox.value = json;
-      });
-    }
-    else{
-      store.importQueue(importText).then(notify);
-    }
+  const importButton = gradioApp().querySelector<HTMLButtonElement>(
+    '#agent_scheduler_action_import'
+  )!;
+  const importInput = gradioApp().querySelector<HTMLInputElement>('#agent_scheduler_import_file')!;
+
+  importButton.addEventListener('click', () => {
+    importInput.click();
+  });
+  importInput.addEventListener('change', e => {
+    if (!e.target) return;
+
+    const files = importInput.files;
+    if (files == null || files.length === 0) return;
+
+    const file = files[0];
+    const reader = new FileReader();
+    reader.onload = () => {
+      const data = reader.result as string;
+      store.importQueue(data).then(notify);
+    };
+    reader.readAsText(file);
   });
 
+  const exportButton = gradioApp().querySelector<HTMLButtonElement>(
+    '#agent_scheduler_action_export'
+  )!;
+  exportButton.addEventListener('click', () => {
+    store.exportQueue().then(data => {
+      var dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(data));
+      var dlAnchorElem = document.createElement('a');
+      dlAnchorElem.setAttribute('href', dataStr);
+      dlAnchorElem.setAttribute('download', `agent-scheduler-${Date.now()}.json`);
+      dlAnchorElem.click();
+    });
+  });
 
   // watch for queue status change
   const updateUiState = (state: ReturnType<typeof store.getState>) => {
