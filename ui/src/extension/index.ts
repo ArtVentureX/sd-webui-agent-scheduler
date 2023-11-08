@@ -620,7 +620,13 @@ function initPendingTab() {
     const reader = new FileReader();
     reader.onload = () => {
       const data = reader.result as string;
-      store.importQueue(data).then(notify);
+      store
+        .importQueue(data)
+        .then(notify)
+        .then(() => {
+          importInput.value = '';
+          store.refresh();
+        });
     };
     reader.readAsText(file);
   });

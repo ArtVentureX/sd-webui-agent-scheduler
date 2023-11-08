@@ -206,16 +206,22 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
     def import_queue(queue: StringRequestBody):
         try:
             objList = json.loads(queue.content)
-            taskList = []
+            taskList: List[Task] = []
             for obj in objList:
-                obj["id"] = str(uuid4())
+                if "id" not in obj or not obj["id"] or obj["id"] == "":
+                    obj["id"] = str(uuid4())
                 obj["result"] = None
                 obj["status"] = TaskStatus.PENDING
                 obj["bookmarked"] = False
                 task = Task.from_json(obj)
                 taskList.append(task)
+
             for task in taskList:
-                task_manager.add_task(task)
+                exists = task_manager.get_task(task.id)
+                if exists:
+                    task_manager.update_task(task)
+                else:
+                    task_manager.add_task(task)
             return {"success": True, "message": "Queue imported"}
         except Exception as e:
             print(e)
