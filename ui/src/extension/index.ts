@@ -54,6 +54,7 @@ declare global {
   function onUiLoaded(callback: () => void): void;
   function notify(response: ResponseStatus): void;
   function submit(...args: any[]): any[];
+  function submit_txt2img(...args: any[]): any[];
   function submit_img2img(...args: any[]): any[];
   function submit_enqueue(...args: any[]): any[];
   function submit_enqueue_img2img(...args: any[]): any[];
@@ -342,7 +343,7 @@ function showTaskProgress(task_id: string, type: string | undefined, callback: (
   // monkey patch randomId to return task_id, then call submit to trigger progress
   window.randomId = () => task_id;
   if (type === 'txt2img') {
-    window.submit();
+    (window.submit || window.submit_txt2img)();
   } else if (type === 'img2img') {
     window.submit_img2img();
   }
