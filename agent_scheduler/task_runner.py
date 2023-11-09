@@ -521,7 +521,11 @@ class TaskRunner:
             self.__run_callbacks("task_cleared")
 
     def __on_image_saved(self, data: script_callbacks.ImageSaveParams):
-        if data.filename.startswith(data.p.outpath_grids):
+        if self.current_task_id is None:
+            return
+
+        outpath_grids = shared.opts.outdir_grids or shared.opts.outdir_txt2img_grids
+        if data.filename.startswith(outpath_grids):
             self.__saved_images_path.insert(0, data.filename)
         else:
             self.__saved_images_path.append(data.filename)
