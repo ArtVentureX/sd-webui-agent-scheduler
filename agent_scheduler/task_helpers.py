@@ -181,69 +181,11 @@ def serialize_controlnet_args(cnet_unit):
 
 
 def deserialize_controlnet_args(args: Dict):
-    new_args = {}
-    for k, v in args.items():
-        if k == "image" and isinstance(v, dict) and v.get("image", None) is not None:
-            new_args["image"] = {
-                "image": deserialize_image(v["image"]),
-                "mask": deserialize_image(v["mask"]) if v.get("mask", None) is not None else None,
-            }
-        elif isinstance(v, dict) and v.get("cls", None) in [
-            "Image",
-            "ndarray",
-            "Tensor",
-        ]:
-            new_args["image"] = {"image": deserialize_image(v), "mask": None}
-        elif k != "is_cnet":
-            new_args[k] = v
+    new_args = args.copy()
+    new_args.pop("is_cnet", None)
+    new_args.pop("is_ui", None)
 
     return new_args
-
-
-def recursively_serialize(obj):
-    """
-    Recursively serialize an object to JSON
-    """
-
-    # dict
-    if isinstance(obj, dict):
-        new_obj = {}
-        for k, v in obj.items():
-            assert k not in new_obj, "Cannot serialize recursive dict"
-            new_obj[k] = recursively_serialize(v)
-        return new_obj
-    # list
-    elif isinstance(obj, list):
-        new_obj = []
-        for v in obj:
-            assert v is not obj, "Cannot serialize recursive list"
-            new_obj.append(recursively_serialize(v))
-        return new_obj
-    # controlnet
-    elif type(obj).__name__ == "UiControlNetUnit":
-        return serialize_controlnet_args(obj)
-    # image or tensor or ndarray
-    elif isinstance(obj, (Image.Image, Tensor, ndarray)):
-        return serialize_image(obj)
-    else:
-        return obj
-
-
-def recursively_deserialize(obj):
-    """
-    Recursively deserialize an object from JSON
-    """
-
-    if isinstance(obj, list):
-        return [recursively_deserialize(v) for v in obj]
-    elif isinstance(obj, dict) and "cls" in obj:
-        return deserialize_image(obj)
-    if isinstance(obj, dict) and not obj.get("is_cnet", False):
-        return {k: recursively_deserialize(v) for k, v in obj.items()}
-    elif isinstance(obj, dict) and obj.get("is_cnet", False):
-        return deserialize_controlnet_args(obj)
-    else:
-        return deserialize_image(obj)
 
 
 def serialize_script_args(script_args: List):
@@ -255,11 +197,17 @@ def serialize_script_args(script_args: List):
     return zlib.compress(pickle.dumps(script_args))
 
 
-def deserialize_script_args(script_args: Union[bytes, List]):
-    if type(script_args) is list:
-        return recursively_deserialize(script_args)
+def deserialize_script_args(script_args: Union[bytes, List], UiControlNetUnit = None):
+    if type(script_args) is bytes:
+        script_args = pickle.loads(zlib.decompress(script_args))
 
-    return pickle.loads(zlib.decompress(script_args))
+    for i, a in enumerate(script_args):
+        if isinstance(a, dict) and a.get("is_cnet", False):
+            script_args[i] = deserialize_controlnet_args(a)
+            if UiControlNetUnit is not None:
+                script_args[i] = UiControlNetUnit(**script_args[i])
+
+    return script_args
 
 
 def map_controlnet_args_to_api_task_args(args: Dict):

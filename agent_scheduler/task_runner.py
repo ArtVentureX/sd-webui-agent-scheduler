@@ -188,7 +188,7 @@ class TaskRunner:
             deserialize_img2img_image_args(named_args)
 
         # loop through script_args and deserialize images
-        script_args = deserialize_script_args(script_args)
+        script_args = deserialize_script_args(script_args, self.UiControlNetUnit)
 
         return (named_args, script_args)
 
