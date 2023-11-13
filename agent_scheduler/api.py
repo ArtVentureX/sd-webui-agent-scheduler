@@ -1,6 +1,7 @@
 import io
 import os
 import json
+import base64
 import requests
 import threading
 from uuid import uuid4
@@ -15,6 +16,7 @@ from fastapi import Depends
 from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.exceptions import HTTPException
+from pydantic import BaseModel
 
 from modules import shared, progress, sd_models, sd_samplers
 
@@ -190,6 +192,39 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
             total_pending_tasks=total_pending_tasks,
             paused=TaskRunner.instance.paused,
         )
+
+    @app.get("/agent-scheduler/v1/export")
+    def export_queue(limit: int = 1000, offset: int = 0):
+        pending_tasks = task_manager.get_tasks(status=TaskStatus.PENDING, limit=limit, offset=offset)
+        pending_tasks = [Task.from_table(t).to_json() for t in pending_tasks]
+        return pending_tasks
+
+    class StringRequestBody(BaseModel):
+        content: str
+
+    @app.post("/agent-scheduler/v1/import")
+    def import_queue(queue: StringRequestBody):
+        try:
+            objList = json.loads(queue.content)
+            taskList: List[Task] = []
+            for obj in objList:
+                if "id" not in obj or not obj["id"] or obj["id"] == "":
+                    obj["id"] = str(uuid4())
+                obj["result"] = None
+                obj["status"] = TaskStatus.PENDING
+                task = Task.from_json(obj)
+                taskList.append(task)
+
+            for task in taskList:
+                exists = task_manager.get_task(task.id)
+                if exists:
+                    task_manager.update_task(task)
+                else:
+                    task_manager.add_task(task)
+            return {"success": True, "message": "Queue imported"}
+        except Exception as e:
+            print(e)
+            return {"success": False, "message": "Import Failed"}
 
     @app.get("/agent-scheduler/v1/history", response_model=HistoryResponse, dependencies=deps)
     def history_api(status: str = None, limit: int = 20, offset: int = 0):

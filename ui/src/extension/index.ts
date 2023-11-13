@@ -283,6 +283,18 @@ function initSearchInput(selector: string) {
   return searchInput;
 }
 
+// function initImport(selector: string) {
+//   const importContainer = gradioApp().querySelector<HTMLDivElement>(selector);
+//   if (importContainer == null) {
+//     throw new Error(`Import container '${selector}' not found.`);
+//   }
+//   const importInput = importContainer.getElementsByTagName('input')[0];
+//   if (importInput == null) {
+//     throw new Error('Import input not found.');
+//   }
+//   return importInput;
+// }
+
 async function notify(response: ResponseStatus) {
   if (notyf == null) {
     const Notyf = await import('notyf');
@@ -343,9 +355,9 @@ function showTaskProgress(task_id: string, type: string | undefined, callback: (
   // monkey patch randomId to return task_id, then call submit to trigger progress
   window.randomId = () => task_id;
   if (type === 'txt2img') {
-    (window.submit || window.submit_txt2img)();
+    submit();
   } else if (type === 'img2img') {
-    window.submit_img2img();
+    submit_img2img();
   }
   window.randomId = window.origRandomId;
 }
@@ -589,6 +601,48 @@ function initPendingTab() {
     if (confirm('Are you sure you want to clear the queue?')) {
       store.clearQueue().then(notify);
     }
+  });
+
+  const importButton = gradioApp().querySelector<HTMLButtonElement>(
+    '#agent_scheduler_action_import'
+  )!;
+  const importInput = gradioApp().querySelector<HTMLInputElement>('#agent_scheduler_import_file')!;
+
+  importButton.addEventListener('click', () => {
+    importInput.click();
+  });
+  importInput.addEventListener('change', e => {
+    if (e.target === null) return;
+
+    const files = importInput.files;
+    if (files == null || files.length === 0) return;
+
+    const file = files[0];
+    const reader = new FileReader();
+    reader.onload = () => {
+      const data = reader.result as string;
+      store
+        .importQueue(data)
+        .then(notify)
+        .then(() => {
+          importInput.value = '';
+          store.refresh();
+        });
+    };
+    reader.readAsText(file);
+  });
+
+  const exportButton = gradioApp().querySelector<HTMLButtonElement>(
+    '#agent_scheduler_action_export'
+  )!;
+  exportButton.addEventListener('click', () => {
+    store.exportQueue().then(data => {
+      const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(data));
+      const dlAnchorElem = document.createElement('a');
+      dlAnchorElem.setAttribute('href', dataStr);
+      dlAnchorElem.setAttribute('download', `agent-scheduler-${Date.now()}.json`);
+      dlAnchorElem.click();
+    });
   });
 
   // watch for queue status change

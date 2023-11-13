@@ -11,6 +11,8 @@ type PendingTasksState = {
 
 type PendingTasksActions = {
   refresh: () => Promise<void>;
+  exportQueue: () => Promise<string>;
+  importQueue: (str: string) => Promise<ResponseStatus>;
   pauseQueue: () => Promise<ResponseStatus>;
   resumeQueue: () => Promise<ResponseStatus>;
   clearQueue: () => Promise<ResponseStatus>;
@@ -31,6 +33,26 @@ export const createPendingTasksStore = (initialState: PendingTasksState) => {
       return fetch('/agent-scheduler/v1/queue?limit=1000')
         .then(response => response.json())
         .then(setState);
+    },
+    exportQueue: async () => {
+      return fetch('/agent-scheduler/v1/export').then(response => response.json());
+    },
+    importQueue: async (str: string) => {
+      const bodyObj = {
+        content: str,
+      };
+      return fetch(`/agent-scheduler/v1/import`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bodyObj),
+      })
+        .then(response => response.json())
+        .then(data => {
+          setTimeout(() => {
+            actions.refresh();
+          }, 3000);
+          return data;
+        });
     },
     pauseQueue: async () => {
       return fetch('/agent-scheduler/v1/queue/pause', { method: 'POST' })
@@ -97,8 +119,9 @@ export const createPendingTasksStore = (initialState: PendingTasksState) => {
       }).then(response => response.json());
     },
     deleteTask: async (id: string) => {
-      return fetch(`/agent-scheduler/v1/task/${id}`, { method: 'DELETE' })
-        .then(response => response.json());
+      return fetch(`/agent-scheduler/v1/task/${id}`, { method: 'DELETE' }).then(response =>
+        response.json()
+      );
     },
   };
 

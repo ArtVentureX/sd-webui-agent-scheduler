@@ -403,6 +403,17 @@ def on_ui_tab(**_kwargs):
                                 elem_id="agent_scheduler_action_clear_queue",
                                 variant="stop",
                             )
+                            gr.Button(
+                                "Export",
+                                elem_id="agent_scheduler_action_export",
+                                variant="secondary",
+                            )
+                            gr.Button(
+                                "Import",
+                                elem_id="agent_scheduler_action_import",
+                                variant="secondary",
+                            )
+                            gr.HTML(f'<input type="file" id="agent_scheduler_import_file" style="display: none" accept="application/json" />')
 
                             with gr.Row(elem_classes=["agent_scheduler_filter_container", "flex-row", "ml-auto"]):
                                 gr.Textbox(
