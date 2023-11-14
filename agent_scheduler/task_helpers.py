@@ -203,9 +203,15 @@ def deserialize_script_args(script_args: Union[bytes, List], UiControlNetUnit = 
 
     for i, a in enumerate(script_args):
         if isinstance(a, dict) and a.get("is_cnet", False):
-            script_args[i] = deserialize_controlnet_args(a)
+            unit = deserialize_controlnet_args(a)
             if UiControlNetUnit is not None:
-                script_args[i] = UiControlNetUnit(**script_args[i])
+                u = UiControlNetUnit()
+                for k, v in unit.items():
+                    if isinstance(getattr(u, k, None), Enum):
+                        unit[k] = type(getattr(u, k))(v)
+                unit = UiControlNetUnit(**unit)
+
+            script_args[i] = unit
 
     return script_args
 
