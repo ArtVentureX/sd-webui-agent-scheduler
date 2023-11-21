@@ -10,6 +10,7 @@ from pathlib import Path
 from secrets import compare_digest
 from typing import Optional, Dict, List
 from datetime import datetime, timezone
+from collections import defaultdict
 from gradio.routes import App
 from PIL import Image
 from fastapi import Depends
@@ -445,7 +446,10 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
             return {"success": False, "message": "Task result is not available"}
 
         result: dict = json.loads(task.result)
-        infotexts = result["infotexts"]
+        infotexts = result.get("infotexts", None)
+        if infotexts is None:
+            geninfo = result.get("geninfo", {})
+            infotexts = geninfo.get("infotexts", defaultdict(lambda: ""))
 
         if zip:
             zip_buffer = io.BytesIO()
