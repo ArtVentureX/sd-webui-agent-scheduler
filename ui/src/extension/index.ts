@@ -242,7 +242,6 @@ const sharedGridOptions: GridOptions<Task> = {
   pagination: true,
   paginationAutoPageSize: true,
   suppressCopyRowsToClipboard: true,
-  suppressScrollOnNewData: true,
   enableBrowserTooltips: true,
 };
 
