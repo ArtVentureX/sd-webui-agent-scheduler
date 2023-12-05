@@ -106,25 +106,7 @@ const sharedGridOptions: GridOptions<Task> = {
       cellClass: ({ data }: CellClassParams<Task, string>) => {
         if (data == null) return;
 
-        const classes = ['cursor-pointer'];
-        switch (data.status) {
-          case 'pending':
-            classes.push('task-pending');
-            break;
-          case 'running':
-            classes.push('task-running');
-            break;
-          case 'done':
-            classes.push('task-done');
-            break;
-          case 'failed':
-            classes.push('task-failed');
-            break;
-          case 'interrupted':
-            classes.push('task-interrupted');
-            break;
-        }
-        return classes;
+        return ['cursor-pointer', `task-${data.status}`];
       },
     },
     {
@@ -426,8 +408,8 @@ function initQueueHandler() {
   };
 
   // detect queue button placement
-  const interrogateCol = gradioApp().querySelector<HTMLDivElement>('.interrogate-col')!;
-  if (interrogateCol.childElementCount > 2) {
+  const interrogateCol = gradioApp().querySelector<HTMLDivElement>('.interrogate-col');
+  if (interrogateCol != null && interrogateCol.childElementCount > 2) {
     interrogateCol.classList.add('has-queue-button');
   }
 
