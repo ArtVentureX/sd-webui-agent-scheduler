@@ -3,6 +3,8 @@ import json
 import time
 import traceback
 import threading
+import platform
+import subprocess
 import gradio as gr
 
 from datetime import datetime, timezone
@@ -404,6 +406,8 @@ class TaskRunner:
 
             task = get_next_task()
             if not task:
+                time.sleep(1)
+                self.__on_completed()
                 break
 
     def execute_pending_tasks_threading(self):
@@ -529,6 +533,47 @@ class TaskRunner:
             self.__saved_images_path.insert(0, data.filename)
         else:
             self.__saved_images_path.append(data.filename)
+    
+    def __on_completed(self):
+        action = getattr(shared.opts, "queue_completion_action", "Do nothing")
+
+        if action == "Do nothing":
+            return
+
+        if action == "Quit WebUI":
+            os._exit(0)
+
+        command = None
+        if platform.system() == "Windows":
+            import ctypes
+            if action == "Shut down":
+                command = ["shutdown", "/s", "/hybrid", "/t", "0"]
+            elif action == "Restart":
+                command = ["shutdown", "/r", "/t", "0"]
+            elif action == "Suspend":
+                ctypes.windll.PowrProf.SetSuspendState(0, 1, 0)
+            elif action == "Hibernate":
+                ctypes.windll.PowrProf.SetSuspendState(1, 1, 0)
+        elif platform.system() == "Darwin":
+            if action == "Shut down":
+                command = ["osascript", "-e", 'tell application "Finder" to shut down']
+            elif action == "Restart":
+                command = ["osascript", "-e", 'tell application "Finder" to restart']
+            elif action in {"Suspend", "Hibernate"}:
+                command = ["osascript", "-e", 'tell application "Finder" to sleep']
+        else:
+            if action == "Shut down":
+                command = ["systemctl", "poweroff"]
+            elif action == "Restart":
+                command = ["systemctl", "reboot"]
+            elif action == "Suspend":
+                command = ["systemctl", "suspend"]
+            elif action == "Hibernate":
+                command = ["systemctl", "hibernate"]
+        if command:
+            subprocess.run(command)
+            if action in {"Shut down", "Restart"}:
+                os._exit(0)
 
     def on_task_registered(self, callback: Callable):
         """Callback when a task is registered

@@ -42,6 +42,8 @@ ui_placement_append_to_main = "Append to main UI"
 placement_under_generate = "Under Generate button"
 placement_between_prompt_and_generate = "Between Prompt and Generate button"
 
+completion_action_choices = ["Do nothing", "Shut down", "Restart", "Suspend", "Hibernate", "Quit WebUI"]
+
 task_filter_choices = ["All", "Bookmarked", "Done", "Failed", "Interrupted"]
 
 is_macos = platform.system() == "Darwin"
@@ -736,6 +738,18 @@ def on_ui_settings():
             enqueue_keyboard_shortcut_ui,
             {
                 "interactive": False,
+            },
+            section=section,
+        ),
+    )
+    shared.opts.add_option(
+        "queue_completion_action",
+        shared.OptionInfo(
+            "Do nothing",
+            "Action after queue completion",
+            gr.Radio,
+            lambda: {
+                "choices": completion_action_choices
             },
             section=section,
         ),
