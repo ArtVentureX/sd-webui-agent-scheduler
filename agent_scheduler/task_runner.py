@@ -406,8 +406,9 @@ class TaskRunner:
 
             task = get_next_task()
             if not task:
-                time.sleep(1)
-                self.__on_completed()
+                if not self.paused:
+                    time.sleep(1)
+                    self.__on_completed()
                 break
 
     def execute_pending_tasks_threading(self):
