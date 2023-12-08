@@ -490,16 +490,23 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
                 headers={"Content-Disposition": f"attachment; filename=results-{id}.zip"},
             )
         else:
-            data = [
-                {
-                    "image": encode_image_to_base64(Image.open(image)),
-                    "infotext": infotexts[i],
-                }
-                for i, image in enumerate(result["images"])
-                if Path(image).is_file()
-            ]
-
-            return {"success": True, "data": data}
+            if shared.cmd_opts.agent_scheduler_api_raw:
+                images = [
+                    base64.b64encode(open(image, "rb").read()).decode("utf-8")
+                    for image in result["images"]
+                    if Path(image).is_file()
+                ]
+                return {"images": images, "info": json.dumps(geninfo)}
+            else:
+                data = [
+                    {
+                        "image": encode_image_to_base64(Image.open(image)),
+                        "infotext": infotexts[i],
+                    }
+                    for i, image in enumerate(result["images"])
+                    if Path(image).is_file()
+                ]
+                return {"success": True, "data": data}
 
     @app.post("/agent-scheduler/v1/pause", dependencies=deps, deprecated=True)
     @app.post("/agent-scheduler/v1/queue/pause", dependencies=deps)
