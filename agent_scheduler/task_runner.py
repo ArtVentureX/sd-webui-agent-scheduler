@@ -9,7 +9,7 @@ import gradio as gr
 
 from datetime import datetime, timezone
 from pydantic import BaseModel
-from typing import Any, Callable, Union, Optional, List, Dict
+from typing import Any, Callable, NoReturn, Union, Optional, List, Dict
 from fastapi import FastAPI
 from PIL import Image
 
@@ -40,6 +40,9 @@ from .task_helpers import (
     map_ui_task_args_list_to_named_args,
     map_named_args_to_ui_task_args_list,
 )
+
+is_windows = platform.system() == "Windows"
+is_macos = platform.system() == "Darwin"
 
 
 class OutOfMemoryError(Exception):
@@ -541,40 +544,50 @@ class TaskRunner:
         if action == "Do nothing":
             return
 
-        if action == "Quit WebUI":
-            os._exit(0)
-
         command = None
-        if platform.system() == "Windows":
-            import ctypes
-            if action == "Shut down":
+        if action == "Shut down":
+            log.info("[AgentScheduler] Shutting down...")
+            if is_windows:
                 command = ["shutdown", "/s", "/hybrid", "/t", "0"]
-            elif action == "Restart":
-                command = ["shutdown", "/r", "/t", "0"]
-            elif action == "Suspend":
-                ctypes.windll.PowrProf.SetSuspendState(0, 1, 0)
-            elif action == "Hibernate":
-                ctypes.windll.PowrProf.SetSuspendState(1, 1, 0)
-        elif platform.system() == "Darwin":
-            if action == "Shut down":
+            elif is_macos:
                 command = ["osascript", "-e", 'tell application "Finder" to shut down']
-            elif action == "Restart":
-                command = ["osascript", "-e", 'tell application "Finder" to restart']
-            elif action in {"Suspend", "Hibernate"}:
-                command = ["osascript", "-e", 'tell application "Finder" to sleep']
-        else:
-            if action == "Shut down":
+            else:
                 command = ["systemctl", "poweroff"]
-            elif action == "Restart":
+        elif action == "Restart":
+            log.info("[AgentScheduler] Restarting...")
+            if is_windows:
+                command = ["shutdown", "/r", "/t", "0"]
+            elif is_macos:
+                command = ["osascript", "-e", 'tell application "Finder" to restart']
+            else:
                 command = ["systemctl", "reboot"]
-            elif action == "Suspend":
-                command = ["systemctl", "suspend"]
-            elif action == "Hibernate":
+        elif action == "Sleep":
+            log.info("[AgentScheduler] Sleeping...")
+            if is_windows:
+                import ctypes
+                if not ctypes.windll.PowrProf.SetSuspendState(False, False, False):
+                    print(f"Couldn't sleep: {ctypes.GetLastError()}")
+            elif is_macos:
+                command = ["osascript", "-e", 'tell application "Finder" to sleep']
+            else:
+                command = ["sh", "-c", 'systemctl hybrid-sleep || (echo "Couldn\'t hybrid sleep, will try to suspend instead: $?"; systemctl suspend)']
+        elif action == "Hibernate":
+            log.info("[AgentScheduler] Hibernating...")
+            if is_windows:
+                command = ["shutdown", "/h"]
+            elif is_macos:
+                command = ["osascript", "-e", 'tell application "Finder" to sleep']
+            else:
                 command = ["systemctl", "hibernate"]
+        elif action == "Quit WebUI":
+            log.info("[AgentScheduler] Quitting WebUI...")
+            _exit(0)
+
         if command:
-            subprocess.run(command)
-            if action in {"Shut down", "Restart"}:
-                os._exit(0)
+            subprocess.Popen(command)
+
+        if action in {"Shut down", "Restart"}:
+            _exit(0)
 
     def on_task_registered(self, callback: Callable):
         """Callback when a task is registered
@@ -634,3 +647,12 @@ def get_instance(block) -> TaskRunner:
             script_callbacks.on_before_reload(on_before_reload)
 
     return TaskRunner.instance
+
+
+def _exit(status: int) -> NoReturn:
+    try:
+        import atexit
+        atexit._run_exitfuncs()
+    except:
+        pass
+    os._exit(status)

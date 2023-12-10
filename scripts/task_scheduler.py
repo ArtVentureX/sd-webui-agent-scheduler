@@ -42,7 +42,7 @@ ui_placement_append_to_main = "Append to main UI"
 placement_under_generate = "Under Generate button"
 placement_between_prompt_and_generate = "Between Prompt and Generate button"
 
-completion_action_choices = ["Do nothing", "Shut down", "Restart", "Suspend", "Hibernate", "Quit WebUI"]
+completion_action_choices = ["Do nothing", "Shut down", "Restart", "Sleep", "Hibernate", "Quit WebUI"]
 
 task_filter_choices = ["All", "Bookmarked", "Done", "Failed", "Interrupted"]
 
