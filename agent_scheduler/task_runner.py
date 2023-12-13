@@ -1,15 +1,15 @@
 import os
+import ctypes
 import json
+import subprocess
 import time
 import traceback
 import threading
-import platform
-import subprocess
 import gradio as gr
 
 from datetime import datetime, timezone
 from pydantic import BaseModel
-from typing import Any, Callable, NoReturn, Union, Optional, List, Dict
+from typing import Any, Callable, Union, Optional, List, Dict
 from fastapi import FastAPI
 from PIL import Image
 
@@ -29,6 +29,9 @@ from .helpers import (
     detect_control_net,
     get_component_by_elem_id,
     get_dict_attribute,
+    is_windows,
+    is_macos,
+    _exit,
 )
 from .task_helpers import (
     encode_image_to_base64,
@@ -40,9 +43,6 @@ from .task_helpers import (
     map_ui_task_args_list_to_named_args,
     map_named_args_to_ui_task_args_list,
 )
-
-is_windows = platform.system() == "Windows"
-is_macos = platform.system() == "Darwin"
 
 
 class OutOfMemoryError(Exception):
@@ -564,7 +564,6 @@ class TaskRunner:
         elif action == "Sleep":
             log.info("[AgentScheduler] Sleeping...")
             if is_windows:
-                import ctypes
                 if not ctypes.windll.PowrProf.SetSuspendState(False, False, False):
                     print(f"Couldn't sleep: {ctypes.GetLastError()}")
             elif is_macos:
@@ -579,8 +578,8 @@ class TaskRunner:
                 command = ["osascript", "-e", 'tell application "Finder" to sleep']
             else:
                 command = ["systemctl", "hibernate"]
-        elif action == "Quit WebUI":
-            log.info("[AgentScheduler] Quitting WebUI...")
+        elif action == "Stop webui":
+            log.info("[AgentScheduler] Stopping webui...")
             _exit(0)
 
         if command:
@@ -647,12 +646,3 @@ def get_instance(block) -> TaskRunner:
             script_callbacks.on_before_reload(on_before_reload)
 
     return TaskRunner.instance
-
-
-def _exit(status: int) -> NoReturn:
-    try:
-        import atexit
-        atexit._run_exitfuncs()
-    except:
-        pass
-    os._exit(status)

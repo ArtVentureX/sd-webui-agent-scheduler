@@ -1,6 +1,5 @@
 import os
 import json
-import platform
 import gradio as gr
 from PIL import Image
 from uuid import uuid4
@@ -23,7 +22,7 @@ from modules.generation_parameters_copypaste import (
 )
 
 from agent_scheduler.task_runner import TaskRunner, get_instance
-from agent_scheduler.helpers import log, compare_components_with_ids, get_components_by_ids
+from agent_scheduler.helpers import log, compare_components_with_ids, get_components_by_ids, is_macos
 from agent_scheduler.db import init as init_db, task_manager, TaskStatus
 from agent_scheduler.api import regsiter_apis
 
@@ -42,11 +41,10 @@ ui_placement_append_to_main = "Append to main UI"
 placement_under_generate = "Under Generate button"
 placement_between_prompt_and_generate = "Between Prompt and Generate button"
 
-completion_action_choices = ["Do nothing", "Shut down", "Restart", "Sleep", "Hibernate", "Quit WebUI"]
+completion_action_choices = ["Do nothing", "Shut down", "Restart", "Sleep", "Hibernate", "Stop webui"]
 
 task_filter_choices = ["All", "Bookmarked", "Done", "Failed", "Interrupted"]
 
-is_macos = platform.system() == "Darwin"
 enqueue_key_modifiers = [
     "Command" if is_macos else "Ctrl",
     "Control" if is_macos else "Alt",
@@ -749,7 +747,7 @@ def on_ui_settings():
             "Action after queue completion",
             gr.Radio,
             lambda: {
-                "choices": completion_action_choices
+                "choices": completion_action_choices,
             },
             section=section,
         ),
