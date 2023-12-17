@@ -1,7 +1,7 @@
 import {
   CellClassParams,
   CellClickedEvent,
-  Grid,
+  createGrid,
   GridApi,
   GridOptions,
   ICellRendererParams,
@@ -106,25 +106,7 @@ const sharedGridOptions: GridOptions<Task> = {
       cellClass: ({ data }: CellClassParams<Task, string>) => {
         if (data == null) return;
 
-        const classes = ['cursor-pointer'];
-        switch (data.status) {
-          case 'pending':
-            classes.push('task-pending');
-            break;
-          case 'running':
-            classes.push('task-running');
-            break;
-          case 'done':
-            classes.push('task-done');
-            break;
-          case 'failed':
-            classes.push('task-failed');
-            break;
-          case 'interrupted':
-            classes.push('task-interrupted');
-            break;
-        }
-        return classes;
+        return ['cursor-pointer', `task-${data.status}`];
       },
     },
     {
@@ -260,7 +242,6 @@ const sharedGridOptions: GridOptions<Task> = {
   pagination: true,
   paginationAutoPageSize: true,
   suppressCopyRowsToClipboard: true,
-  suppressRowTransform: true,
   enableBrowserTooltips: true,
 };
 
@@ -426,8 +407,8 @@ function initQueueHandler() {
   };
 
   // detect queue button placement
-  const interrogateCol = gradioApp().querySelector<HTMLDivElement>('.interrogate-col')!;
-  if (interrogateCol.childElementCount > 2) {
+  const interrogateCol = gradioApp().querySelector<HTMLDivElement>('.interrogate-col');
+  if (interrogateCol != null && interrogateCol.childElementCount > 2) {
     interrogateCol.classList.add('has-queue-button');
   }
 
@@ -831,33 +812,33 @@ function initPendingTab() {
         },
       },
     ],
-    onColumnMoved: ({ columnApi }) => {
-      const colState = columnApi.getColumnState();
+    onColumnMoved: ({ api }) => {
+      const colState = api.getColumnState();
       const colStateStr = JSON.stringify(colState);
       localStorage.setItem('agent_scheduler:queue_col_state', colStateStr);
     },
-    onSortChanged: ({ columnApi }) => {
-      const colState = columnApi.getColumnState();
+    onSortChanged: ({ api }) => {
+      const colState = api.getColumnState();
       const colStateStr = JSON.stringify(colState);
       localStorage.setItem('agent_scheduler:queue_col_state', colStateStr);
     },
-    onColumnResized: ({ columnApi }) => {
-      const colState = columnApi.getColumnState();
+    onColumnResized: ({ api }) => {
+      const colState = api.getColumnState();
       const colStateStr = JSON.stringify(colState);
       localStorage.setItem('agent_scheduler:queue_col_state', colStateStr);
     },
-    onGridReady: ({ api, columnApi }) => {
+    onGridReady: ({ api }) => {
       // init quick search input
       const searchInput = initSearchInput('#agent_scheduler_action_search');
       searchInput.addEventListener(
         'keyup',
         debounce(function () {
-          api.setQuickFilter(this.value);
+          api.updateGridOptions({ quickFilterText: this.value });
         }, 200)
       );
 
       const updateRowData = (state: ReturnType<typeof store.getState>) => {
-        api.setRowData(state.pending_tasks);
+        api.updateGridOptions({ rowData: state.pending_tasks });
 
         if (state.current_task_id != null) {
           const node = api.getRowNode(state.current_task_id);
@@ -867,7 +848,7 @@ function initPendingTab() {
         }
 
         api.clearFocusedCell();
-        columnApi.autoSizeAllColumns();
+        api.autoSizeAllColumns();
       };
       store.subscribe(updateRowData);
       updateRowData(store.getState());
@@ -876,7 +857,7 @@ function initPendingTab() {
       const colStateStr = localStorage.getItem('agent_scheduler:queue_col_state');
       if (colStateStr != null) {
         const colState = JSON.parse(colStateStr);
-        columnApi.applyColumnState({ state: colState, applyOrder: true });
+        api.applyColumnState({ state: colState, applyOrder: true });
       }
     },
     onRowDragEnter: ({ api, y }) => highlightRow(api, y),
@@ -966,7 +947,7 @@ function initPendingTab() {
     }
   }
 
-  new Grid(eGridDiv, gridOptions);
+  createGrid(eGridDiv, gridOptions);
 }
 
 function initHistoryTab() {
@@ -1121,35 +1102,35 @@ function initHistoryTab() {
     ],
     rowSelection: 'single',
     suppressRowDeselection: true,
-    onColumnMoved: ({ columnApi }) => {
-      const colState = columnApi.getColumnState();
+    onColumnMoved: ({ api }) => {
+      const colState = api.getColumnState();
       const colStateStr = JSON.stringify(colState);
       localStorage.setItem('agent_scheduler:history_col_state', colStateStr);
     },
-    onSortChanged: ({ columnApi }) => {
-      const colState = columnApi.getColumnState();
+    onSortChanged: ({ api }) => {
+      const colState = api.getColumnState();
       const colStateStr = JSON.stringify(colState);
       localStorage.setItem('agent_scheduler:history_col_state', colStateStr);
     },
-    onColumnResized: ({ columnApi }) => {
-      const colState = columnApi.getColumnState();
+    onColumnResized: ({ api }) => {
+      const colState = api.getColumnState();
       const colStateStr = JSON.stringify(colState);
       localStorage.setItem('agent_scheduler:history_col_state', colStateStr);
     },
-    onGridReady: ({ api, columnApi }) => {
+    onGridReady: ({ api }) => {
       // init quick search input
       const searchInput = initSearchInput('#agent_scheduler_action_search_history');
       searchInput.addEventListener(
         'keyup',
         debounce(function () {
-          api.setQuickFilter(this.value);
+          api.updateGridOptions({ quickFilterText: this.value });
         }, 200)
       );
 
       const updateRowData = (state: ReturnType<typeof store.getState>) => {
-        api.setRowData(state.tasks);
+        api.updateGridOptions({ rowData: state.tasks });
         api.clearFocusedCell();
-        columnApi.autoSizeAllColumns();
+        api.autoSizeAllColumns();
       };
       store.subscribe(updateRowData);
       updateRowData(store.getState());
@@ -1158,7 +1139,7 @@ function initHistoryTab() {
       const colStateStr = localStorage.getItem('agent_scheduler:history_col_state');
       if (colStateStr != null) {
         const colState = JSON.parse(colStateStr);
-        columnApi.applyColumnState({ state: colState, applyOrder: true });
+        api.applyColumnState({ state: colState, applyOrder: true });
       }
     },
     onSelectionChanged: ({ api }) => {
@@ -1194,7 +1175,7 @@ function initHistoryTab() {
     }
   }
 
-  new Grid(eGridDiv, gridOptions);
+  createGrid(eGridDiv, gridOptions);
 }
 
 let agentSchedulerInitialized = false;

@@ -8,4 +8,7 @@ module.exports = {
         container: false,
     },
     plugins: [],
+    safelist: [
+        { pattern: /task-(pending|running|done|failed|interrupted|saved)/ },
+    ],
 }
