@@ -1,5 +1,7 @@
 import os
+import ctypes
 import json
+import subprocess
 import time
 import traceback
 import threading
@@ -27,6 +29,9 @@ from .helpers import (
     detect_control_net,
     get_component_by_elem_id,
     get_dict_attribute,
+    is_windows,
+    is_macos,
+    _exit,
 )
 from .task_helpers import (
     encode_image_to_base64,
@@ -404,6 +409,9 @@ class TaskRunner:
 
             task = get_next_task()
             if not task:
+                if not self.paused:
+                    time.sleep(1)
+                    self.__on_completed()
                 break
 
     def execute_pending_tasks_threading(self):
@@ -529,6 +537,56 @@ class TaskRunner:
             self.__saved_images_path.insert(0, data.filename)
         else:
             self.__saved_images_path.append(data.filename)
+    
+    def __on_completed(self):
+        action = getattr(shared.opts, "queue_completion_action", "Do nothing")
+
+        if action == "Do nothing":
+            return
+
+        command = None
+        if action == "Shut down":
+            log.info("[AgentScheduler] Shutting down...")
+            if is_windows:
+                command = ["shutdown", "/s", "/hybrid", "/t", "0"]
+            elif is_macos:
+                command = ["osascript", "-e", 'tell application "Finder" to shut down']
+            else:
+                command = ["systemctl", "poweroff"]
+        elif action == "Restart":
+            log.info("[AgentScheduler] Restarting...")
+            if is_windows:
+                command = ["shutdown", "/r", "/t", "0"]
+            elif is_macos:
+                command = ["osascript", "-e", 'tell application "Finder" to restart']
+            else:
+                command = ["systemctl", "reboot"]
+        elif action == "Sleep":
+            log.info("[AgentScheduler] Sleeping...")
+            if is_windows:
+                if not ctypes.windll.PowrProf.SetSuspendState(False, False, False):
+                    print(f"Couldn't sleep: {ctypes.GetLastError()}")
+            elif is_macos:
+                command = ["osascript", "-e", 'tell application "Finder" to sleep']
+            else:
+                command = ["sh", "-c", 'systemctl hybrid-sleep || (echo "Couldn\'t hybrid sleep, will try to suspend instead: $?"; systemctl suspend)']
+        elif action == "Hibernate":
+            log.info("[AgentScheduler] Hibernating...")
+            if is_windows:
+                command = ["shutdown", "/h"]
+            elif is_macos:
+                command = ["osascript", "-e", 'tell application "Finder" to sleep']
+            else:
+                command = ["systemctl", "hibernate"]
+        elif action == "Stop webui":
+            log.info("[AgentScheduler] Stopping webui...")
+            _exit(0)
+
+        if command:
+            subprocess.Popen(command)
+
+        if action in {"Shut down", "Restart"}:
+            _exit(0)
 
     def on_task_registered(self, callback: Callable):
         """Callback when a task is registered

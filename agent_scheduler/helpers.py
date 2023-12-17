@@ -1,13 +1,19 @@
+import os
 import sys
 import abc
+import atexit
 import time
 import logging
+import platform
 import requests
 import traceback
-from typing import Callable, List
+from typing import Callable, List, NoReturn
 
 import gradio as gr
 from gradio.blocks import Block, BlockContext
+
+is_windows = platform.system() == "Windows"
+is_macos = platform.system() == "Darwin"
 
 if logging.getLogger().hasHandlers():
     log = logging.getLogger("sd")
@@ -184,3 +190,13 @@ def request_with_retry(
         log.error(e)
         log.debug(traceback.format_exc())
         return False
+
+
+def _exit(status: int) -> NoReturn:
+    try:
+        atexit._run_exitfuncs()
+    except:
+        pass
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os._exit(status)
