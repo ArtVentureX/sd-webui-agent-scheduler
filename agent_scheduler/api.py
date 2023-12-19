@@ -59,7 +59,7 @@ def api_callback_raw(callback_url: str, task_id: str, status: TaskStatus, images
 
     return requests.post(
         callback_url,
-        timeout=5,
+        timeout=50,
         json={"task_id": task_id, "status": status.value, "images": images, "info": info},
     )
 
