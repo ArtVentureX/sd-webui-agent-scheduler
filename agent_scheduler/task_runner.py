@@ -409,7 +409,7 @@ class TaskRunner:
 
             task = get_next_task()
             if not task:
-                if not self.paused:
+                if not self.dispose and not self.paused:
                     time.sleep(1)
                     self.__on_completed()
                 break
@@ -564,8 +564,10 @@ class TaskRunner:
         elif action == "Sleep":
             log.info("[AgentScheduler] Sleeping...")
             if is_windows:
-                if not ctypes.windll.PowrProf.SetSuspendState(False, False, False):
-                    print(f"Couldn't sleep: {ctypes.GetLastError()}")
+                def sleep():
+                    if not ctypes.windll.PowrProf.SetSuspendState(False, False, False):
+                        print(f"Couldn't sleep: {ctypes.GetLastError()}")
+                threading.Thread(target=sleep).start()
             elif is_macos:
                 command = ["osascript", "-e", 'tell application "Finder" to sleep']
             else:
