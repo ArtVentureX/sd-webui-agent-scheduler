@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Union
+from typing import Optional
 
 from sqlalchemy import Column, String
 from sqlalchemy.orm import Session
@@ -36,7 +36,7 @@ class AppStateTable(Base):
 
 
 class AppStateManager(BaseTableManager):
-    def get_value(self, key: str) -> Union[str, None]:
+    def get_value(self, key: str) -> Optional[str]:
         session = Session(self.engine)
         try:
             result = session.get(AppStateTable, key)

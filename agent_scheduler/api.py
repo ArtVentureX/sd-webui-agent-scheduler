@@ -3,7 +3,6 @@ import os
 import json
 import base64
 import requests
-import threading
 from uuid import uuid4
 from zipfile import ZipFile
 from pathlib import Path
@@ -18,6 +17,7 @@ from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.exceptions import HTTPException
 from pydantic import BaseModel
+from threading import Thread
 
 from modules import shared, progress, sd_models, sd_samplers
 
@@ -78,7 +78,7 @@ def on_task_finished(
     request_with_retry(upload)
 
 
-def regsiter_apis(app: App, task_runner: TaskRunner):
+def register_apis(app: App, task_runner: TaskRunner):
     api_credentials = {}
     deps = None
 
@@ -129,7 +129,7 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
             task.api_task_callback = callback_url
             task_manager.update_task(task)
 
-        task_runner.execute_pending_tasks_threading()
+        task_runner.start_queue()
 
         return QueueTaskResponse(task_id=task_id)
 
@@ -152,12 +152,12 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
             task.api_task_callback = callback_url
             task_manager.update_task(task)
 
-        task_runner.execute_pending_tasks_threading()
+        task_runner.start_queue()
 
         return QueueTaskResponse(task_id=task_id)
 
     def format_task_args(task):
-        task_args = TaskRunner.instance.parse_task_args(task, deserialization=False)
+        task_args = task_runner.parse_task_args(task, deserialization=False)
         named_args = task_args.named_args
         named_args["checkpoint"] = task_args.checkpoint
         # remove unused args to reduce payload size
@@ -191,7 +191,7 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
             current_task_id=current_task_id,
             pending_tasks=parsed_tasks,
             total_pending_tasks=total_pending_tasks,
-            paused=TaskRunner.instance.paused,
+            paused=task_runner.paused,
         )
 
     @app.get("/agent-scheduler/v1/export")
@@ -321,20 +321,17 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
                     "success": True,
                     "message": "Task is scheduled to run next",
                 }
-        else:
-            # run task
-            task = task_manager.get_task(id)
-            current_thread = threading.Thread(
-                target=TaskRunner.instance.execute_task,
-                args=(
-                    task,
-                    lambda: None,
-                ),
-            )
-            current_thread.daemon = True
-            current_thread.start()
 
-            return {"success": True, "message": "Task is executing"}
+        # run task
+        task = task_manager.get_task(id)
+        thread = Thread(
+            target=task_runner.execute_tasks,
+            args=(iter([task]), True),
+        )
+        thread.daemon = True
+        thread.start()
+
+        return {"success": True, "message": "Task is executing"}
 
     @app.post("/agent-scheduler/v1/requeue/{id}", dependencies=deps, deprecated=True)
     @app.post("/agent-scheduler/v1/task/{id}/requeue", dependencies=deps)
@@ -349,7 +346,7 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
         task.bookmarked = False
         task.name = f"Copy of {task.name}" if task.name else None
         task_manager.add_task(task)
-        task_runner.execute_pending_tasks_threading()
+        task_runner.start_queue()
 
         return {"success": True, "message": "Task requeued"}
 
@@ -492,7 +489,7 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
     @app.post("/agent-scheduler/v1/queue/resume", dependencies=deps)
     def resume_queue():
         shared.opts.queue_paused = False
-        TaskRunner.instance.execute_pending_tasks_threading()
+        task_runner.start_queue()
         return {"success": True, "message": "Queue resumed."}
 
     @app.post("/agent-scheduler/v1/queue/clear", dependencies=deps)

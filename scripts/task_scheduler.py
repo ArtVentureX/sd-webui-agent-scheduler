@@ -24,7 +24,7 @@ from modules.generation_parameters_copypaste import (
 from agent_scheduler.task_runner import TaskRunner, get_instance
 from agent_scheduler.helpers import log, compare_components_with_ids, get_components_by_ids, is_macos
 from agent_scheduler.db import init as init_db, task_manager, TaskStatus
-from agent_scheduler.api import regsiter_apis
+from agent_scheduler.api import register_apis
 
 is_sdnext = parser.description == "SD.Next"
 ToolButton = gr.Button if is_sdnext else ui_components.ToolButton
@@ -224,7 +224,7 @@ class Script(scripts.Script):
                     request=request,
                 )
 
-            task_runner.execute_pending_tasks_threading()
+            task_runner.start_queue()
 
         return f
 
@@ -413,7 +413,10 @@ def on_ui_tab(**_kwargs):
                                 elem_id="agent_scheduler_action_import",
                                 variant="secondary",
                             )
-                            gr.HTML(f'<input type="file" id="agent_scheduler_import_file" style="display: none" accept="application/json" />')
+                            gr.HTML(
+                                '<input type="file" id="agent_scheduler_import_file" accept="application/json">',
+                                visible=False,
+                            )
 
                             with gr.Row(elem_classes=["agent_scheduler_filter_container", "flex-row", "ml-auto"]):
                                 gr.Textbox(
@@ -757,9 +760,9 @@ def on_ui_settings():
 def on_app_started(block: gr.Blocks, app):
     global task_runner
     task_runner = get_instance(block)
-    task_runner.execute_pending_tasks_threading()
-    regsiter_apis(app, task_runner)
-    task_runner.on_task_cleared(lambda: remove_old_tasks())
+    remove_old_tasks()
+    task_runner.start_queue()
+    register_apis(app, task_runner)
 
     if getattr(shared.opts, "queue_ui_placement", "") == ui_placement_append_to_main and block:
         with block:

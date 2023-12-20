@@ -1,15 +1,15 @@
 import os
 import ctypes
 import json
-import subprocess
 import time
 import traceback
-import threading
 import gradio as gr
 
 from datetime import datetime, timezone
 from pydantic import BaseModel
-from typing import Any, Callable, Union, Optional, List, Dict
+from typing import Any, Callable, Iterator, Optional, List, Dict
+from subprocess import Popen
+from threading import Thread
 from fastapi import FastAPI
 from PIL import Image
 
@@ -70,8 +70,7 @@ class TaskRunner:
     def __init__(self, UiControlNetUnit=None):
         self.UiControlNetUnit = UiControlNetUnit
 
-        self.__total_pending_tasks: int = 0
-        self.__current_thread: threading.Thread = None
+        self.__current_thread: Optional[Thread] = None
         self.__api = Api(FastAPI(), queue_lock)
 
         self.__saved_images_path: List[str] = []
@@ -81,11 +80,10 @@ class TaskRunner:
             "task_registered": [],
             "task_started": [],
             "task_finished": [],
-            "task_cleared": [],
         }
 
         # Mark this to True when reload UI
-        self.dispose = False
+        self.disposed = False
         self.interrupted = None
 
         if TaskRunner.instance is not None:
@@ -93,7 +91,7 @@ class TaskRunner:
         TaskRunner.instance = self
 
     @property
-    def current_task_id(self) -> Union[str, None]:
+    def current_task_id(self) -> Optional[str]:
         return progress.current_task
 
     @property
@@ -292,7 +290,6 @@ class TaskRunner:
         task_manager.add_task(task)
 
         self.__run_callbacks("task_registered", task_id, is_img2img=is_img2img, is_ui=True, args=params)
-        self.__total_pending_tasks += 1
 
         return task
 
@@ -320,101 +317,100 @@ class TaskRunner:
         task_manager.add_task(task)
 
         self.__run_callbacks("task_registered", task_id, is_img2img=is_img2img, is_ui=False, args=params)
-        self.__total_pending_tasks += 1
 
         return task
 
-    def execute_task(self, task: Task, get_next_task: Callable[[], Task]):
-        while True:
-            if self.dispose:
+    def execute_tasks(self, tasks: Iterator[Task], ignore_pause: bool = False):
+        for task in tasks:
+            if self.disposed:
                 break
 
-            if progress.current_task is None:
-                task_id = task.id
-                is_img2img = task.type == "img2img"
-                log.info(f"[AgentScheduler] Executing task {task_id}")
+            if self.paused and not ignore_pause:
+                log.info("[AgentScheduler] Runner is paused")
+                break
 
-                task_args = self.parse_task_args(task)
-                task_meta = {
-                    "is_img2img": is_img2img,
-                    "is_ui": task_args.is_ui,
-                    "task": task,
-                }
-
-                self.interrupted = None
-                self.__saved_images_path = []
-                self.__run_callbacks("task_started", task_id, **task_meta)
-
-                # enable image saving
-                samples_save = shared.opts.samples_save
-                shared.opts.samples_save = True
-
-                res = self.__execute_task(task_id, is_img2img, task_args)
-
-                # disable image saving
-                shared.opts.samples_save = samples_save
-
-                if not res or isinstance(res, Exception):
-                    if isinstance(res, OutOfMemoryError):
-                        log.error(f"[AgentScheduler] Task {task_id} failed: CUDA OOM. Queue will be paused.")
-                        shared.opts.queue_paused = True
-                    else:
-                        log.error(f"[AgentScheduler] Task {task_id} failed: {res}")
-                        log.debug(traceback.format_exc())
-
-                    if getattr(shared.opts, "queue_automatic_requeue_failed_task", False):
-                        log.info(f"[AgentScheduler] Requeue task {task_id}")
-                        task.status = TaskStatus.PENDING
-                        task.priority = int(datetime.now(timezone.utc).timestamp() * 1000)
-                        task_manager.update_task(task)
-                    else:
-                        task.status = TaskStatus.FAILED
-                        task.result = str(res) if res else None
-                        task_manager.update_task(task)
-                        self.__run_callbacks("task_finished", task_id, status=TaskStatus.FAILED, **task_meta)
-                else:
-                    is_interrupted = self.interrupted == task_id
-                    if is_interrupted:
-                        log.info(f"\n[AgentScheduler] Task {task.id} interrupted")
-                        task.status = TaskStatus.INTERRUPTED
-                        task_manager.update_task(task)
-                        self.__run_callbacks(
-                            "task_finished",
-                            task_id,
-                            status=TaskStatus.INTERRUPTED,
-                            **task_meta,
-                        )
-                    else:
-                        geninfo = json.loads(res)
-                        result = {
-                            "images": self.__saved_images_path.copy(),
-                            "geninfo": geninfo,
-                        }
-
-                        task.status = TaskStatus.DONE
-                        task.result = json.dumps(result)
-                        task_manager.update_task(task)
-                        self.__run_callbacks(
-                            "task_finished",
-                            task_id,
-                            status=TaskStatus.DONE,
-                            result=result,
-                            **task_meta,
-                        )
-
-                self.__saved_images_path = []
-            else:
+            if progress.current_task is not None:
                 time.sleep(2)
                 continue
 
-            task = get_next_task()
-            if not task:
-                if not self.dispose and not self.paused:
-                    time.sleep(1)
-                    self.__on_completed()
-                break
+            task_id = task.id
+            is_img2img = task.type == "img2img"
+            log.info(f"[AgentScheduler] Executing task {task_id}")
 
-    def execute_pending_tasks_threading(self):
+            task_args = self.parse_task_args(task)
+            task_meta = {
+                "is_img2img": is_img2img,
+                "is_ui": task_args.is_ui,
+                "task": task,
+            }
+
+            self.interrupted = None
+            self.__saved_images_path = []
+            self.__run_callbacks("task_started", task_id, **task_meta)
+
+            # enable image saving
+            samples_save = shared.opts.samples_save
+            shared.opts.samples_save = True
+
+            res = self.__execute_task(task_id, is_img2img, task_args)
+
+            # disable image saving
+            shared.opts.samples_save = samples_save
+
+            if not res or isinstance(res, Exception):
+                if isinstance(res, OutOfMemoryError):
+                    log.error(f"[AgentScheduler] Task {task_id} failed: CUDA OOM. Queue will be paused.")
+                    shared.opts.queue_paused = True
+                else:
+                    log.error(f"[AgentScheduler] Task {task_id} failed: {res}")
+                    log.debug(traceback.format_exc())
+
+                if getattr(shared.opts, "queue_automatic_requeue_failed_task", False):
+                    log.info(f"[AgentScheduler] Requeue task {task_id}")
+                    task.status = TaskStatus.PENDING
+                    task.priority = int(datetime.now(timezone.utc).timestamp() * 1000)
+                    task_manager.update_task(task)
+                else:
+                    task.status = TaskStatus.FAILED
+                    task.result = str(res) if res else None
+                    task_manager.update_task(task)
+                    self.__run_callbacks("task_finished", task_id, status=TaskStatus.FAILED, **task_meta)
+            else:
+                is_interrupted = self.interrupted == task_id
+                if is_interrupted:
+                    log.info(f"[AgentScheduler] Task {task.id} interrupted")
+                    task.status = TaskStatus.INTERRUPTED
+                    task_manager.update_task(task)
+                    self.__run_callbacks(
+                        "task_finished",
+                        task_id,
+                        status=TaskStatus.INTERRUPTED,
+                        **task_meta,
+                    )
+                else:
+                    geninfo = json.loads(res)
+                    result = {
+                        "images": self.__saved_images_path.copy(),
+                        "geninfo": geninfo,
+                    }
+
+                    task.status = TaskStatus.DONE
+                    task.result = json.dumps(result)
+                    task_manager.update_task(task)
+                    self.__run_callbacks(
+                        "task_finished",
+                        task_id,
+                        status=TaskStatus.DONE,
+                        result=result,
+                        **task_meta,
+                    )
+
+            self.__saved_images_path = []
+        else:
+            if not self.disposed and not self.paused:
+                self.__on_completed()
+
+    def start_queue(self):
         if self.paused:
             log.info("[AgentScheduler] Runner is paused")
             return
@@ -423,18 +419,24 @@ class TaskRunner:
             log.info("[AgentScheduler] Runner already started")
             return
 
-        pending_task = self.__get_pending_task()
-        if pending_task:
-            # Start the infinite loop in a separate thread
-            self.__current_thread = threading.Thread(
-                target=self.execute_task,
-                args=(
-                    pending_task,
-                    self.__get_pending_task,
-                ),
-            )
-            self.__current_thread.daemon = True
-            self.__current_thread.start()
+        total_pending_tasks = task_manager.count_tasks(status="pending")
+        if total_pending_tasks == 0:
+            log.info("[AgentScheduler] Task queue is empty")
+            return
+
+        log.info(f"[AgentScheduler] Total pending tasks: {total_pending_tasks}")
+
+        def get_pending_task():
+            pending_task = task_manager.get_tasks(status="pending", limit=1)
+            return pending_task[0] if pending_task else None
+
+        # Start the loop in a separate thread
+        self.__current_thread = Thread(
+            target=self.execute_tasks,
+            args=(iter(get_pending_task, None),),
+        )
+        self.__current_thread.daemon = True
+        self.__current_thread.start()
 
     def __execute_task(self, task_id: str, is_img2img: bool, task_args: ParsedTaskArgs):
         if task_args.is_ui:
@@ -495,39 +497,6 @@ class TaskRunner:
 
         return res
 
-    def __get_pending_task(self):
-        if self.dispose:
-            return None
-
-        if self.paused:
-            log.info("[AgentScheduler] Runner is paused")
-            return None
-
-        # # delete task that are too old
-        # retention_days = 30
-        # if (
-        #     getattr(shared.opts, "queue_history_retention_days", None)
-        #     and shared.opts.queue_history_retention_days in task_history_retenion_map
-        # ):
-        #     retention_days = task_history_retenion_map[shared.opts.queue_history_retention_days]
-
-        # if retention_days > 0:
-        #     deleted_rows = task_manager.delete_tasks(before=datetime.now() - timedelta(days=retention_days))
-        #     if deleted_rows > 0:
-        #         log.debug(f"[AgentScheduler] Deleted {deleted_rows} tasks older than {retention_days} days")
-
-        self.__total_pending_tasks = task_manager.count_tasks(status="pending")
-
-        # get more task if needed
-        if self.__total_pending_tasks > 0:
-            log.info(f"[AgentScheduler] Total pending tasks: {self.__total_pending_tasks}")
-            pending_tasks = task_manager.get_tasks(status="pending", limit=1)
-            if len(pending_tasks) > 0:
-                return pending_tasks[0]
-        else:
-            log.info("[AgentScheduler] Task queue is empty")
-            self.__run_callbacks("task_cleared")
-
     def __on_image_saved(self, data: script_callbacks.ImageSaveParams):
         if self.current_task_id is None:
             return
@@ -544,50 +513,48 @@ class TaskRunner:
         if action == "Do nothing":
             return
 
-        command = None
+        # Wait to tell the client it's done
+        time.sleep(2)
+
         if action == "Shut down":
             log.info("[AgentScheduler] Shutting down...")
             if is_windows:
-                command = ["shutdown", "/s", "/hybrid", "/t", "0"]
+                Popen(["shutdown", "/s", "/hybrid", "/t", "0"])
             elif is_macos:
-                command = ["osascript", "-e", 'tell application "Finder" to shut down']
+                Popen(["osascript", "-e", 'tell application "Finder" to shut down'])
             else:
-                command = ["systemctl", "poweroff"]
+                Popen(["systemctl", "poweroff"])
+            _exit(0)
         elif action == "Restart":
             log.info("[AgentScheduler] Restarting...")
             if is_windows:
-                command = ["shutdown", "/r", "/t", "0"]
+                Popen(["shutdown", "/r", "/t", "0"])
             elif is_macos:
-                command = ["osascript", "-e", 'tell application "Finder" to restart']
+                Popen(["osascript", "-e", 'tell application "Finder" to restart'])
             else:
-                command = ["systemctl", "reboot"]
+                Popen(["systemctl", "reboot"])
+            _exit(0)
         elif action == "Sleep":
             log.info("[AgentScheduler] Sleeping...")
             if is_windows:
                 def sleep():
                     if not ctypes.windll.PowrProf.SetSuspendState(False, False, False):
                         print(f"Couldn't sleep: {ctypes.GetLastError()}")
-                threading.Thread(target=sleep).start()
+                Thread(target=sleep).start()
             elif is_macos:
-                command = ["osascript", "-e", 'tell application "Finder" to sleep']
+                Popen(["osascript", "-e", 'tell application "Finder" to sleep'])
             else:
-                command = ["sh", "-c", 'systemctl hybrid-sleep || (echo "Couldn\'t hybrid sleep, will try to suspend instead: $?"; systemctl suspend)']
+                Popen(["sh", "-c", 'systemctl hybrid-sleep || (echo "Couldn\'t hybrid sleep, will try to suspend instead: $?"; systemctl suspend)'])
         elif action == "Hibernate":
             log.info("[AgentScheduler] Hibernating...")
             if is_windows:
-                command = ["shutdown", "/h"]
+                Popen(["shutdown", "/h"])
             elif is_macos:
-                command = ["osascript", "-e", 'tell application "Finder" to sleep']
+                Popen(["osascript", "-e", 'tell application "Finder" to sleep'])
             else:
-                command = ["systemctl", "hibernate"]
+                Popen(["systemctl", "hibernate"])
         elif action == "Stop webui":
             log.info("[AgentScheduler] Stopping webui...")
-            _exit(0)
-
-        if command:
-            subprocess.Popen(command)
-
-        if action in {"Shut down", "Restart"}:
             _exit(0)
 
     def on_task_registered(self, callback: Callable):
@@ -614,9 +581,6 @@ class TaskRunner:
 
         self.script_callbacks["task_finished"].append(callback)
 
-    def on_task_cleared(self, callback: Callable):
-        self.script_callbacks["task_cleared"].append(callback)
-
     def __run_callbacks(self, name: str, *args, **kwargs):
         for callback in self.script_callbacks[name]:
             callback(*args, **kwargs)
@@ -641,7 +605,7 @@ def get_instance(block) -> TaskRunner:
 
             def on_before_reload():
                 # Tell old instance to stop
-                TaskRunner.instance.dispose = True
+                TaskRunner.instance.disposed = True
                 # force recreate the instance
                 TaskRunner.instance = None
 

@@ -157,7 +157,7 @@ class TaskTable(Base):
 
 
 class TaskManager(BaseTableManager):
-    def get_task(self, id: str) -> Union[TaskTable, None]:
+    def get_task(self, id: str) -> Optional[TaskTable]:
         session = Session(self.engine)
         try:
             task = session.get(TaskTable, id)
