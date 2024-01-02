@@ -204,14 +204,22 @@ def deserialize_script_args(script_args: Union[bytes, List], UiControlNetUnit = 
     for i, a in enumerate(script_args):
         if isinstance(a, dict) and a.get("is_cnet", False):
             unit = deserialize_controlnet_args(a)
+            skip_controlnet = False
             if UiControlNetUnit is not None:
                 u = UiControlNetUnit()
                 for k, v in unit.items():
                     if isinstance(getattr(u, k, None), Enum):
+                        # check if v is a valid enum value
+                        enum_obj: Enum= getattr(u, k)
+                        if v not in [e.value for e in enum_obj.__class__]:
+                            log.error(f"Invalid enum value {v} for {k} encountered, valid value is {enum_obj.__class__}")
+                            skip_controlnet = True
+                            break
                         unit[k] = type(getattr(u, k))(v)
-                unit = UiControlNetUnit(**unit)
-
-            script_args[i] = unit
+                if not skip_controlnet: # valid 
+                    unit = UiControlNetUnit(**unit)
+            if not skip_controlnet: # valid
+                script_args[i] = unit
 
     return script_args
 
