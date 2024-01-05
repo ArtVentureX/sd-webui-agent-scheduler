@@ -462,15 +462,19 @@ class TaskRunner:
                 if result[0] is None and hasattr(shared.state, "oom") and shared.state.oom:
                     res = OutOfMemoryError()
                 elif "CUDA out of memory" in result[2]:
-                    ##res = OutOfMemoryError()
-                    os._exit(1)
+                    if getattr(shared.opts, "queue_recovery", True):
+                        log.error("CUDA out of memory1")
+                        os._exit(1)
+                    else:
+                        res = OutOfMemoryError()
                 elif "wildcard"  in result[2]:
                     log.error("Dropped by DiffusionDefender")
                 elif "list index out of range"  in result[2]:
                     log.error("list index out of range1")
                 elif "misaligned address" in result[2]:
                     log.error("CUDA error: misaligned address1")
-                    os._exit(1)
+                    if getattr(shared.opts, "queue_recovery", True):
+                        os._exit(1)
                 else:
                     log.error("else1")
                     res = result[1]
@@ -496,14 +500,19 @@ class TaskRunner:
             res = result.info
         except Exception as e:
             if "CUDA out of memory" in str(e):
-                res = OutOfMemoryError()
+                if getattr(shared.opts, "queue_recovery", True):
+                    log.error("CUDA out of memory2")
+                    os._exit(1)
+                else:
+                    res = OutOfMemoryError()
             elif "wildcard"  in str(e):
                 log.error("Dropped by DiffusionDefender")
             elif "list index out of range"  in str(e):
                 log.error("list index out of range2")
             elif "misaligned address" in str(e):
                 log.error("CUDA error: misaligned address2")
-                os._exit(1)
+                if getattr(shared.opts, "queue_recovery", True):
+                    os._exit(1)
             else:
                 log.error("else2")
                 res = e
