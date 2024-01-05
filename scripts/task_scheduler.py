@@ -667,6 +667,16 @@ def on_ui_settings():
             section=section,
         ),
     )
+    shared.opts.add_option(
+        "queue_recovery",
+        shared.OptionInfo(
+            True,
+            "recover after CUDA error",
+            gr.Checkbox,
+            {"interactive": True},
+            section=section,
+        ),
+    )
 
     def enqueue_keyboard_shortcut(disabled: bool, modifiers, key_code: str):
         if disabled:
