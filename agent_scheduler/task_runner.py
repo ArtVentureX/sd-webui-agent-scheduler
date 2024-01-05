@@ -464,11 +464,11 @@ class TaskRunner:
                 elif "CUDA out of memory" in result[2]:
                     ##res = OutOfMemoryError()
                     os._exit(1)
-                elif "wildcard" in str(e):
+                elif "wildcard"  in result[2]:
                     log.error("Dropped by DiffusionDefender")
-                elif "list index out of range" in str(e):
+                elif "list index out of range"  in result[2]:
                     log.error("12")
-                elif "CUDA error: misaligned address" in str(e):
+                elif "CUDA error: misaligned address" in result[2]:
                     log.error("CUDA error: misaligned address")
                     os._exit(1)
                 else:
