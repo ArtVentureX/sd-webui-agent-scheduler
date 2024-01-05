@@ -467,12 +467,12 @@ class TaskRunner:
                 elif "wildcard"  in result[2]:
                     log.error("Dropped by DiffusionDefender")
                 elif "list index out of range"  in result[2]:
-                    log.error("12")
-                elif "CUDA error: misaligned address" in result[2]:
-                    log.error("CUDA error: misaligned address")
+                    log.error("list index out of range1")
+                elif "misaligned address" in result[2]:
+                    log.error("CUDA error: misaligned address1")
                     os._exit(1)
                 else:
-                    log.error("else")
+                    log.error("else1")
                     res = result[1]
             except Exception as e:
                 res = e
@@ -497,7 +497,15 @@ class TaskRunner:
         except Exception as e:
             if "CUDA out of memory" in str(e):
                 res = OutOfMemoryError()
+            elif "wildcard"  in str(e):
+                log.error("Dropped by DiffusionDefender")
+            elif "list index out of range"  in result[2]:
+                log.error("list index out of range2")
+            elif "misaligned address" in str(e):
+                log.error("CUDA error: misaligned address2")
+                os._exit(1)
             else:
+                log.error("else2")
                 res = e
         finally:
             progress.finish_task(task_id)
