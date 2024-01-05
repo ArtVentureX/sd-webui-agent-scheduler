@@ -462,8 +462,17 @@ class TaskRunner:
                 if result[0] is None and hasattr(shared.state, "oom") and shared.state.oom:
                     res = OutOfMemoryError()
                 elif "CUDA out of memory" in result[2]:
-                    res = OutOfMemoryError()
+                    ##res = OutOfMemoryError()
+                    os._exit(1)
+                elif "wildcard" in str(e):
+                    log.error("Dropped by DiffusionDefender")
+                elif "list index out of range" in str(e):
+                    log.error("12")
+                elif "CUDA error: misaligned address" in str(e):
+                    log.error("CUDA error: misaligned address")
+                    os._exit(1)
                 else:
+                    log.error("else")
                     res = result[1]
             except Exception as e:
                 res = e
