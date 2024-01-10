@@ -463,7 +463,7 @@ class TaskRunner:
                     res = OutOfMemoryError()
                 elif "CUDA out of memory" in result[2]:
                     if getattr(shared.opts, "queue_recovery", True):
-                        log.error("CUDA out of memory1")
+                        log.error("img2img: CUDA out of memory")
                         os._exit(1)
                     else:
                         res = OutOfMemoryError()
@@ -471,16 +471,15 @@ class TaskRunner:
                     log.error("Dropped by DiffusionDefender")
                 elif "list index out of range"  in result[2]:
                     log.error("list index out of range1")
-                elif "CUDA error: unknown error"  in result[2]:
-                    log.error("CUDA error: unknown error1")
-                    if getattr(shared.opts, "queue_recovery", True):
-                        os._exit(1)
-                elif "misaligned address" in result[2]:
-                    log.error("CUDA error: misaligned address1")
+                elif "CUDA error"  in result[2]:
+                    #CUDA error: unknown error
+                    #CUDA error: an illegal memory access was encountered
+                    #CUDA error: misaligned address
+                    log.error("img2img: CUDA error")
                     if getattr(shared.opts, "queue_recovery", True):
                         os._exit(1)
                 else:
-                    log.error("else1")
+                    log.error("img2img: else error")
                     res = result[1]
             except Exception as e:
                 res = e
@@ -505,20 +504,19 @@ class TaskRunner:
         except Exception as e:
             if "CUDA out of memory" in str(e):
                 if getattr(shared.opts, "queue_recovery", True):
-                    log.error("CUDA out of memory2")
+                    log.error("txt2img: CUDA out of memory")
                     os._exit(1)
                 else:
                     res = OutOfMemoryError()
             elif "wildcard"  in str(e):
-                log.error("Dropped by DiffusionDefender")
+                log.error("txt2img: Dropped by DiffusionDefender")
             elif "list index out of range"  in str(e):
-                log.error("list index out of range2")
-            elif "CUDA error: unknown error" in str(e):
-                log.error("CUDA error: unknown error2")
-                if getattr(shared.opts, "queue_recovery", True):
-                    os._exit(1)
-            elif "misaligned address" in str(e):
-                log.error("CUDA error: misaligned address2")
+                log.error("txt2img: list index out of range")
+            elif "CUDA error" in str(e):
+                #CUDA error: unknown error
+                #CUDA error: an illegal memory access was encountered
+                #CUDA error: misaligned address
+                log.error("txt2img: CUDA error")
                 if getattr(shared.opts, "queue_recovery", True):
                     os._exit(1)
             else:
