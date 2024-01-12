@@ -671,7 +671,7 @@ def on_ui_settings():
         "queue_recovery",
         shared.OptionInfo(
             True,
-            "recover after CUDA error",
+            "Exit Automatic1111 on CUDA error. This is useful if your using webui-user-loop.bat to automaticly re-start Automatic111. (This applies to all CUDA error(s), not just Agent Scheduler Tasks.)",
             gr.Checkbox,
             {"interactive": True},
             section=section,
