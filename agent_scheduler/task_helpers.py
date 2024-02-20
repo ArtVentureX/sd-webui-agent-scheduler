@@ -12,11 +12,9 @@ from PIL import Image, ImageOps, ImageChops, ImageEnhance, ImageFilter, PngImage
 from numpy import ndarray
 from torch import Tensor
 
-from modules import sd_samplers, scripts, shared, sd_vae, images
+from modules import sd_samplers, scripts, shared, sd_vae, images, txt2img, img2img
 from modules.generation_parameters_copypaste import create_override_settings_dict
 from modules.sd_models import CheckpointInfo, get_closet_checkpoint_match
-from modules.txt2img import txt2img
-from modules.img2img import img2img
 from modules.api.models import (
     StableDiffusionTxt2ImgProcessingAPI,
     StableDiffusionImg2ImgProcessingAPI,
@@ -241,11 +239,11 @@ def map_controlnet_args_to_api_task_args(args: Dict):
 
 
 def map_ui_task_args_list_to_named_args(args: List, is_img2img: bool):
-    args_name = []
     if is_img2img:
-        args_name = inspect.getfullargspec(img2img).args
+        fn = getattr(img2img, "img2img_create_processing", None) or img2img.img2img
     else:
-        args_name = inspect.getfullargspec(txt2img).args
+        fn = getattr(txt2img, "txt2img_create_processing", None) or txt2img.txt2img
+    args_name = inspect.getfullargspec(fn).args
 
     # SD WebUI 1.5.0 has new request arg
     if "request" in args_name:
@@ -277,11 +275,11 @@ def map_ui_task_args_list_to_named_args(args: List, is_img2img: bool):
 
 
 def map_named_args_to_ui_task_args_list(named_args: Dict, script_args: List, is_img2img: bool):
-    args_name = []
     if is_img2img:
-        args_name = inspect.getfullargspec(img2img).args
+        fn = getattr(img2img, "img2img_create_processing", None) or img2img.img2img
     else:
-        args_name = inspect.getfullargspec(txt2img).args
+        fn = getattr(txt2img, "txt2img_create_processing", None) or txt2img.txt2img
+    args_name = inspect.getfullargspec(fn).args
 
     sampler_name = named_args.get("sampler_name", None)
     if sampler_name is not None:
