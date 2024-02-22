@@ -239,18 +239,19 @@ def map_controlnet_args_to_api_task_args(args: Dict):
 
 
 def map_ui_task_args_list_to_named_args(args: List, is_img2img: bool):
-    if is_img2img:
-        fn = getattr(img2img, "img2img_create_processing", None) or img2img.img2img
-    else:
-        fn = getattr(txt2img, "txt2img_create_processing", None) or txt2img.txt2img
-    args_name = inspect.getfullargspec(fn).args
+    fn = (
+        getattr(img2img, "img2img_create_processing", img2img.img2img)
+        if is_img2img
+        else getattr(txt2img, "txt2img_create_processing", txt2img.txt2img)
+    )
+    arg_names = inspect.getfullargspec(fn).args
 
     # SD WebUI 1.5.0 has new request arg
-    if "request" in args_name:
-        args.insert(args_name.index("request"), None)
+    if "request" in arg_names:
+        args.insert(arg_names.index("request"), None)
 
-    named_args = dict(zip(args_name, args[0 : len(args_name)]))
-    script_args = args[len(args_name) :]
+    named_args = dict(zip(arg_names, args[0 : len(arg_names)]))
+    script_args = args[len(arg_names) :]
 
     override_settings_texts: List[str] = named_args.get("override_settings_texts", [])
     # add clip_skip if not exist in args (vlad fork has this arg)
@@ -275,11 +276,12 @@ def map_ui_task_args_list_to_named_args(args: List, is_img2img: bool):
 
 
 def map_named_args_to_ui_task_args_list(named_args: Dict, script_args: List, is_img2img: bool):
-    if is_img2img:
-        fn = getattr(img2img, "img2img_create_processing", None) or img2img.img2img
-    else:
-        fn = getattr(txt2img, "txt2img_create_processing", None) or txt2img.txt2img
-    args_name = inspect.getfullargspec(fn).args
+    fn = (
+        getattr(img2img, "img2img_create_processing", img2img.img2img)
+        if is_img2img
+        else getattr(txt2img, "txt2img_create_processing", txt2img.txt2img)
+    )
+    arg_names = inspect.getfullargspec(fn).args
 
     sampler_name = named_args.get("sampler_name", None)
     if sampler_name is not None:
@@ -287,7 +289,7 @@ def map_named_args_to_ui_task_args_list(named_args: Dict, script_args: List, is_
         sampler_index = next((i for i, x in enumerate(available_samplers) if x.name == sampler_name), 0)
         named_args["sampler_index"] = sampler_index
 
-    args = [named_args.get(name, None) for name in args_name]
+    args = [named_args.get(name, None) for name in arg_names]
     args.extend(script_args)
 
     return args
