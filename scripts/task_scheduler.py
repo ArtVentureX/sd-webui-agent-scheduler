@@ -90,25 +90,27 @@ class Script(scripts.Script):
 
     def after_component(self, component, **_kwargs):
         generate_id = "txt2img_generate" if self.is_txt2img else "img2img_generate"
+        actions_column_id = "txt2img_actions_column" if self.is_txt2img else "img2img_actions_column"
         neg_id = "txt2img_neg_prompt" if self.is_txt2img else "img2img_neg_prompt"
+        toprow_id = "txt2img_toprow" if self.is_txt2img else "img2img_toprow"
+
+        def add_enqueue_row(elem_id):
+            parent = component.parent
+            while parent is not None:
+                if parent.elem_id == elem_id:
+                    self.add_enqueue_button()
+                    component.parent.children.pop()
+                    parent.add(self.enqueue_row)
+                    break
+                parent = parent.parent
 
         if component.elem_id == generate_id:
             self.generate_button = component
             if getattr(shared.opts, "queue_button_placement", placement_under_generate) == placement_under_generate:
-                self.add_enqueue_button()
-                component.parent.children.pop()
-                component.parent.parent.add(self.enqueue_row)
-            return
-
-        if (
-            component.elem_id == neg_id
-            and getattr(shared.opts, "queue_button_placement", placement_under_generate)
-            == placement_between_prompt_and_generate
-        ):
-            toprow = component.parent.parent.parent.parent.parent
-            self.add_enqueue_button()
-            component.parent.children.pop()
-            toprow.add(self.enqueue_row)
+                add_enqueue_row(actions_column_id)
+        elif component.elem_id == neg_id:
+            if getattr(shared.opts, "queue_button_placement", placement_under_generate) == placement_between_prompt_and_generate:
+                add_enqueue_row(toprow_id)
 
     def on_app_started(self, block):
         if self.generate_button is not None:
