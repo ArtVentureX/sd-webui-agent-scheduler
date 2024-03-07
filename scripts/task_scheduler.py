@@ -90,6 +90,7 @@ class Script(scripts.Script):
 
     def after_component(self, component, **_kwargs):
         generate_id = "txt2img_generate" if self.is_txt2img else "img2img_generate"
+        generate_box = "txt2img_generate_box" if self.is_txt2img else "img2img_generate_box"
         actions_column_id = "txt2img_actions_column" if self.is_txt2img else "img2img_actions_column"
         neg_id = "txt2img_neg_prompt" if self.is_txt2img else "img2img_neg_prompt"
         toprow_id = "txt2img_toprow" if self.is_txt2img else "img2img_toprow"
@@ -106,11 +107,15 @@ class Script(scripts.Script):
 
         if component.elem_id == generate_id:
             self.generate_button = component
-            if getattr(shared.opts, "queue_button_placement", placement_under_generate) == placement_under_generate:
-                add_enqueue_row(actions_column_id)
+            if getattr(shared.opts, "compact_prompt_box", False):
+                add_enqueue_row(generate_box)
+            else:
+                if getattr(shared.opts, "queue_button_placement", placement_under_generate) == placement_under_generate:
+                    add_enqueue_row(actions_column_id)
         elif component.elem_id == neg_id:
-            if getattr(shared.opts, "queue_button_placement", placement_under_generate) == placement_between_prompt_and_generate:
-                add_enqueue_row(toprow_id)
+            if not getattr(shared.opts, "compact_prompt_box", False):
+                if getattr(shared.opts, "queue_button_placement", placement_under_generate) == placement_between_prompt_and_generate:
+                    add_enqueue_row(toprow_id)
 
     def on_app_started(self, block):
         if self.generate_button is not None:
