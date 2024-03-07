@@ -375,7 +375,7 @@ button.ts-btn-action {
   min-width: 210px;
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: calc(var(--layout-gap) / 2);
 
   > div:first-child {
     flex-direction: row;
@@ -383,14 +383,12 @@ button.ts-btn-action {
     align-items: stretch;
     flex: 0 0 auto;
     flex-grow: unset !important;
-    margin-bottom: calc(var(--layout-gap) / 2);
   }
+}
 
-  .gradio-button,
-  .gradio-dropdown .wrap-inner {
-    min-height: 36px;
-    max-height: 42px;
-  }
+:not(#txt2img_generate_box) > #txt2img_enqueue_wrapper,
+:not(#img2img_generate_box) > #img2img_enqueue_wrapper {
+  align-self: flex-start;
 }
 
 #img2img_toprow .interrogate-col.has-queue-button {
