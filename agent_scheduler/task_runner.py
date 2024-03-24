@@ -275,7 +275,7 @@ class TaskRunner:
     ):
         progress.add_task_to_queue(task_id)
 
-        vae = shared.opts.sd_vae
+        vae = getattr(shared.opts, "sd_vae", "Automatic")
 
         (params, script_args) = self.__serialize_ui_task_args(
             is_img2img, *args, checkpoint=checkpoint, vae=vae, request=request
