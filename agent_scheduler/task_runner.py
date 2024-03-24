@@ -462,8 +462,30 @@ class TaskRunner:
                 if result[0] is None and hasattr(shared.state, "oom") and shared.state.oom:
                     res = OutOfMemoryError()
                 elif "CUDA out of memory" in result[2]:
-                    res = OutOfMemoryError()
+                    if getattr(shared.opts, "queue_recovery", True):
+                        log.error("img2img: CUDA out of memory")
+                        os._exit(1)
+                    else:
+                        res = OutOfMemoryError()
+                elif "A tensor with all NaNs was produced in Unet." in result[2]:
+                    if getattr(shared.opts, "queue_recovery", True):
+                        log.error("img2img: A tensor with all NaNs was produced in Unet.")
+                        os._exit(1)
+                    else:
+                        log.error("img2img: A tensor with all NaNs was produced in Unet.")
+                elif "wildcard"  in result[2]:
+                    log.error("img2img: Dropped by DiffusionDefender")
+                elif "list index out of range"  in result[2]:
+                    log.error("img2img: list index out of range1")
+                elif "CUDA error"  in result[2]:
+                    #CUDA error: unknown error
+                    #CUDA error: an illegal memory access was encountered
+                    #CUDA error: misaligned address
+                    log.error("img2img: CUDA error")
+                    if getattr(shared.opts, "queue_recovery", True):
+                        os._exit(1)
                 else:
+                    log.error("img2img: else error")
                     res = result[1]
             except Exception as e:
                 res = e
@@ -487,8 +509,30 @@ class TaskRunner:
             res = result.info
         except Exception as e:
             if "CUDA out of memory" in str(e):
-                res = OutOfMemoryError()
+                if getattr(shared.opts, "queue_recovery", True):
+                    log.error("txt2img: CUDA out of memory")
+                    os._exit(1)
+                else:
+                    res = OutOfMemoryError()
+            elif "A tensor with all NaNs was produced in Unet."  in str(e):
+                if getattr(shared.opts, "queue_recovery", True):
+                    log.error("txt2img: A tensor with all NaNs was produced in Unet.")
+                    os._exit(1)
+                else:
+                    log.error("txt2img: A tensor with all NaNs was produced in Unet.")
+            elif "wildcard"  in str(e):
+                log.error("txt2img: Dropped by DiffusionDefender")
+            elif "list index out of range"  in str(e):
+                log.error("txt2img: list index out of range")
+            elif "CUDA error" in str(e):
+                #CUDA error: unknown error
+                #CUDA error: an illegal memory access was encountered
+                #CUDA error: misaligned address
+                log.error("txt2img: CUDA error")
+                if getattr(shared.opts, "queue_recovery", True):
+                    os._exit(1)
             else:
+                log.error("txt2img: else")
                 res = e
         finally:
             progress.finish_task(task_id)
