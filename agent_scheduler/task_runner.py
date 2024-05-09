@@ -349,10 +349,14 @@ class TaskRunner:
                 samples_save = shared.opts.samples_save
                 shared.opts.samples_save = True
 
+                grid_save = shared.opts.grid_save
+                shared.opts.grid_save = True
+
                 res = self.__execute_task(task_id, is_img2img, task_args)
 
                 # disable image saving
                 shared.opts.samples_save = samples_save
+                shared.opts.grid_save = grid_save
 
                 if not res or isinstance(res, Exception):
                     if isinstance(res, OutOfMemoryError):
