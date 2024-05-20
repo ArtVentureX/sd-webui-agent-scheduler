@@ -30,18 +30,18 @@ export const createPendingTasksStore = (initialState: PendingTasksState) => {
 
   const actions: PendingTasksActions = {
     refresh: async () => {
-      return fetch('/agent-scheduler/v1/queue?limit=1000')
+      return fetch('/agent-scheduler-hysli/v1/queue?limit=1000')
         .then(response => response.json())
         .then(setState);
     },
     exportQueue: async () => {
-      return fetch('/agent-scheduler/v1/export').then(response => response.json());
+      return fetch('/agent-scheduler-hysli/v1/export').then(response => response.json());
     },
     importQueue: async (str: string) => {
       const bodyObj = {
         content: str,
       };
-      return fetch(`/agent-scheduler/v1/import`, {
+      return fetch(`/agent-scheduler-hysli/v1/import`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(bodyObj),
@@ -55,7 +55,7 @@ export const createPendingTasksStore = (initialState: PendingTasksState) => {
         });
     },
     pauseQueue: async () => {
-      return fetch('/agent-scheduler/v1/queue/pause', { method: 'POST' })
+      return fetch('/agent-scheduler-hysli/v1/queue/pause', { method: 'POST' })
         .then(response => response.json())
         .then(data => {
           setTimeout(() => {
@@ -65,7 +65,7 @@ export const createPendingTasksStore = (initialState: PendingTasksState) => {
         });
     },
     resumeQueue: async () => {
-      return fetch('/agent-scheduler/v1/queue/resume', { method: 'POST' })
+      return fetch('/agent-scheduler-hysli/v1/queue/resume', { method: 'POST' })
         .then(response => response.json())
         .then(data => {
           setTimeout(() => {
@@ -75,7 +75,7 @@ export const createPendingTasksStore = (initialState: PendingTasksState) => {
         });
     },
     clearQueue: async () => {
-      return fetch('/agent-scheduler/v1/queue/clear', { method: 'POST' })
+      return fetch('/agent-scheduler-hysli/v1/queue/clear', { method: 'POST' })
         .then(response => response.json())
         .then(data => {
           actions.refresh();
@@ -83,7 +83,7 @@ export const createPendingTasksStore = (initialState: PendingTasksState) => {
         });
     },
     runTask: async (id: string) => {
-      return fetch(`/agent-scheduler/v1/task/${id}/run`, { method: 'POST' })
+      return fetch(`/agent-scheduler-hysli/v1/task/${id}/run`, { method: 'POST' })
         .then(response => response.json())
         .then(data => {
           setTimeout(() => {
@@ -93,7 +93,7 @@ export const createPendingTasksStore = (initialState: PendingTasksState) => {
         });
     },
     moveTask: async (id: string, overId: string) => {
-      return fetch(`/agent-scheduler/v1/task/${id}/move/${overId}`, { method: 'POST' })
+      return fetch(`/agent-scheduler-hysli/v1/task/${id}/move/${overId}`, { method: 'POST' })
         .then(response => response.json())
         .then(data => {
           actions.refresh();
@@ -112,14 +112,14 @@ export const createPendingTasksStore = (initialState: PendingTasksState) => {
           cfg_scale: task.params.cfg_scale,
         },
       };
-      return fetch(`/agent-scheduler/v1/task/${id}`, {
+      return fetch(`/agent-scheduler-hysli/v1/task/${id}`, {
         method: 'PUT',
         body: JSON.stringify(newValue),
         headers: { 'Content-Type': 'application/json' },
       }).then(response => response.json());
     },
     deleteTask: async (id: string) => {
-      return fetch(`/agent-scheduler/v1/task/${id}`, { method: 'DELETE' }).then(response =>
+      return fetch(`/agent-scheduler-hysli/v1/task/${id}`, { method: 'DELETE' }).then(response =>
         response.json()
       );
     },

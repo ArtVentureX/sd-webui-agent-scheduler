@@ -6,10 +6,10 @@ export default defineConfig({
     outDir: '../',
     copyPublicDir: false,
     lib: {
-      name: 'agentScheduler',
+      name: 'AgentSchedulerHysli',
       entry: 'src/extension/index.ts',
-      fileName: 'javascript/agent-scheduler',
-      formats: ['iife']
+      fileName: 'javascript/agent-scheduler-hysli',
+      formats: ['iife'],
     },
   },
 });

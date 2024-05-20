@@ -21,10 +21,10 @@ from modules.generation_parameters_copypaste import (
     ParamBinding,
 )
 
-from agent_scheduler.task_runner import TaskRunner, get_instance
-from agent_scheduler.helpers import log, compare_components_with_ids, get_components_by_ids, is_macos
-from agent_scheduler.db import init as init_db, task_manager, TaskStatus
-from agent_scheduler.api import regsiter_apis
+from agent_scheduler_hysli.task_runner import TaskRunner, get_instance
+from agent_scheduler_hysli.helpers import log, compare_components_with_ids, get_components_by_ids, is_macos
+from agent_scheduler_hysli.db import init as init_db, task_manager, TaskStatus
+from agent_scheduler_hysli.api import regsiter_apis
 
 is_sdnext = parser.description == "SD.Next"
 ToolButton = gr.Button if is_sdnext else ui_components.ToolButton
@@ -80,7 +80,7 @@ class Script(scripts.Script):
         self.submit_button = None
 
     def title(self):
-        return "Agent Scheduler"
+        return "Agent Scheduler Hysli"
 
     def show(self, is_img2img):
         return scripts.AlwaysVisible
@@ -260,22 +260,22 @@ def create_send_to_buttons():
     return {
         "txt2img": ToolButton(
             "➠ text" if is_sdnext else "📝",
-            elem_id="agent_scheduler_send_to_txt2img",
+            elem_id="agent_scheduler_hysli_send_to_txt2img",
             tooltip="Send generation parameters to txt2img tab.",
         ),
         "img2img": ToolButton(
             "➠ image" if is_sdnext else "🖼️",
-            elem_id="agent_scheduler_send_to_img2img",
+            elem_id="agent_scheduler_hysli_send_to_img2img",
             tooltip="Send image and generation parameters to img2img tab.",
         ),
         "inpaint": ToolButton(
             "➠ inpaint" if is_sdnext else "🎨️",
-            elem_id="agent_scheduler_send_to_inpaint",
+            elem_id="agent_scheduler_hysli_send_to_inpaint",
             tooltip="Send image and generation parameters to img2img inpaint tab.",
         ),
         "extras": ToolButton(
             "➠ process" if is_sdnext else "📐",
-            elem_id="agent_scheduler_send_to_extras",
+            elem_id="agent_scheduler_hysli_send_to_extras",
             tooltip="Send image and generation parameters to extras tab.",
         ),
     }
@@ -340,7 +340,7 @@ def get_task_results(task_id: str, image_idx: int = None):
             if idx < len(infotexts):
                 infotext = infotexts[idx]
         except Exception as e:
-            log.error(f"[AgentScheduler] Failed to load task result")
+            log.error(f"[AgentSchedulerHysli] Failed to load task result")
             log.error(e)
             infotext = f"Failed to load task result: {str(e)}"
 
@@ -374,98 +374,98 @@ def remove_old_tasks():
     if retention_days > 0:
         deleted_rows = task_manager.delete_tasks(before=datetime.now() - timedelta(days=retention_days))
         if deleted_rows > 0:
-            log.debug(f"[AgentScheduler] Deleted {deleted_rows} tasks older than {retention_days} days")
+            log.debug(f"[AgentSchedulerHysli] Deleted {deleted_rows} tasks older than {retention_days} days")
 
 
 def on_ui_tab(**_kwargs):
     grid_page_size = getattr(shared.opts, "queue_grid_page_size", 0)
 
     with gr.Blocks(analytics_enabled=False) as scheduler_tab:
-        with gr.Tabs(elem_id="agent_scheduler_tabs"):
-            with gr.Tab("Task Queue", id=0, elem_id="agent_scheduler_pending_tasks_tab"):
-                with gr.Row(elem_id="agent_scheduler_pending_tasks_wrapper"):
+        with gr.Tabs(elem_id="agent_scheduler_hysli_tabs"):
+            with gr.Tab("Task Queue", id=0, elem_id="agent_scheduler_hysli_pending_tasks_tab"):
+                with gr.Row(elem_id="agent_scheduler_hysli_pending_tasks_wrapper"):
                     with gr.Column(scale=1):
-                        with gr.Row(elem_id="agent_scheduler_pending_tasks_actions", elem_classes="flex-row"):
+                        with gr.Row(elem_id="agent_scheduler_hysli_pending_tasks_actions", elem_classes="flex-row"):
                             paused = getattr(shared.opts, "queue_paused", False)
 
                             gr.Button(
                                 "Pause",
-                                elem_id="agent_scheduler_action_pause",
+                                elem_id="agent_scheduler_hysli_action_pause",
                                 variant="stop",
                                 visible=not paused,
                             )
                             gr.Button(
                                 "Resume",
-                                elem_id="agent_scheduler_action_resume",
+                                elem_id="agent_scheduler_hysli_action_resume",
                                 variant="primary",
                                 visible=paused,
                             )
                             gr.Button(
                                 "Refresh",
-                                elem_id="agent_scheduler_action_reload",
+                                elem_id="agent_scheduler_hysli_action_reload",
                                 variant="secondary",
                             )
                             gr.Button(
                                 "Clear",
-                                elem_id="agent_scheduler_action_clear_queue",
+                                elem_id="agent_scheduler_hysli_action_clear_queue",
                                 variant="stop",
                             )
                             gr.Button(
                                 "Export",
-                                elem_id="agent_scheduler_action_export",
+                                elem_id="agent_scheduler_hysli_action_export",
                                 variant="secondary",
                             )
                             gr.Button(
                                 "Import",
-                                elem_id="agent_scheduler_action_import",
+                                elem_id="agent_scheduler_hysli_action_import",
                                 variant="secondary",
                             )
-                            gr.HTML(f'<input type="file" id="agent_scheduler_import_file" style="display: none" accept="application/json" />')
+                            gr.HTML(f'<input type="file" id="agent_scheduler_hysli_import_file" style="display: none" accept="application/json" />')
 
-                            with gr.Row(elem_classes=["agent_scheduler_filter_container", "flex-row", "ml-auto"]):
+                            with gr.Row(elem_classes=["agent_scheduler_hysli_filter_container", "flex-row", "ml-auto"]):
                                 gr.Textbox(
                                     max_lines=1,
                                     placeholder="Search",
                                     label="Search",
                                     show_label=False,
                                     min_width=0,
-                                    elem_id="agent_scheduler_action_search",
+                                    elem_id="agent_scheduler_hysli_action_search",
                                 )
                         gr.HTML(
-                            f'<div id="agent_scheduler_pending_tasks_grid" class="ag-theme-gradio" data-page-size="{grid_page_size}"></div>'
+                            f'<div id="agent_scheduler_hysli_pending_tasks_grid" class="ag-theme-gradio" data-page-size="{grid_page_size}"></div>'
                         )
                     with gr.Column(scale=1):
                         gr.Gallery(
-                            elem_id="agent_scheduler_current_task_images",
+                            elem_id="agent_scheduler_hysli_current_task_images",
                             label="Output",
                             show_label=False,
                             columns=2,
                             object_fit="contain",
                         )
-            with gr.Tab("Task History", id=1, elem_id="agent_scheduler_history_tab"):
-                with gr.Row(elem_id="agent_scheduler_history_wrapper"):
+            with gr.Tab("Task History", id=1, elem_id="agent_scheduler_hysli_history_tab"):
+                with gr.Row(elem_id="agent_scheduler_hysli_history_wrapper"):
                     with gr.Column(scale=1):
-                        with gr.Row(elem_id="agent_scheduler_history_actions", elem_classes="flex-row"):
+                        with gr.Row(elem_id="agent_scheduler_hysli_history_actions", elem_classes="flex-row"):
                             gr.Button(
                                 "Requeue Failed",
-                                elem_id="agent_scheduler_action_requeue",
+                                elem_id="agent_scheduler_hysli_action_requeue",
                                 variant="primary",
                             )
                             gr.Button(
                                 "Refresh",
-                                elem_id="agent_scheduler_action_refresh_history",
-                                elem_classes="agent_scheduler_action_refresh",
+                                elem_id="agent_scheduler_hysli_action_refresh_history",
+                                elem_classes="agent_scheduler_hysli_action_refresh",
                                 variant="secondary",
                             )
                             gr.Button(
                                 "Clear",
-                                elem_id="agent_scheduler_action_clear_history",
+                                elem_id="agent_scheduler_hysli_action_clear_history",
                                 variant="stop",
                             )
 
-                            with gr.Row(elem_classes=["agent_scheduler_filter_container", "flex-row", "ml-auto"]):
+                            with gr.Row(elem_classes=["agent_scheduler_hysli_filter_container", "flex-row", "ml-auto"]):
                                 status = gr.Dropdown(
-                                    elem_id="agent_scheduler_status_filter",
+                                    elem_id="agent_scheduler_hysli_status_filter",
                                     choices=task_filter_choices,
                                     value="All",
                                     show_label=False,
@@ -477,14 +477,14 @@ def on_ui_tab(**_kwargs):
                                     label="Search",
                                     show_label=False,
                                     min_width=0,
-                                    elem_id="agent_scheduler_action_search_history",
+                                    elem_id="agent_scheduler_hysli_action_search_history",
                                 )
                         gr.HTML(
-                            f'<div id="agent_scheduler_history_tasks_grid" class="ag-theme-gradio" data-page-size="{grid_page_size}"></div>'
+                            f'<div id="agent_scheduler_hysli_history_tasks_grid" class="ag-theme-gradio" data-page-size="{grid_page_size}"></div>'
                         )
-                    with gr.Column(scale=1, elem_id="agent_scheduler_history_results"):
+                    with gr.Column(scale=1, elem_id="agent_scheduler_hysli_history_results"):
                         galerry = gr.Gallery(
-                            elem_id="agent_scheduler_history_gallery",
+                            elem_id="agent_scheduler_hysli_history_gallery",
                             label="Output",
                             show_label=False,
                             columns=2,
@@ -492,34 +492,34 @@ def on_ui_tab(**_kwargs):
                             object_fit="contain",
                         )
                         with gr.Row(
-                            elem_id="agent_scheduler_history_result_actions",
+                            elem_id="agent_scheduler_hysli_history_result_actions",
                             visible=False,
                         ) as result_actions:
                             if is_sdnext:
                                 with gr.Group():
                                     save = ToolButton(
                                         "💾",
-                                        elem_id="agent_scheduler_save",
+                                        elem_id="agent_scheduler_hysli_save",
                                         tooltip=f"Save the image to a dedicated directory ({shared.opts.outdir_save}).",
                                     )
                                     save_zip = None
                             else:
                                 save = ToolButton(
                                     "💾",
-                                    elem_id="agent_scheduler_save",
+                                    elem_id="agent_scheduler_hysli_save",
                                     tooltip=f"Save the image to a dedicated directory ({shared.opts.outdir_save}).",
                                 )
                                 save_zip = ToolButton(
                                     "🗃️",
-                                    elem_id="agent_scheduler_save_zip",
+                                    elem_id="agent_scheduler_hysli_save_zip",
                                     tooltip=f"Save zip archive with images to a dedicated directory ({shared.opts.outdir_save})",
                                 )
                             send_to_buttons = create_send_to_buttons()
                         with gr.Group():
-                            generation_info = gr.Textbox(visible=False, elem_id=f"agent_scheduler_generation_info")
+                            generation_info = gr.Textbox(visible=False, elem_id=f"agent_scheduler_hysli_generation_info")
                             infotext = gr.TextArea(
                                 label="Generation Info",
-                                elem_id=f"agent_scheduler_history_infotext",
+                                elem_id=f"agent_scheduler_hysli_history_infotext",
                                 interactive=False,
                                 visible=True,
                                 lines=3,
@@ -530,16 +530,16 @@ def on_ui_tab(**_kwargs):
                                 interactive=False,
                                 show_label=False,
                                 visible=False,
-                                elem_id=f"agent_scheduler_download_files",
+                                elem_id=f"agent_scheduler_hysli_download_files",
                             )
-                            html_log = gr.HTML(elem_id=f"agent_scheduler_html_log", elem_classes="html-log")
+                            html_log = gr.HTML(elem_id=f"agent_scheduler_hysli_html_log", elem_classes="html-log")
                             selected_task = gr.Textbox(
-                                elem_id="agent_scheduler_history_selected_task",
+                                elem_id="agent_scheduler_hysli_history_selected_task",
                                 visible=False,
                                 show_label=False,
                             )
                             selected_image_id = gr.Textbox(
-                                elem_id="agent_scheduler_history_selected_image",
+                                elem_id="agent_scheduler_hysli_history_selected_image",
                                 visible=False,
                                 show_label=False,
                             )
@@ -547,7 +547,7 @@ def on_ui_tab(**_kwargs):
         # register event handlers
         status.change(
             fn=lambda x: None,
-            _js="agent_scheduler_status_filter_changed",
+            _js="agent_scheduler_hysli_status_filter_changed",
             inputs=[status],
         )
         save.click(
@@ -587,11 +587,11 @@ def on_ui_tab(**_kwargs):
         except:
             pass
 
-    return [(scheduler_tab, "Agent Scheduler", "agent_scheduler")]
+    return [(scheduler_tab, "Agent Scheduler Hysli", "agent_scheduler_hysli")]
 
 
 def on_ui_settings():
-    section = ("agent_scheduler", "Agent Scheduler")
+    section = ("agent_scheduler_hysli", "Agent Scheduler Hysli")
     shared.opts.add_option(
         "queue_paused",
         shared.OptionInfo(

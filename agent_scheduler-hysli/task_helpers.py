@@ -47,7 +47,7 @@ def load_image_from_url(url: str):
         buffer = io.BytesIO(response.content)
         return Image.open(buffer)
     except Exception as e:
-        log.error(f"[AgentScheduler] Error downloading image from url: {e}")
+        log.error(f"[AgentSchedulerHysli] Error downloading image from url: {e}")
         return None
 
 
@@ -427,7 +427,7 @@ def map_ui_task_args_to_api_task_args(named_args: Dict, script_args: List, is_im
     for script in script_runner.alwayson_scripts:
         alwayson_script_args = script_args[script.args_from : script.args_to]
         script_name = script.title().lower()
-        if script_name != "agent scheduler":
+        if script_name != "agent scheduler Hysli":
             named_script_args = map_script_args_list_to_named(script, alwayson_script_args)
             alwayson_scripts[script_name] = {"args": named_script_args}
 
@@ -459,7 +459,7 @@ def serialize_api_task_args(
 
     valid_alwayson_scripts = {}
     for script_name, script_args in alwayson_scripts.items():
-        if script_name.lower() == "agent scheduler":
+        if script_name.lower() == "agent scheduler Hysli":
             continue
 
         if script_name.lower() not in allowed_alwayson_scripts:

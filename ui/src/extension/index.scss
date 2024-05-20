@@ -123,7 +123,7 @@
 
 /* ========================================================================= */
 
-#tabs > #agent_scheduler_tabs {
+#tabs > #agent_scheduler_hysli_tabs {
   margin-top: var(--layout-gap);
 }
 
@@ -218,14 +218,14 @@ button.ts-btn-action {
   color: var(--color-accent) !important;
 }
 
-#agent_scheduler_pending_tasks_grid,
-#agent_scheduler_history_tasks_grid {
+#agent_scheduler_hysli_pending_tasks_grid,
+#agent_scheduler_hysli_history_tasks_grid {
   height: calc(100vh - 300px);
   min-height: 400px;
 }
 
-#agent_scheduler_pending_tasks_wrapper,
-#agent_scheduler_history_wrapper {
+#agent_scheduler_hysli_pending_tasks_wrapper,
+#agent_scheduler_hysli_history_wrapper {
   border: none;
   border-width: 0;
   box-shadow: none;
@@ -251,13 +251,13 @@ button.ts-btn-action {
   }
 }
 
-#agent_scheduler_history_actions,
-#agent_scheduler_pending_tasks_actions {
+#agent_scheduler_hysli_history_actions,
+#agent_scheduler_hysli_pending_tasks_actions {
   gap: calc(var(--layout-gap) / 2);
   min-height: 36px;
 }
 
-#agent_scheduler_history_result_actions {
+#agent_scheduler_hysli_history_result_actions {
   display: flex;
   justify-content: center;
 
@@ -270,7 +270,7 @@ button.ts-btn-action {
   }
 }
 
-#agent_scheduler_pending_tasks_wrapper {
+#agent_scheduler_hysli_pending_tasks_wrapper {
   .livePreview {
     margin: 0;
     padding-top: 100%;
@@ -301,8 +301,8 @@ button.ts-btn-action {
   }
 }
 
-#agent_scheduler_current_task_images,
-#agent_scheduler_history_gallery {
+#agent_scheduler_hysli_current_task_images,
+#agent_scheduler_hysli_history_gallery {
   width: 100%;
   padding-top: calc(100%);
   position: relative;
@@ -317,7 +317,7 @@ button.ts-btn-action {
   }
 }
 
-#agent_scheduler_history_gallery {
+#agent_scheduler_hysli_history_gallery {
   @media screen and (min-width: 1280px) {
     .fixed-height {
       min-height: 400px;
@@ -339,13 +339,13 @@ button.ts-btn-action {
   }
 }
 
-.agent_scheduler_filter_container {
+.agent_scheduler_hysli_filter_container {
   > div.form {
     margin: 0;
   }
 }
 
-#agent_scheduler_status_filter {
+#agent_scheduler_hysli_status_filter {
   width: var(--size-36);
   padding: 0 !important;
 
@@ -354,8 +354,8 @@ button.ts-btn-action {
   }
 }
 
-#agent_scheduler_action_search,
-#agent_scheduler_action_search_history {
+#agent_scheduler_hysli_action_search,
+#agent_scheduler_hysli_action_search_history {
   width: var(--size-64);
   padding: 0 !important;
 

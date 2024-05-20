@@ -64,6 +64,7 @@ class Task(TaskModel):
             id=table.id,
             api_task_id=table.api_task_id,
             api_task_callback=table.api_task_callback,
+            s3_config=table.s3_config,
             name=table.name,
             type=table.type,
             params=table.params,
@@ -81,6 +82,7 @@ class Task(TaskModel):
             id=self.id,
             api_task_id=self.api_task_id,
             api_task_callback=self.api_task_callback,
+            s3_config=self.s3_config,
             name=self.name,
             type=self.type,
             params=self.params,
@@ -96,6 +98,7 @@ class Task(TaskModel):
             id=json_obj.get("id"),
             api_task_id=json_obj.get("api_task_id", None),
             api_task_callback=json_obj.get("api_task_callback", None),
+            s3_config=table.s3_config,
             name=json_obj.get("name", None),
             type=json_obj.get("type"),
             status=json_obj.get("status", TaskStatus.PENDING),
@@ -113,6 +116,7 @@ class Task(TaskModel):
             "id": self.id,
             "api_task_id": self.api_task_id,
             "api_task_callback": self.api_task_callback,
+            "s3_config": self.s3_config,
             "name": self.name,
             "type": self.type,
             "status": self.status,
@@ -132,6 +136,7 @@ class TaskTable(Base):
     id = Column(String(64), primary_key=True)
     api_task_id = Column(String(64), nullable=True)
     api_task_callback = Column(String(255), nullable=True)
+    s3_config = Column(Dict, nullable=True)
     name = Column(String(255), nullable=True)
     type = Column(String(20), nullable=False)  # txt2img or img2txt
     params = Column(Text, nullable=False)  # task args

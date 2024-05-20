@@ -1,6 +1,7 @@
 import io
 import os
 import json
+import boto3
 import base64
 import requests
 import threading
@@ -36,26 +37,65 @@ from .helpers import log, request_with_retry
 from .task_helpers import encode_image_to_base64, img2img_image_args_by_mode
 
 
-def api_callback(callback_url: str, task_id: str, status: TaskStatus, images: list):
-    files = []
-    for img in images:
-        img_path = Path(img)
-        ext = img_path.suffix.lower()
-        content_type = f"image/{ext[1:]}"
-        files.append(
-            (
-                "files",
-                (img_path.name, open(os.path.abspath(img), "rb"), content_type),
+def api_callback(callback_url: str, task_id: str, status: TaskStatus, images: list, s3_config: dict):
+    if s3_config.get('enabled', False):
+        files = []
+        for img in images:
+            img_path = Path(img)
+            ext = img_path.suffix.lower()
+            content_type = f"image/{ext[1:]}"
+            files.append(
+                (
+                    "files",
+                    (img_path.name, open(os.path.abspath(img), "rb"), content_type),
+                )
             )
+
+        return requests.post(
+            callback_url,
+            timeout=5,
+            data={"task_id": task_id, "status": status.value},
+            files=files,
+        )
+    elif s3_config.get('enabled', True):
+        print(1)
+        images = []
+        for img in images:
+            img_path = Path(img)
+            with open(img_path, "rb") as f:
+                image_data = f.read()
+                base64_image = base64.b64encode(image_data)
+                img_url = upload_to_s3(base64_image, s3_config, task_id)
+                images.append(img_url)
+        
+        return requests.post(
+            callback_url,
+            timeout=5,
+            data={"task_id": task_id, "status": status.value, "images": images},
         )
 
-    return requests.post(
-        callback_url,
-        timeout=5,
-        data={"task_id": task_id, "status": status.value},
-        files=files,
+def upload_to_s3(base64_image, s3_config, task_id):
+    s3 = boto3.client(
+        service_name="s3",
+        endpoint_url=s3_config['endpoint_url'],
+        aws_access_key_id=s3_config['aws_access_key_id'],
+        aws_secret_access_key=s3_config['aws_secret_access_key'],
+        region_name=s3_config['region_name'],
     )
 
+    image_data = base64_image
+    current_timestamp = time.time()
+    current_datetime = datetime.fromtimestamp(current_timestamp)
+    formatted_date = current_datetime.strftime('%Y-%m-%d')
+    timestamp_int = int(current_timestamp)
+    file_key_name = f"{s3_config['folder']}/{formatted_date}/{task_id}_{timestamp_int}.png"
+
+    try:
+        s3.upload_fileobj(io.BytesIO(image_data), s3_config['bucket_name'], file_key_name)
+        return f"{s3_config['bucket_url']}/{file_key_name}"
+    except Exception as e:
+        print(f"Error uploading image to S3: {str(e)}")
+        return None
 
 def on_task_finished(
     task_id: str,
@@ -73,6 +113,7 @@ def on_task_finished(
         task_id=task_id,
         status=status,
         images=result["images"],
+        s3_config=task.s3_config
     )
 
     request_with_retry(upload)
@@ -100,23 +141,37 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
 
         deps = [Depends(auth)]
 
-    log.info("[AgentScheduler] Registering APIs")
+    log.info("[AgentSchedulerHysli] Registering APIs")
 
-    @app.get("/agent-scheduler/v1/samplers", response_model=List[str])
+    @app.get("/agent-scheduler-hysli/v1/samplers", response_model=List[str])
     def get_samplers():
         return [sampler[0] for sampler in sd_samplers.all_samplers]
 
-    @app.get("/agent-scheduler/v1/sd-models", response_model=List[str])
+    @app.get("/agent-scheduler-hysli/v1/sd-models", response_model=List[str])
     def get_sd_models():
         return [x.title for x in sd_models.checkpoints_list.values()]
 
-    @app.post("/agent-scheduler/v1/queue/txt2img", response_model=QueueTaskResponse, dependencies=deps)
+    @app.post("/agent-scheduler-hysli/v1/queue/txt2img", response_model=QueueTaskResponse, dependencies=deps)
     def queue_txt2img(body: Txt2ImgApiTaskArgs):
         task_id = str(uuid4())
         args = body.dict()
         checkpoint = args.pop("checkpoint", None)
         vae = args.pop("vae", None)
         callback_url = args.pop("callback_url", None)
+
+        default_s3_config = {
+            'enabled': False,
+            'endpoint_url': '',
+            'aws_access_key_id': '',
+            'aws_secret_access_key': '',
+            'region_name': '',
+            'bucket_name': '',
+            'folder': '',
+            'bucket_url': ''
+        }
+        
+        s3_config = args.pop("s3_config", default_s3_config)
+
         task = task_runner.register_api_task(
             task_id,
             api_task_id=None,
@@ -125,6 +180,9 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
             checkpoint=checkpoint,
             vae=vae,
         )
+
+        task.s3_config = s3_config
+
         if callback_url:
             task.api_task_callback = callback_url
             task_manager.update_task(task)
@@ -133,13 +191,25 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
 
         return QueueTaskResponse(task_id=task_id)
 
-    @app.post("/agent-scheduler/v1/queue/img2img", response_model=QueueTaskResponse, dependencies=deps)
+    @app.post("/agent-scheduler-hysli/v1/queue/img2img", response_model=QueueTaskResponse, dependencies=deps)
     def queue_img2img(body: Img2ImgApiTaskArgs):
         task_id = str(uuid4())
         args = body.dict()
         checkpoint = args.pop("checkpoint", None)
         vae = args.pop("vae", None)
         callback_url = args.pop("callback_url", None)
+        default_s3_config = {
+            'enabled': False,
+            'endpoint_url': '',
+            'aws_access_key_id': '',
+            'aws_secret_access_key': '',
+            'region_name': '',
+            'bucket_name': '',
+            'folder': '',
+            'bucket_url': ''
+        }
+        
+        s3_config = args.pop("s3_config", default_s3_config)
         task = task_runner.register_api_task(
             task_id,
             api_task_id=None,
@@ -148,6 +218,7 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
             checkpoint=checkpoint,
             vae=vae,
         )
+        task.s3_config = s3_config
         if callback_url:
             task.api_task_callback = callback_url
             task_manager.update_task(task)
@@ -169,7 +240,7 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
                 named_args.pop(keys[0], None)
         return named_args
 
-    @app.get("/agent-scheduler/v1/queue", response_model=QueueStatusResponse, dependencies=deps)
+    @app.get("/agent-scheduler-hysli/v1/queue", response_model=QueueStatusResponse, dependencies=deps)
     def queue_status_api(limit: int = 20, offset: int = 0):
         current_task_id = progress.current_task
         total_pending_tasks = task_manager.count_tasks(status="pending")
@@ -194,7 +265,7 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
             paused=TaskRunner.instance.paused,
         )
 
-    @app.get("/agent-scheduler/v1/export")
+    @app.get("/agent-scheduler-hysli/v1/export")
     def export_queue(limit: int = 1000, offset: int = 0):
         pending_tasks = task_manager.get_tasks(status=TaskStatus.PENDING, limit=limit, offset=offset)
         pending_tasks = [Task.from_table(t).to_json() for t in pending_tasks]
@@ -203,7 +274,7 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
     class StringRequestBody(BaseModel):
         content: str
 
-    @app.post("/agent-scheduler/v1/import")
+    @app.post("/agent-scheduler-hysli/v1/import")
     def import_queue(queue: StringRequestBody):
         try:
             objList = json.loads(queue.content)
@@ -227,7 +298,7 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
             print(e)
             return {"success": False, "message": "Import Failed"}
 
-    @app.get("/agent-scheduler/v1/history", response_model=HistoryResponse, dependencies=deps)
+    @app.get("/agent-scheduler-hysli/v1/history", response_model=HistoryResponse, dependencies=deps)
     def history_api(status: str = None, limit: int = 20, offset: int = 0):
         bookmarked = True if status == "bookmarked" else None
         if not status or status == "all" or bookmarked:
@@ -257,7 +328,7 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
             tasks=parsed_tasks,
         )
 
-    @app.get("/agent-scheduler/v1/task/{id}", dependencies=deps)
+    @app.get("/agent-scheduler-hysli/v1/task/{id}", dependencies=deps)
     def get_task(id: str):
         task = task_manager.get_task(id)
         if task is None:
@@ -273,7 +344,7 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
 
         return {"success": True, "data": TaskModel(**task_data)}
 
-    @app.get("/agent-scheduler/v1/task/{id}/position", dependencies=deps)
+    @app.get("/agent-scheduler-hysli/v1/task/{id}/position", dependencies=deps)
     def get_task_position(id: str):
         task = task_manager.get_task(id)
         if task is None:
@@ -282,7 +353,7 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
         position = None if task.status != TaskStatus.PENDING else task_manager.get_task_position(id)
         return {"success": True, "data": {"status": task.status, "position": position}}
 
-    @app.put("/agent-scheduler/v1/task/{id}", dependencies=deps)
+    @app.put("/agent-scheduler-hysli/v1/task/{id}", dependencies=deps)
     def update_task(id: str, body: UpdateTaskArgs):
         task = task_manager.get_task(id)
         if task is None:
@@ -308,8 +379,8 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
 
         return {"success": True, "message": "Task updated."}
 
-    @app.post("/agent-scheduler/v1/run/{id}", dependencies=deps, deprecated=True)
-    @app.post("/agent-scheduler/v1/task/{id}/run", dependencies=deps)
+    @app.post("/agent-scheduler-hysli/v1/run/{id}", dependencies=deps, deprecated=True)
+    @app.post("/agent-scheduler-hysli/v1/task/{id}/run", dependencies=deps)
     def run_task(id: str):
         if progress.current_task is not None:
             if progress.current_task == id:
@@ -336,8 +407,8 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
 
             return {"success": True, "message": "Task is executing"}
 
-    @app.post("/agent-scheduler/v1/requeue/{id}", dependencies=deps, deprecated=True)
-    @app.post("/agent-scheduler/v1/task/{id}/requeue", dependencies=deps)
+    @app.post("/agent-scheduler-hysli/v1/requeue/{id}", dependencies=deps, deprecated=True)
+    @app.post("/agent-scheduler-hysli/v1/task/{id}/requeue", dependencies=deps)
     def requeue_task(id: str):
         task = task_manager.get_task(id)
         if task is None:
@@ -353,7 +424,7 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
 
         return {"success": True, "message": "Task requeued"}
 
-    @app.post("/agent-scheduler/v1/task/requeue-failed", dependencies=deps)
+    @app.post("/agent-scheduler-hysli/v1/task/requeue-failed", dependencies=deps)
     def requeue_failed_tasks():
         failed_tasks = task_manager.get_tasks(status=TaskStatus.FAILED)
         if (len(failed_tasks)) == 0:
@@ -367,8 +438,8 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
 
         return {"success": True, "message": f"Requeued {len(failed_tasks)} failed tasks"}
 
-    @app.post("/agent-scheduler/v1/delete/{id}", dependencies=deps, deprecated=True)
-    @app.delete("/agent-scheduler/v1/task/{id}", dependencies=deps)
+    @app.post("/agent-scheduler-hysli/v1/delete/{id}", dependencies=deps, deprecated=True)
+    @app.delete("/agent-scheduler-hysli/v1/task/{id}", dependencies=deps)
     def delete_task(id: str):
         if progress.current_task == id:
             shared.state.interrupt()
@@ -378,8 +449,8 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
         task_manager.delete_task(id)
         return {"success": True, "message": "Task deleted"}
 
-    @app.post("/agent-scheduler/v1/move/{id}/{over_id}", dependencies=deps, deprecated=True)
-    @app.post("/agent-scheduler/v1/task/{id}/move/{over_id}", dependencies=deps)
+    @app.post("/agent-scheduler-hysli/v1/move/{id}/{over_id}", dependencies=deps, deprecated=True)
+    @app.post("/agent-scheduler-hysli/v1/task/{id}/move/{over_id}", dependencies=deps)
     def move_task(id: str, over_id: str):
         task = task_manager.get_task(id)
         if task is None:
@@ -399,8 +470,8 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
             task_manager.prioritize_task(id, over_task.priority)
             return {"success": True, "message": "Task moved"}
 
-    @app.post("/agent-scheduler/v1/bookmark/{id}", dependencies=deps, deprecated=True)
-    @app.post("/agent-scheduler/v1/task/{id}/bookmark", dependencies=deps)
+    @app.post("/agent-scheduler-hysli/v1/bookmark/{id}", dependencies=deps, deprecated=True)
+    @app.post("/agent-scheduler-hysli/v1/task/{id}/bookmark", dependencies=deps)
     def pin_task(id: str):
         task = task_manager.get_task(id)
         if task is None:
@@ -410,8 +481,8 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
         task_manager.update_task(task)
         return {"success": True, "message": "Task bookmarked"}
 
-    @app.post("/agent-scheduler/v1/unbookmark/{id}", dependencies=deps, deprecated=True)
-    @app.post("/agent-scheduler/v1/task/{id}/unbookmark")
+    @app.post("/agent-scheduler-hysli/v1/unbookmark/{id}", dependencies=deps, deprecated=True)
+    @app.post("/agent-scheduler-hysli/v1/task/{id}/unbookmark")
     def unpin_task(id: str):
         task = task_manager.get_task(id)
         if task is None:
@@ -421,8 +492,8 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
         task_manager.update_task(task)
         return {"success": True, "message": "Task unbookmarked"}
 
-    @app.post("/agent-scheduler/v1/rename/{id}", dependencies=deps, deprecated=True)
-    @app.post("/agent-scheduler/v1/task/{id}/rename", dependencies=deps)
+    @app.post("/agent-scheduler-hysli/v1/rename/{id}", dependencies=deps, deprecated=True)
+    @app.post("/agent-scheduler-hysli/v1/task/{id}/rename", dependencies=deps)
     def rename_task(id: str, name: str):
         task = task_manager.get_task(id)
         if task is None:
@@ -432,8 +503,8 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
         task_manager.update_task(task)
         return {"success": True, "message": "Task renamed."}
 
-    @app.get("/agent-scheduler/v1/results/{id}", dependencies=deps, deprecated=True)
-    @app.get("/agent-scheduler/v1/task/{id}/results", dependencies=deps)
+    @app.get("/agent-scheduler-hysli/v1/results/{id}", dependencies=deps, deprecated=True)
+    @app.get("/agent-scheduler-hysli/v1/task/{id}/results", dependencies=deps)
     def get_task_results(id: str, zip: Optional[bool] = False):
         task = task_manager.get_task(id)
         if task is None:
@@ -482,25 +553,25 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
 
             return {"success": True, "data": data}
 
-    @app.post("/agent-scheduler/v1/pause", dependencies=deps, deprecated=True)
-    @app.post("/agent-scheduler/v1/queue/pause", dependencies=deps)
+    @app.post("/agent-scheduler-hysli/v1/pause", dependencies=deps, deprecated=True)
+    @app.post("/agent-scheduler-hysli/v1/queue/pause", dependencies=deps)
     def pause_queue():
         shared.opts.queue_paused = True
         return {"success": True, "message": "Queue paused."}
 
-    @app.post("/agent-scheduler/v1/resume", dependencies=deps, deprecated=True)
-    @app.post("/agent-scheduler/v1/queue/resume", dependencies=deps)
+    @app.post("/agent-scheduler-hysli/v1/resume", dependencies=deps, deprecated=True)
+    @app.post("/agent-scheduler-hysli/v1/queue/resume", dependencies=deps)
     def resume_queue():
         shared.opts.queue_paused = False
         TaskRunner.instance.execute_pending_tasks_threading()
         return {"success": True, "message": "Queue resumed."}
 
-    @app.post("/agent-scheduler/v1/queue/clear", dependencies=deps)
+    @app.post("/agent-scheduler-hysli/v1/queue/clear", dependencies=deps)
     def clear_queue():
         task_manager.delete_tasks(status=TaskStatus.PENDING)
         return {"success": True, "message": "Queue cleared."}
 
-    @app.post("/agent-scheduler/v1/history/clear", dependencies=deps)
+    @app.post("/agent-scheduler-hysli/v1/history/clear", dependencies=deps)
     def clear_history():
         task_manager.delete_tasks(
             status=[

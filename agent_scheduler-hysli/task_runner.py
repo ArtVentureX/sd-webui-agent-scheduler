@@ -332,7 +332,7 @@ class TaskRunner:
             if progress.current_task is None:
                 task_id = task.id
                 is_img2img = task.type == "img2img"
-                log.info(f"[AgentScheduler] Executing task {task_id}")
+                log.info(f"[AgentSchedulerHysli] Executing task {task_id}")
 
                 task_args = self.parse_task_args(task)
                 task_meta = {
@@ -356,14 +356,14 @@ class TaskRunner:
 
                 if not res or isinstance(res, Exception):
                     if isinstance(res, OutOfMemoryError):
-                        log.error(f"[AgentScheduler] Task {task_id} failed: CUDA OOM. Queue will be paused.")
+                        log.error(f"[AgentSchedulerHysli] Task {task_id} failed: CUDA OOM. Queue will be paused.")
                         shared.opts.queue_paused = True
                     else:
-                        log.error(f"[AgentScheduler] Task {task_id} failed: {res}")
+                        log.error(f"[AgentSchedulerHysli] Task {task_id} failed: {res}")
                         log.debug(traceback.format_exc())
 
                     if getattr(shared.opts, "queue_automatic_requeue_failed_task", False):
-                        log.info(f"[AgentScheduler] Requeue task {task_id}")
+                        log.info(f"[AgentSchedulerHysli] Requeue task {task_id}")
                         task.status = TaskStatus.PENDING
                         task.priority = int(datetime.now(timezone.utc).timestamp() * 1000)
                         task_manager.update_task(task)
@@ -375,7 +375,7 @@ class TaskRunner:
                 else:
                     is_interrupted = self.interrupted == task_id
                     if is_interrupted:
-                        log.info(f"\n[AgentScheduler] Task {task.id} interrupted")
+                        log.info(f"\n[AgentSchedulerHysli] Task {task.id} interrupted")
                         task.status = TaskStatus.INTERRUPTED
                         task_manager.update_task(task)
                         self.__run_callbacks(
@@ -416,11 +416,11 @@ class TaskRunner:
 
     def execute_pending_tasks_threading(self):
         if self.paused:
-            log.info("[AgentScheduler] Runner is paused")
+            log.info("[AgentSchedulerHysli] Runner is paused")
             return
 
         if self.is_executing_task:
-            log.info("[AgentScheduler] Runner already started")
+            log.info("[AgentSchedulerHysli] Runner already started")
             return
 
         pending_task = self.__get_pending_task()
@@ -500,7 +500,7 @@ class TaskRunner:
             return None
 
         if self.paused:
-            log.info("[AgentScheduler] Runner is paused")
+            log.info("[AgentSchedulerHysli] Runner is paused")
             return None
 
         # # delete task that are too old
@@ -514,18 +514,18 @@ class TaskRunner:
         # if retention_days > 0:
         #     deleted_rows = task_manager.delete_tasks(before=datetime.now() - timedelta(days=retention_days))
         #     if deleted_rows > 0:
-        #         log.debug(f"[AgentScheduler] Deleted {deleted_rows} tasks older than {retention_days} days")
+        #         log.debug(f"[AgentSchedulerHysli] Deleted {deleted_rows} tasks older than {retention_days} days")
 
         self.__total_pending_tasks = task_manager.count_tasks(status="pending")
 
         # get more task if needed
         if self.__total_pending_tasks > 0:
-            log.info(f"[AgentScheduler] Total pending tasks: {self.__total_pending_tasks}")
+            log.info(f"[AgentSchedulerHysli] Total pending tasks: {self.__total_pending_tasks}")
             pending_tasks = task_manager.get_tasks(status="pending", limit=1)
             if len(pending_tasks) > 0:
                 return pending_tasks[0]
         else:
-            log.info("[AgentScheduler] Task queue is empty")
+            log.info("[AgentSchedulerHysli] Task queue is empty")
             self.__run_callbacks("task_cleared")
 
     def __on_image_saved(self, data: script_callbacks.ImageSaveParams):
@@ -546,7 +546,7 @@ class TaskRunner:
 
         command = None
         if action == "Shut down":
-            log.info("[AgentScheduler] Shutting down...")
+            log.info("[AgentSchedulerHysli] Shutting down...")
             if is_windows:
                 command = ["shutdown", "/s", "/hybrid", "/t", "0"]
             elif is_macos:
@@ -554,7 +554,7 @@ class TaskRunner:
             else:
                 command = ["systemctl", "poweroff"]
         elif action == "Restart":
-            log.info("[AgentScheduler] Restarting...")
+            log.info("[AgentSchedulerHysli] Restarting...")
             if is_windows:
                 command = ["shutdown", "/r", "/t", "0"]
             elif is_macos:
@@ -562,7 +562,7 @@ class TaskRunner:
             else:
                 command = ["systemctl", "reboot"]
         elif action == "Sleep":
-            log.info("[AgentScheduler] Sleeping...")
+            log.info("[AgentSchedulerHysli] Sleeping...")
             if is_windows:
                 if not ctypes.windll.PowrProf.SetSuspendState(False, False, False):
                     print(f"Couldn't sleep: {ctypes.GetLastError()}")
@@ -571,7 +571,7 @@ class TaskRunner:
             else:
                 command = ["sh", "-c", 'systemctl hybrid-sleep || (echo "Couldn\'t hybrid sleep, will try to suspend instead: $?"; systemctl suspend)']
         elif action == "Hibernate":
-            log.info("[AgentScheduler] Hibernating...")
+            log.info("[AgentSchedulerHysli] Hibernating...")
             if is_windows:
                 command = ["shutdown", "/h"]
             elif is_macos:
@@ -579,7 +579,7 @@ class TaskRunner:
             else:
                 command = ["systemctl", "hibernate"]
         elif action == "Stop webui":
-            log.info("[AgentScheduler] Stopping webui...")
+            log.info("[AgentSchedulerHysli] Stopping webui...")
             _exit(0)
 
         if command:
@@ -632,7 +632,7 @@ def get_instance(block) -> TaskRunner:
         if not hasattr(script_callbacks, "on_before_reload"):
             log.warning(
                 "*****************************************************************************************\n"
-                + "[AgentScheduler] YOUR SD WEBUI IS OUTDATED AND AGENT SCHEDULER WILL NOT WORKING PROPERLY."
+                + "[AgentSchedulerHysli] YOUR SD WEBUI IS OUTDATED AND AGENT SCHEDULER WILL NOT WORKING PROPERLY."
                 + "*****************************************************************************************\n",
             )
         else:

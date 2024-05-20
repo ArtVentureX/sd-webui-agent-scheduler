@@ -37,7 +37,7 @@ else:
             return super().format(colored_record)
 
     # Create a new logger
-    logger = logging.getLogger("AgentScheduler")
+    logger = logging.getLogger("AgentSchedulerHysli")
     logger.propagate = False
 
     # Add handler if we don't have one.

@@ -93,6 +93,11 @@ class Img2ImgApiTaskArgs(StableDiffusionImg2ImgProcessingAPI):
         title="Callback URL",
         description="The callback URL to send the result to.",
     )
+    s3_config: Optional[Dict[str, Any]] = Field(
+        None,
+        title="S3 Configuration",
+        description="Configuration for S3 upload.",
+    )
 
     class Config(StableDiffusionImg2ImgProcessingAPI.__config__):
         @staticmethod

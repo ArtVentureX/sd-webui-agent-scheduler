@@ -58,7 +58,7 @@ declare global {
   function submit_img2img(...args: any[]): any[];
   function submit_enqueue(...args: any[]): any[];
   function submit_enqueue_img2img(...args: any[]): any[];
-  function agent_scheduler_status_filter_changed(value: string): void;
+  function agent_scheduler_hysli_status_filter_changed(value: string): void;
   function appendContextMenuOption(selector: string, label: string, callback: () => void): void;
   function modalSaveImage(event: Event): void;
 }
@@ -305,7 +305,7 @@ function showTaskProgress(task_id: string, type: string | undefined, callback: (
   const args = extractArgs(requestProgress);
 
   const gallery = gradioApp().querySelector<HTMLDivElement>(
-    '#agent_scheduler_current_task_images'
+    '#agent_scheduler_hysli_current_task_images'
   )!;
 
   // A1111 version
@@ -493,9 +493,9 @@ function initQueueHandler() {
   // preview modal save button
   const origModalSaveImage = window.modalSaveImage;
   window.modalSaveImage = (event: Event) => {
-    const tab = gradioApp().querySelector<HTMLDivElement>('#tab_agent_scheduler')!;
+    const tab = gradioApp().querySelector<HTMLDivElement>('#tab_agent_scheduler_hysli')!;
     if (tab.style.display !== 'none') {
-      gradioApp().querySelector<HTMLButtonElement>('#agent_scheduler_save')!.click();
+      gradioApp().querySelector<HTMLButtonElement>('#agent_scheduler_hysli_save')!.click();
       event.preventDefault();
     } else {
       origModalSaveImage(event);
@@ -522,32 +522,32 @@ function initTabChangeHandler() {
       if (!visible) return;
 
       switch (tab.id) {
-        case 'tab_agent_scheduler':
+        case 'tab_agent_scheduler_hysli':
           if (sharedStore.getState().selectedTab === 'pending') {
             pendingStore.refresh();
           } else {
             historyStore.refresh();
           }
           break;
-        case 'agent_scheduler_pending_tasks_tab':
+        case 'agent_scheduler_hysli_pending_tasks_tab':
           sharedStore.setSelectedTab('pending');
           break;
-        case 'agent_scheduler_history_tab':
+        case 'agent_scheduler_hysli_history_tab':
           sharedStore.setSelectedTab('history');
           break;
       }
     });
   });
-  const tab = gradioApp().querySelector('#tab_agent_scheduler');
+  const tab = gradioApp().querySelector('#tab_agent_scheduler_hysli');
   if (tab != null) {
     observer.observe(tab, { attributeFilter: ['style'] });
   } else {
     sharedStore.setState({ uiAsTab: false });
   }
-  observer.observe(gradioApp().querySelector('#agent_scheduler_pending_tasks_tab')!, {
+  observer.observe(gradioApp().querySelector('#agent_scheduler_hysli_pending_tasks_tab')!, {
     attributeFilter: ['style'],
   });
-  observer.observe(gradioApp().querySelector('#agent_scheduler_history_tab')!, {
+  observer.observe(gradioApp().querySelector('#agent_scheduler_hysli_history_tab')!, {
     attributeFilter: ['style'],
   });
 }
@@ -561,22 +561,22 @@ function initPendingTab() {
 
   // init actions
   const refreshButton = gradioApp().querySelector<HTMLButtonElement>(
-    '#agent_scheduler_action_reload'
+    '#agent_scheduler_hysli_action_reload'
   )!;
   refreshButton.addEventListener('click', () => store.refresh());
 
   const pauseButton = gradioApp().querySelector<HTMLButtonElement>(
-    '#agent_scheduler_action_pause'
+    '#agent_scheduler_hysli_action_pause'
   )!;
   pauseButton.addEventListener('click', () => store.pauseQueue().then(notify));
 
   const resumeButton = gradioApp().querySelector<HTMLButtonElement>(
-    '#agent_scheduler_action_resume'
+    '#agent_scheduler_hysli_action_resume'
   )!;
   resumeButton.addEventListener('click', () => store.resumeQueue().then(notify));
 
   const clearButton = gradioApp().querySelector<HTMLButtonElement>(
-    '#agent_scheduler_action_clear_queue'
+    '#agent_scheduler_hysli_action_clear_queue'
   )!;
   clearButton.addEventListener('click', () => {
     if (confirm('Are you sure you want to clear the queue?')) {
@@ -585,9 +585,11 @@ function initPendingTab() {
   });
 
   const importButton = gradioApp().querySelector<HTMLButtonElement>(
-    '#agent_scheduler_action_import'
+    '#agent_scheduler_hysli_action_import'
   )!;
-  const importInput = gradioApp().querySelector<HTMLInputElement>('#agent_scheduler_import_file')!;
+  const importInput = gradioApp().querySelector<HTMLInputElement>(
+    '#agent_scheduler_hysli_import_file'
+  )!;
 
   importButton.addEventListener('click', () => {
     importInput.click();
@@ -614,14 +616,14 @@ function initPendingTab() {
   });
 
   const exportButton = gradioApp().querySelector<HTMLButtonElement>(
-    '#agent_scheduler_action_export'
+    '#agent_scheduler_hysli_action_export'
   )!;
   exportButton.addEventListener('click', () => {
     store.exportQueue().then(data => {
       const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(data));
       const dlAnchorElem = document.createElement('a');
       dlAnchorElem.setAttribute('href', dataStr);
-      dlAnchorElem.setAttribute('download', `agent-scheduler-${Date.now()}.json`);
+      dlAnchorElem.setAttribute('download', `agent-scheduler-hysli-${Date.now()}.json`);
       dlAnchorElem.click();
     });
   });
@@ -815,21 +817,21 @@ function initPendingTab() {
     onColumnMoved: ({ api }) => {
       const colState = api.getColumnState();
       const colStateStr = JSON.stringify(colState);
-      localStorage.setItem('agent_scheduler:queue_col_state', colStateStr);
+      localStorage.setItem('agent_scheduler_hysli:queue_col_state', colStateStr);
     },
     onSortChanged: ({ api }) => {
       const colState = api.getColumnState();
       const colStateStr = JSON.stringify(colState);
-      localStorage.setItem('agent_scheduler:queue_col_state', colStateStr);
+      localStorage.setItem('agent_scheduler_hysli:queue_col_state', colStateStr);
     },
     onColumnResized: ({ api }) => {
       const colState = api.getColumnState();
       const colStateStr = JSON.stringify(colState);
-      localStorage.setItem('agent_scheduler:queue_col_state', colStateStr);
+      localStorage.setItem('agent_scheduler_hysli:queue_col_state', colStateStr);
     },
     onGridReady: ({ api }) => {
       // init quick search input
-      const searchInput = initSearchInput('#agent_scheduler_action_search');
+      const searchInput = initSearchInput('#agent_scheduler_hysli_action_search');
       searchInput.addEventListener(
         'keyup',
         debounce(function () {
@@ -854,7 +856,7 @@ function initPendingTab() {
       updateRowData(store.getState());
 
       // restore col state
-      const colStateStr = localStorage.getItem('agent_scheduler:queue_col_state');
+      const colStateStr = localStorage.getItem('agent_scheduler_hysli:queue_col_state');
       if (colStateStr != null) {
         const colState = JSON.parse(colStateStr);
         api.applyColumnState({ state: colState, applyOrder: true });
@@ -935,7 +937,7 @@ function initPendingTab() {
   };
 
   const eGridDiv = gradioApp().querySelector<HTMLDivElement>(
-    '#agent_scheduler_pending_tasks_grid'
+    '#agent_scheduler_hysli_pending_tasks_grid'
   )!;
 
   if (typeof eGridDiv.dataset.pageSize === 'string') {
@@ -955,31 +957,31 @@ function initHistoryTab() {
 
   // init actions
   const refreshButton = gradioApp().querySelector<HTMLButtonElement>(
-    '#agent_scheduler_action_refresh_history'
+    '#agent_scheduler_hysli_action_refresh_history'
   )!;
   refreshButton.addEventListener('click', () => store.refresh());
   const clearButton = gradioApp().querySelector<HTMLButtonElement>(
-    '#agent_scheduler_action_clear_history'
+    '#agent_scheduler_hysli_action_clear_history'
   )!;
   clearButton.addEventListener('click', () => {
     if (!confirm('Are you sure you want to clear the history?')) return;
     store.clearHistory().then(notify);
   });
   const requeueButton = gradioApp().querySelector<HTMLButtonElement>(
-    '#agent_scheduler_action_requeue'
+    '#agent_scheduler_hysli_action_requeue'
   )!;
   requeueButton.addEventListener('click', () => {
     store.requeueFailedTasks().then(notify);
   });
 
   const resultTaskId = gradioApp().querySelector<HTMLTextAreaElement>(
-    '#agent_scheduler_history_selected_task textarea'
+    '#agent_scheduler_hysli_history_selected_task textarea'
   )!;
   const resultImageId = gradioApp().querySelector<HTMLTextAreaElement>(
-    '#agent_scheduler_history_selected_image textarea'
+    '#agent_scheduler_hysli_history_selected_image textarea'
   )!;
   const resultGallery = gradioApp().querySelector<HTMLDivElement>(
-    '#agent_scheduler_history_gallery'
+    '#agent_scheduler_hysli_history_gallery'
   )!;
   resultGallery.addEventListener('click', e => {
     const target = e.target as Element | null;
@@ -993,7 +995,7 @@ function initHistoryTab() {
     }
   });
 
-  window.agent_scheduler_status_filter_changed = value => {
+  window.agent_scheduler_hysli_status_filter_changed = value => {
     store.onFilterStatus(value?.toLowerCase() as TaskStatus | undefined);
   };
 
@@ -1105,21 +1107,21 @@ function initHistoryTab() {
     onColumnMoved: ({ api }) => {
       const colState = api.getColumnState();
       const colStateStr = JSON.stringify(colState);
-      localStorage.setItem('agent_scheduler:history_col_state', colStateStr);
+      localStorage.setItem('agent_scheduler_hysli:history_col_state', colStateStr);
     },
     onSortChanged: ({ api }) => {
       const colState = api.getColumnState();
       const colStateStr = JSON.stringify(colState);
-      localStorage.setItem('agent_scheduler:history_col_state', colStateStr);
+      localStorage.setItem('agent_scheduler_hysli:history_col_state', colStateStr);
     },
     onColumnResized: ({ api }) => {
       const colState = api.getColumnState();
       const colStateStr = JSON.stringify(colState);
-      localStorage.setItem('agent_scheduler:history_col_state', colStateStr);
+      localStorage.setItem('agent_scheduler_hysli:history_col_state', colStateStr);
     },
     onGridReady: ({ api }) => {
       // init quick search input
-      const searchInput = initSearchInput('#agent_scheduler_action_search_history');
+      const searchInput = initSearchInput('#agent_scheduler_hysli_action_search_history');
       searchInput.addEventListener(
         'keyup',
         debounce(function () {
@@ -1136,7 +1138,7 @@ function initHistoryTab() {
       updateRowData(store.getState());
 
       // restore col state
-      const colStateStr = localStorage.getItem('agent_scheduler:history_col_state');
+      const colStateStr = localStorage.getItem('agent_scheduler_hysli:history_col_state');
       if (colStateStr != null) {
         const colState = JSON.parse(colStateStr);
         api.applyColumnState({ state: colState, applyOrder: true });
@@ -1163,7 +1165,7 @@ function initHistoryTab() {
     },
   };
   const eGridDiv = gradioApp().querySelector<HTMLDivElement>(
-    '#agent_scheduler_history_tasks_grid'
+    '#agent_scheduler_hysli_history_tasks_grid'
   )!;
 
   if (typeof eGridDiv.dataset.pageSize === 'string') {
@@ -1178,18 +1180,18 @@ function initHistoryTab() {
   createGrid(eGridDiv, gridOptions);
 }
 
-let agentSchedulerInitialized = false;
-onUiLoaded(function initAgentScheduler() {
+let AgentSchedulerHysliInitialized = false;
+onUiLoaded(function initAgentSchedulerHysli() {
   // delay ui init until dom is available
-  if (gradioApp().querySelector('#agent_scheduler_tabs') == null) {
-    setTimeout(initAgentScheduler, 500);
+  if (gradioApp().querySelector('#agent_scheduler_hysli_tabs') == null) {
+    setTimeout(initAgentSchedulerHysli, 500);
     return;
   }
 
-  if (agentSchedulerInitialized) return;
+  if (AgentSchedulerHysliInitialized) return;
   initQueueHandler();
   initTabChangeHandler();
   initPendingTab();
   initHistoryTab();
-  agentSchedulerInitialized = true;
+  AgentSchedulerHysliInitialized = true;
 });

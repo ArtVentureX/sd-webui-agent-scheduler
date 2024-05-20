@@ -22,10 +22,10 @@ export const createSharedStore = (initialState: SharedState) => {
       setState({ selectedTab: tab });
     },
     getSamplers: async () => {
-      return fetch('/agent-scheduler/v1/samplers').then(response => response.json());
+      return fetch('/agent-scheduler-hysli/v1/samplers').then(response => response.json());
     },
     getCheckpoints: async () => {
-      return fetch('/agent-scheduler/v1/sd-models').then(response => response.json());
+      return fetch('/agent-scheduler-hysli/v1/sd-models').then(response => response.json());
     },
   };
 
