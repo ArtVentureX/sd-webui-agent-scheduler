@@ -43,6 +43,7 @@ from .task_helpers import (
     map_ui_task_args_list_to_named_args,
     map_named_args_to_ui_task_args_list,
 )
+from .shared_opts_backup import SharedOptsBackup
 
 
 class OutOfMemoryError(Exception):
@@ -345,18 +346,13 @@ class TaskRunner:
                 self.__saved_images_path = []
                 self.__run_callbacks("task_started", task_id, **task_meta)
 
-                # enable image saving
-                samples_save = shared.opts.samples_save
-                shared.opts.samples_save = True
+                shared_opts_backup = SharedOptsBackup(shared.opts)
 
-                grid_save = shared.opts.grid_save
-                shared.opts.grid_save = True
+                shared_opts_backup.set_shared_opts(samples_save=True, grid_save=True)
 
                 res = self.__execute_task(task_id, is_img2img, task_args)
 
-                # disable image saving
-                shared.opts.samples_save = samples_save
-                shared.opts.grid_save = grid_save
+                shared_opts_backup.restore_shared_opts()
 
                 if not res or isinstance(res, Exception):
                     if isinstance(res, OutOfMemoryError):
