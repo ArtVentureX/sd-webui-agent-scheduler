@@ -50,10 +50,10 @@ class SharedOptsBackup:
         """
         if not self.is_backup_exists(key):
             old = getattr(self.shared_opts, key, None)
-            log.info(f"[AgentScheduler] {key} is backup: {old}")
             self.backup[key] = old
+            print(f"[AgentScheduler] {key} is backup: {old}")
         self.shared_opts.set(key, value)
-        log.info(f"[AgentScheduler] {key} is changed: {value}")
+        print(f"[AgentScheduler] {key} is changed: {value}")
 
     def set_shared_opts(self, **kwargs):
         """
@@ -79,3 +79,4 @@ class SharedOptsBackup:
         """
         for attr, value in self.backup.items():
             self.shared_opts.set(attr, value)
+            print(f"[AgentScheduler] {attr} is restore: {value}")

@@ -359,7 +359,7 @@ class TaskRunner:
                         key_grids = "outdir_txt2img_grids"
 
                     outdir_path_samples_old = Path(shared_opts_backup.get_backup_value(key_samples))
-                    outdir_path_grids_old = Path(shared_opts_backup.get_backup_value(key_samples))
+                    outdir_path_grids_old = Path(shared_opts_backup.get_backup_value(key_grids))
 
                     outdir_path_root = outdir_path_samples_old.joinpath('..', 'agent-scheduler')
 
