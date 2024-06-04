@@ -68,12 +68,14 @@ class ParsedTaskArgs(BaseModel):
 class TaskRunner:
     instance = None
 
-    def __init__(self, UiControlNetUnit=None):
+    def __init__(self, UiControlNetUnit=None, block: gr.Blocks=None):
         self.UiControlNetUnit = UiControlNetUnit
 
         self.__total_pending_tasks: int = 0
         self.__current_thread: threading.Thread = None
         self.__api = Api(FastAPI(), queue_lock)
+
+        self.__block = block
 
         self.__saved_images_path: List[str] = []
         script_callbacks.on_image_saved(self.__on_image_saved)
@@ -622,7 +624,7 @@ class TaskRunner:
             _exit(0)
         elif action == "Restart webui":
             log.info("[AgentScheduler] Restarting webui...")
-            with gr.Blocks() as demo:
+            with self.__block:
                 gr.HTML("""
     <script type="text/javascript">
     console.info(`Restart webui...after 5sec`);
@@ -640,7 +642,6 @@ class TaskRunner:
     </script>
                 """)
             shared.state.request_restart()
-            demo.launch()
 
         if command:
             subprocess.Popen(command)
@@ -685,7 +686,7 @@ def get_instance(block) -> TaskRunner:
         if block is not None:
             txt2img_submit_button = get_component_by_elem_id(block, "txt2img_generate")
             UiControlNetUnit = detect_control_net(block, txt2img_submit_button)
-            TaskRunner(UiControlNetUnit)
+            TaskRunner(UiControlNetUnit, block)
         else:
             TaskRunner()
 
