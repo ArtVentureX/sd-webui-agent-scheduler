@@ -1,3 +1,7 @@
+from.helpers import (
+    log,
+)
+
 class SharedOptsBackup:
     """
     A class used to backup and restore shared options.
@@ -12,7 +16,7 @@ class SharedOptsBackup:
     Methods
     -------
     set_shared_opts_core(key: str, value)
-        Sets a shared option and backs it up.
+        Sets a shared option and backs it up only if it is not already backed up.
 
     set_shared_opts(**kwargs)
         Sets multiple shared options and backs them up.
@@ -30,8 +34,8 @@ class SharedOptsBackup:
         shared_opts : dict
             The shared options to be backed up and restored.
         """
-        self.shared_opts: dict[str, any] = shared_opts
-        self.backup: dict[str, any] = {}
+        self.shared_opts = shared_opts
+        self.backup = {}
 
     def set_shared_opts_core(self, key: str, value):
         """
@@ -45,8 +49,11 @@ class SharedOptsBackup:
             The value to be set for the shared option.
         """
         if not self.is_backup_exists(key):
-            setattr(self.backup, key, self.shared_opts.get(key))
-        setattr(self.shared_opts, key, value)
+            old = getattr(self.shared_opts, key, None)
+            log.info(f"[AgentScheduler] {key} is backup: {old}")
+            self.backup[key] = old
+        self.shared_opts.set(key, value)
+        log.info(f"[AgentScheduler] {key} is changed: {value}")
 
     def set_shared_opts(self, **kwargs):
         """
@@ -64,11 +71,11 @@ class SharedOptsBackup:
         return key in self.backup
 
     def get_backup_value(self, key: str):
-        return self.backup.get(key) if self.is_backup_exists(key) else self.shared_opts.get(key)
+        return self.backup.get(key) if self.is_backup_exists(key) else getattr(self.shared_opts, key, None)
 
     def restore_shared_opts(self):
         """
         Restores the shared options from the backup.
         """
         for attr, value in self.backup.items():
-            setattr(self.shared_opts, attr, value)
+            self.shared_opts.set(attr, value)

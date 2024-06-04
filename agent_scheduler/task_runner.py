@@ -44,7 +44,7 @@ from .task_helpers import (
     map_named_args_to_ui_task_args_list,
 )
 from .shared_opts_backup import SharedOptsBackup
-
+from pathlib import Path
 
 class OutOfMemoryError(Exception):
     def __init__(self, message="CUDA out of memory") -> None:
@@ -349,6 +349,45 @@ class TaskRunner:
                 shared_opts_backup = SharedOptsBackup(shared.opts)
 
                 shared_opts_backup.set_shared_opts(samples_save=True, grid_save=True)
+
+                def change_output_dir():
+                    if is_img2img:
+                        key_samples = "outdir_img2img_samples"
+                        key_grids = "outdir_img2img_grids"
+                    else:
+                        key_samples = "outdir_txt2img_samples"
+                        key_grids = "outdir_txt2img_grids"
+
+                    outdir_path_old_samples = Path(shared_opts_backup.get_backup_value(key_samples))
+                    outdir_path_old_grids = Path(shared_opts_backup.get_backup_value(key_samples))
+
+                    outdir_path_root = outdir_path_old_samples.joinpath('..', 'agent-scheduler')
+
+                    save_to_dirs = False
+                    if save_to_dirs:
+                        directories_filename_pattern_new = "[datetime<%Y-%m-%d_%H-%M-%S>]_" + str(task_id)
+
+                        shared_opts_backup.set_shared_opts_core("directories_filename_pattern",
+                                                                directories_filename_pattern_new)
+
+                        outdir_path_samples_new = outdir_path_root.joinpath(outdir_path_old_samples.name)
+                        outdir_path_root.joinpath(outdir_path_old_grids.name)
+                    else:
+                        outdir_label = time.strftime("%Y-%m-%d_%H-%M-%S") + '_' + str(task_id)
+
+                        outdir_path_samples_new = outdir_path_root.joinpath(outdir_label, outdir_path_old_samples.name)
+                        outdir_path_grids_new = outdir_path_root.joinpath(outdir_label, outdir_path_old_grids.name)
+
+                    shared_opts_backup.set_shared_opts_core(key_samples, str(outdir_path_samples_new))
+                    shared_opts_backup.set_shared_opts_core(key_grids, str(outdir_path_grids_new))
+
+                    shared_opts_backup.set_shared_opts_core("grid_only_if_multiple", True)
+                    shared_opts_backup.set_shared_opts_core("grid_prevent_empty_spots", True)
+
+                    shared_opts_backup.set_shared_opts_core("save_to_dirs", save_to_dirs)
+                    shared_opts_backup.set_shared_opts_core("grid_save_to_dirs", save_to_dirs)
+
+                change_output_dir()
 
                 res = self.__execute_task(task_id, is_img2img, task_args)
 
