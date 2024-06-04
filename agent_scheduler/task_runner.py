@@ -620,6 +620,27 @@ class TaskRunner:
         elif action == "Stop webui":
             log.info("[AgentScheduler] Stopping webui...")
             _exit(0)
+        elif action == "Restart webui":
+            log.info("[AgentScheduler] Restarting webui...")
+            with gr.Blocks() as demo:
+                gr.HTML("""
+    <script type="text/javascript">
+    console.info(`Restart webui...after 5sec`);
+    
+    var requestPing = function() {
+        requestGet("./internal/ping", {}, function(data) {
+            location.reload();
+        }, function() {
+            console.info(`Waiting webui start...`);
+            setTimeout(requestPing, 500);
+        });
+    };
+    
+    setTimeout(requestPing, 5000);
+    </script>
+                """)
+            shared.state.request_restart()
+            demo.launch()
 
         if command:
             subprocess.Popen(command)
