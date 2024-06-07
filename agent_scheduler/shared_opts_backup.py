@@ -1,6 +1,4 @@
-from.helpers import (
-    log,
-)
+from pathlib import Path, PurePath
 
 class SharedOptsBackup:
     """
@@ -52,6 +50,10 @@ class SharedOptsBackup:
             old = getattr(self.shared_opts, key, None)
             self.backup[key] = old
             print(f"[AgentScheduler] {key} is backup: {old}")
+
+        if isinstance(value, (Path, PurePath)):
+            value = str(value)
+
         self.shared_opts.set(key, value)
         print(f"[AgentScheduler] {key} is changed: {value}")
 
