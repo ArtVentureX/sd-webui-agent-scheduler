@@ -363,7 +363,7 @@ class TaskRunner:
                     outdir_path_samples_old = Path(shared_opts_backup.get_backup_value(key_samples))
                     outdir_path_grids_old = Path(shared_opts_backup.get_backup_value(key_grids))
 
-                    outdir_path_root = outdir_path_samples_old.joinpath('..', 'agent-scheduler')
+                    outdir_path_root = Path(os.path.join(outdir_path_samples_old, '..', 'agent-scheduler'))
 
                     save_to_dirs = False
                     if save_to_dirs:
@@ -375,7 +375,7 @@ class TaskRunner:
                         outdir_path_samples_new = outdir_path_root.joinpath(outdir_path_samples_old.name)
                         outdir_path_grids_new = outdir_path_root.joinpath(outdir_path_grids_old.name)
                     else:
-                        outdir_label = time.strftime("%Y-%m-%d_%H-%M-%S") + '_' + str(task_id)
+                        outdir_label = time.strftime("%Y-%m-%d/%H-%M-%S") + '_' + str(task_id)
 
                         outdir_path_samples_new = outdir_path_root.joinpath(outdir_label, outdir_path_samples_old.name)
                         outdir_path_grids_new = outdir_path_root.joinpath(outdir_label, outdir_path_grids_old.name)
@@ -388,6 +388,9 @@ class TaskRunner:
 
                     shared_opts_backup.set_shared_opts_core("save_to_dirs", save_to_dirs)
                     shared_opts_backup.set_shared_opts_core("grid_save_to_dirs", save_to_dirs)
+
+                    shared_opts_backup.set_shared_opts_core("control_net_detectedmap_dir", outdir_path_root.joinpath(outdir_label, "detected_maps"))
+                    shared_opts_backup.set_shared_opts_core("control_net_detectmap_autosaving", True)
 
                 change_output_dir()
 
@@ -506,6 +509,8 @@ class TaskRunner:
                     res = OutOfMemoryError()
                 else:
                     res = result[1]
+
+
             except Exception as e:
                 res = e
             finally:
