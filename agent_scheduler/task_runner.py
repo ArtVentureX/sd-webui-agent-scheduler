@@ -335,6 +335,7 @@ class TaskRunner:
             if progress.current_task is None:
                 task_id = task.id
                 is_img2img = task.type == "img2img"
+                gr.Error(f"[AgentScheduler] Executing task {task_id}")
                 log.info(f"[AgentScheduler] Executing task {task_id}")
 
                 task_args = self.parse_task_args(task)
@@ -400,9 +401,11 @@ class TaskRunner:
 
                 if not res or isinstance(res, Exception):
                     if isinstance(res, OutOfMemoryError):
+                        gr.Error(f"[AgentScheduler] Task {task_id} failed: CUDA OOM. Queue will be paused.")
                         log.error(f"[AgentScheduler] Task {task_id} failed: CUDA OOM. Queue will be paused.")
                         shared.opts.queue_paused = True
                     else:
+                        gr.Error(f"[AgentScheduler] Task {task_id} failed: {res}")
                         log.error(f"[AgentScheduler] Task {task_id} failed: {res}")
                         log.debug(traceback.format_exc())
 
@@ -445,6 +448,7 @@ class TaskRunner:
                             result=result,
                             **task_meta,
                         )
+                        gr.Info(f"[AgentScheduler] Task {task_id} finished")
 
                 self.__saved_images_path = []
             else:
@@ -460,10 +464,12 @@ class TaskRunner:
 
     def execute_pending_tasks_threading(self):
         if self.paused:
+            gr.Warning("[AgentScheduler] Runner is paused")
             log.info("[AgentScheduler] Runner is paused")
             return
 
         if self.is_executing_task:
+            gr.Warning("[AgentScheduler] Runner already started")
             log.info("[AgentScheduler] Runner already started")
             return
 
