@@ -1,0 +1,92 @@
+name: build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - patch-1
+    paths:
+      - ./ui/**
+
+#  schedule:
+## https://help.github.com/en/actions/automating-your-workflow-with-github-actions/events-that-trigger-workflows#scheduled-events-schedule
+##            ┌───────────── minute (0 - 59)
+##            │ ┌───────────── hour (0 - 23)
+##            │ │ ┌───────────── day of the month (1 - 31)
+##            │ │ │ ┌───────────── month (1 - 12 or JAN-DEC)
+##            │ │ │ │ ┌───────────── day of the week (0 - 6 or SUN-SAT)
+##            │ │ │ │ │
+##            │ │ │ │ │
+##            │ │ │ │ │
+##            * * * * *
+#    - cron: '* * 1 * *'
+#    - cron: '* * 15 * *'
+
+jobs:
+  main-action:
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    
+    strategy:
+      matrix:
+        node-version: [ 22 ]
+    
+    steps:
+      -
+        uses: actions/checkout@main
+        with:
+          fetch-depth: 2
+          token: ${{ secrets.GITHUB_TOKEN }}
+      -
+        name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@main
+        with:
+          node-version: ${{ matrix.node-version }}
+      -
+        name: get yarn cache dir
+        id: yarn-cache
+        run: echo "::set-output name=dir::$(yarn cache dir)"
+      -
+        name: set cache id
+        id: id-cache
+        run: echo "::set-output name=id::${GITHUB_SHA}"
+      -
+        name: echo var
+        run: |
+          echo ${{ steps.yarn-cache.outputs.dir }}
+          echo ${{ steps.id-cache.outputs.id }}
+          echo ${GITHUB_SHA}
+      -
+        name: yarn cache
+        uses: bluelovers/github-actions-cache@2020011001
+        with:
+          path: ${{ steps.yarn-cache.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ steps.id-cache.outputs.id }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+      -
+        name: setup git config
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+      -
+        name: install deps
+        run: |
+          cd ./ui
+          yarn install --frozen-lockfile
+          yarn run ci:install
+      -
+        name: run script
+        if: success()
+        #        env:
+        run: |
+          cd ./ui
+          yarn run ci:build
+      -
+        name: Push changes
+        if: success()
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.ref }}
