@@ -377,6 +377,23 @@ button.ts-btn-action {
   flex-direction: column;
   gap: calc(var(--layout-gap) / 2);
 
+  box-shadow: 0px 0px 10px 3px var(--pp-ph-phe-ec-inputCheckboxChecked-background-color);
+  border-radius: var(--button-large-radius);
+
+  transition: .5s;
+
+  > .gradio-button {
+    background: linear-gradient(to bottom right, var(--pp-ph-phe-ec-inputCheckboxChecked-background-color), var(--background-fill-secondary));
+    border: var(--button-border-width) solid var(--background-fill-secondary);
+  }
+
+  &:hover .gradio-button {
+    /*
+    background: linear-gradient(to bottom right, var(--pp-ph-phe-ec-inputCheckboxChecked-background-color), var(--body-text-color));
+    */
+    border-color: var(--body-text-color);
+  }
+
   > div:first-child {
     flex-direction: row;
     flex-wrap: nowrap;
