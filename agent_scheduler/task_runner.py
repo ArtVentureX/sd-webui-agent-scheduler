@@ -393,6 +393,9 @@ class TaskRunner:
                     shared_opts_backup.set_shared_opts_core("control_net_detectedmap_dir", outdir_path_root.joinpath(outdir_label, "detected_maps"))
                     shared_opts_backup.set_shared_opts_core("control_net_detectmap_autosaving", True)
 
+                    shared_opts_backup.set_shared_opts_core("save_mask", True)
+                    shared_opts_backup.set_shared_opts_core("save_mask_composite", True)
+
                 change_output_dir()
 
                 res = self.__execute_task(task_id, is_img2img, task_args)
