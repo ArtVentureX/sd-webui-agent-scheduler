@@ -7,7 +7,8 @@ on:
       - main
       - patch-1
     paths:
-      - ./ui/**
+      - ui/**/*
+      - .github/**/*
 
 #  schedule:
 ## https://help.github.com/en/actions/automating-your-workflow-with-github-actions/events-that-trigger-workflows#scheduled-events-schedule
