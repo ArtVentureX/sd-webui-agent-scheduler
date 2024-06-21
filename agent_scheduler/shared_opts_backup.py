@@ -1,5 +1,30 @@
 from pathlib import Path, PurePath
 import gradio as gr
+from typing import Union
+
+
+def simplify_path(input_path: Union[PurePath, str]) -> Path:
+    # 如果输入是字符串，将其转换为 Path 对象
+    if isinstance(input_path, str):
+        input_path = Path(input_path)
+
+    parts = []
+    for part in input_path.parts:
+        if part == '..':
+            if parts and parts[-1] != '..' and parts[-1] != '/' and parts[-1] != input_path.root:
+                parts.pop()
+            else:
+                parts.append(part)
+        elif part != '.' and part != '':
+            parts.append(part)
+
+    # 如果路径是绝对路径，保留根路径
+    if input_path.is_absolute():
+        simplified_path = Path(input_path.root, *parts)
+    else:
+        simplified_path = Path(*parts)
+
+    return simplified_path
 
 class SharedOptsBackup:
     """
@@ -55,7 +80,7 @@ class SharedOptsBackup:
             print(f"[AgentScheduler] [backup] {key}: {old}")
 
         if isinstance(value, (Path, PurePath)):
-            value = str(value)
+            value = str(simplify_path(value).as_posix())
 
         self.shared_opts.set(key, value)
         print(f"[AgentScheduler] [change] {key}: {value}")
