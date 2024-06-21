@@ -364,7 +364,7 @@ class TaskRunner:
                     outdir_path_samples_old = Path(shared_opts_backup.get_backup_value(key_samples))
                     outdir_path_grids_old = Path(shared_opts_backup.get_backup_value(key_grids))
 
-                    outdir_path_root = Path(os.path.join(outdir_path_samples_old, '..', 'agent-scheduler'))
+                    outdir_path_root = outdir_path_samples_old.joinpath('..', 'agent-scheduler')
 
                     save_to_dirs = False
                     if save_to_dirs:
@@ -381,8 +381,8 @@ class TaskRunner:
                         outdir_path_samples_new = outdir_path_root.joinpath(outdir_label, outdir_path_samples_old.name)
                         outdir_path_grids_new = outdir_path_root.joinpath(outdir_label, outdir_path_grids_old.name)
 
-                    shared_opts_backup.set_shared_opts_core(key_samples, str(outdir_path_samples_new))
-                    shared_opts_backup.set_shared_opts_core(key_grids, str(outdir_path_grids_new))
+                    shared_opts_backup.set_shared_opts_core(key_samples, outdir_path_samples_new)
+                    shared_opts_backup.set_shared_opts_core(key_grids, outdir_path_grids_new)
 
                     shared_opts_backup.set_shared_opts_core("grid_only_if_multiple", True)
                     shared_opts_backup.set_shared_opts_core("grid_prevent_empty_spots", True)

@@ -83,7 +83,8 @@ class SharedOptsBackup:
             value = str(simplify_path(value).as_posix())
 
         self.shared_opts.set(key, value)
-        print(f"[AgentScheduler] [change] {key}: {value}")
+        if self.backup[key] != value:
+            print(f"\33[32m[AgentScheduler] [change] {key}: {value}\33[0m")
 
     def set_shared_opts(self, **kwargs):
         """
@@ -109,6 +110,6 @@ class SharedOptsBackup:
         """
         for attr, value in self.backup.items():
             self.shared_opts.set(attr, value)
-            print(f"[AgentScheduler] [restore] {attr}: {value}")
+            print(f"\33[32m[AgentScheduler] [restore] {attr}: {value}\33[0m")
 
         gr.Info(f"[AgentScheduler] restore shared opts")
