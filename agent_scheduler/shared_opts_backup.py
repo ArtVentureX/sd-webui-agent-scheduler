@@ -1,4 +1,5 @@
 from pathlib import Path, PurePath
+import gradio as gr
 
 class SharedOptsBackup:
     """
@@ -35,6 +36,8 @@ class SharedOptsBackup:
         self.shared_opts = shared_opts
         self.backup = {}
 
+        gr.Info(f"[AgentScheduler] backup shared opts")
+
     def set_shared_opts_core(self, key: str, value):
         """
         Sets a shared option and backs it up only if it is not already backed up.
@@ -49,13 +52,13 @@ class SharedOptsBackup:
         if not self.is_backup_exists(key):
             old = getattr(self.shared_opts, key, None)
             self.backup[key] = old
-            print(f"[AgentScheduler] {key} is backup: {old}")
+            print(f"[AgentScheduler] [backup] {key}: {old}")
 
         if isinstance(value, (Path, PurePath)):
             value = str(value)
 
         self.shared_opts.set(key, value)
-        print(f"[AgentScheduler] {key} is changed: {value}")
+        print(f"[AgentScheduler] [change] {key}: {value}")
 
     def set_shared_opts(self, **kwargs):
         """
@@ -81,4 +84,6 @@ class SharedOptsBackup:
         """
         for attr, value in self.backup.items():
             self.shared_opts.set(attr, value)
-            print(f"[AgentScheduler] {attr} is restore: {value}")
+            print(f"[AgentScheduler] [restore] {attr}: {value}")
+
+        gr.Info(f"[AgentScheduler] restore shared opts")
