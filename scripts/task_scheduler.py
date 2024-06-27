@@ -244,7 +244,7 @@ class Script(scripts.Script):
             for i, c in enumerate(checkpoint):
                 t_id = task_id if i == 0 else f"{task_id}.{i}"
 
-                gr.Info(f"[AgentScheduler] Add new Task {t_id} {task_name or ''}")
+                # gr.Info(f"[AgentScheduler] Add new Task {t_id} {task_name or ''}")
 
                 task_runner.register_ui_task(
                     t_id,

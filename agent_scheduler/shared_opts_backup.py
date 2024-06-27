@@ -61,7 +61,7 @@ class SharedOptsBackup:
         self.shared_opts = shared_opts
         self.backup = {}
 
-        gr.Info(f"[AgentScheduler] backup shared opts")
+        # gr.Info(f"[AgentScheduler] backup shared opts")
 
     def set_shared_opts_core(self, key: str, value):
         """
@@ -112,4 +112,4 @@ class SharedOptsBackup:
             self.shared_opts.set(attr, value)
             print(f"\33[32m[AgentScheduler] [restore] {attr}: {value}\33[0m")
 
-        gr.Info(f"[AgentScheduler] restore shared opts")
+        # gr.Info(f"[AgentScheduler] restore shared opts")

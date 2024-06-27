@@ -335,7 +335,7 @@ class TaskRunner:
             if progress.current_task is None:
                 task_id = task.id
                 is_img2img = task.type == "img2img"
-                gr.Error(f"[AgentScheduler] Executing task {task_id}")
+                # gr.Error(f"[AgentScheduler] Executing task {task_id}")
                 log.info(f"[AgentScheduler] Executing task {task_id}")
 
                 task_args = self.parse_task_args(task)
@@ -453,7 +453,7 @@ class TaskRunner:
                             result=result,
                             **task_meta,
                         )
-                        gr.Info(f"[AgentScheduler] Task {task_id} finished")
+                        # gr.Info(f"[AgentScheduler] Task {task_id} finished")
 
                 self.__saved_images_path = []
             else:
