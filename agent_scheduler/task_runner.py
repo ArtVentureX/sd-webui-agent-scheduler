@@ -474,7 +474,7 @@ class TaskRunner:
             return
 
         if self.is_executing_task:
-            gr.Warning("[AgentScheduler] Runner already started")
+            # gr.Warning("[AgentScheduler] Runner already started")
             log.info("[AgentScheduler] Runner already started")
             return
 
