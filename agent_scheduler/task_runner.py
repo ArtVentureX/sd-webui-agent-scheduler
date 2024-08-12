@@ -364,7 +364,8 @@ class TaskRunner:
                     outdir_path_samples_old = Path(shared_opts_backup.get_backup_value(key_samples))
                     outdir_path_grids_old = Path(shared_opts_backup.get_backup_value(key_grids))
 
-                    outdir_path_root = outdir_path_samples_old.joinpath('..', 'agent-scheduler')
+                    outdir_path_root_top = outdir_path_samples_old.joinpath('..')
+                    outdir_path_root = outdir_path_root_top.joinpath('agent-scheduler')
 
                     save_to_dirs = False
                     if save_to_dirs:
@@ -390,7 +391,9 @@ class TaskRunner:
                     shared_opts_backup.set_shared_opts_core("save_to_dirs", save_to_dirs)
                     shared_opts_backup.set_shared_opts_core("grid_save_to_dirs", save_to_dirs)
 
-                    shared_opts_backup.set_shared_opts_core("control_net_detectedmap_dir", outdir_path_root.joinpath(outdir_label, "detected_maps"))
+                    control_net_detectedmap_dir = Path("..").joinpath(outdir_path_root.joinpath(outdir_label, "detected_maps").relative_to(outdir_path_root_top))
+
+                    shared_opts_backup.set_shared_opts_core("control_net_detectedmap_dir", control_net_detectedmap_dir)
                     shared_opts_backup.set_shared_opts_core("control_net_detectmap_autosaving", True)
 
                     shared_opts_backup.set_shared_opts_core("save_mask", True)
