@@ -79,7 +79,7 @@ class SharedOptsBackup:
             self.backup[key] = old
             print(f"[AgentScheduler] [backup] {key}: {old}")
 
-        if isinstance(value, (Path, PurePath)):
+        if key != "control_net_detectedmap_dir" and isinstance(value, (Path, PurePath)):
             value = str(simplify_path(value).as_posix())
 
         self.shared_opts.set(key, value)
