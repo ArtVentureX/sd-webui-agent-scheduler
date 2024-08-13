@@ -391,7 +391,8 @@ class TaskRunner:
                     shared_opts_backup.set_shared_opts_core("save_to_dirs", save_to_dirs)
                     shared_opts_backup.set_shared_opts_core("grid_save_to_dirs", save_to_dirs)
 
-                    control_net_detectedmap_dir = Path("..").joinpath(outdir_path_root.joinpath(outdir_label, "detected_maps").relative_to(outdir_path_root_top))
+                    # control_net_detectedmap_dir = Path("..").joinpath(outdir_path_root.joinpath(outdir_label, "detected_maps").relative_to(outdir_path_root_top))
+                    control_net_detectedmap_dir = Path("..").joinpath("detected_maps")
 
                     shared_opts_backup.set_shared_opts_core("control_net_detectedmap_dir", control_net_detectedmap_dir)
                     shared_opts_backup.set_shared_opts_core("control_net_detectmap_autosaving", True)
