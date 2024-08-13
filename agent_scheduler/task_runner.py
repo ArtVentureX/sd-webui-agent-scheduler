@@ -400,7 +400,7 @@ class TaskRunner:
                     shared_opts_backup.set_shared_opts_core("save_mask", True)
                     shared_opts_backup.set_shared_opts_core("save_mask_composite", True)
 
-                    shared_opts_backup.set_shared_opts_core("dp_write_prompts_to_file", True)
+                    # shared_opts_backup.set_shared_opts_core("dp_write_prompts_to_file", True)
 
                 change_output_dir()
 
