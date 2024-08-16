@@ -361,11 +361,17 @@ class TaskRunner:
                         key_samples = "outdir_txt2img_samples"
                         key_grids = "outdir_txt2img_grids"
 
+                    key_init = "outdir_init_images"
+
                     outdir_path_samples_old = Path(shared_opts_backup.get_backup_value(key_samples))
                     outdir_path_grids_old = Path(shared_opts_backup.get_backup_value(key_grids))
 
+                    outdir_path_init_old = Path(shared_opts_backup.get_backup_value(key_init))
+
                     outdir_path_root_top = outdir_path_samples_old.joinpath('..')
                     outdir_path_root = outdir_path_root_top.joinpath('agent-scheduler')
+
+                    outdir_path_root_task = outdir_path_root
 
                     save_to_dirs = False
                     if save_to_dirs:
@@ -373,17 +379,19 @@ class TaskRunner:
 
                         shared_opts_backup.set_shared_opts_core("directories_filename_pattern",
                                                                 directories_filename_pattern_new)
-
-                        outdir_path_samples_new = outdir_path_root.joinpath(outdir_path_samples_old.name)
-                        outdir_path_grids_new = outdir_path_root.joinpath(outdir_path_grids_old.name)
                     else:
                         outdir_label = time.strftime("%Y-%m-%d/%H-%M-%S") + '_' + str(task_id)
 
-                        outdir_path_samples_new = outdir_path_root.joinpath(outdir_label, outdir_path_samples_old.name)
-                        outdir_path_grids_new = outdir_path_root.joinpath(outdir_label, outdir_path_grids_old.name)
+                        outdir_path_root_task = outdir_path_root.joinpath(outdir_label)
+
+                    outdir_path_samples_new = outdir_path_root_task.joinpath(outdir_path_samples_old.name)
+                    outdir_path_grids_new = outdir_path_root_task.joinpath(outdir_path_grids_old.name)
+
+                    outdir_path_init_new = outdir_path_root_task.joinpath(outdir_path_init_old.name)
 
                     shared_opts_backup.set_shared_opts_core(key_samples, outdir_path_samples_new)
                     shared_opts_backup.set_shared_opts_core(key_grids, outdir_path_grids_new)
+                    shared_opts_backup.set_shared_opts_core(key_init, outdir_path_init_new)
 
                     shared_opts_backup.set_shared_opts_core("grid_only_if_multiple", True)
                     shared_opts_backup.set_shared_opts_core("grid_prevent_empty_spots", True)
@@ -391,7 +399,6 @@ class TaskRunner:
                     shared_opts_backup.set_shared_opts_core("save_to_dirs", save_to_dirs)
                     shared_opts_backup.set_shared_opts_core("grid_save_to_dirs", save_to_dirs)
 
-                    # control_net_detectedmap_dir = Path("..").joinpath(outdir_path_root.joinpath(outdir_label, "detected_maps").relative_to(outdir_path_root_top))
                     control_net_detectedmap_dir = Path("..").joinpath("detected_maps")
 
                     shared_opts_backup.set_shared_opts_core("control_net_detectedmap_dir", control_net_detectedmap_dir)
@@ -404,6 +411,14 @@ class TaskRunner:
 
                     shared_opts_backup.set_shared_opts_core("enable_pnginfo", True)
                     shared_opts_backup.set_shared_opts_core("save_txt", True)
+
+                    shared_opts_backup.set_shared_opts_core("save_images_before_highres_fix", True)
+
+                    shared_opts_backup.set_shared_opts_core("save_init_img", is_img2img)
+
+                    if is_img2img:
+                        shared_opts_backup.set_shared_opts_core("ad_save_previews", True)
+                        shared_opts_backup.set_shared_opts_core("ad_save_images_before", True)
 
                 change_output_dir()
 
