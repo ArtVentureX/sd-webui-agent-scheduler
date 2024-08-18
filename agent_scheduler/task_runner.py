@@ -361,12 +361,7 @@ class TaskRunner:
                         key_samples = "outdir_txt2img_samples"
                         key_grids = "outdir_txt2img_grids"
 
-                    key_init = "outdir_init_images"
-
                     outdir_path_samples_old = Path(shared_opts_backup.get_backup_value(key_samples))
-                    outdir_path_grids_old = Path(shared_opts_backup.get_backup_value(key_grids))
-
-                    outdir_path_init_old = Path(shared_opts_backup.get_backup_value(key_init))
 
                     outdir_path_root_top = outdir_path_samples_old.joinpath('..')
                     outdir_path_root = outdir_path_root_top.joinpath('agent-scheduler')
@@ -385,13 +380,16 @@ class TaskRunner:
                         outdir_path_root_task = outdir_path_root.joinpath(outdir_label)
 
                     outdir_path_samples_new = outdir_path_root_task.joinpath(outdir_path_samples_old.name)
-                    outdir_path_grids_new = outdir_path_root_task.joinpath(outdir_path_grids_old.name)
 
-                    outdir_path_init_new = outdir_path_root_task.joinpath(outdir_path_init_old.name)
+                    def _output_to_root_task(key: str):
+                        name = Path(shared_opts_backup.get_backup_value(key)).name
+                        shared_opts_backup.set_shared_opts_core(key, outdir_path_root_task.joinpath(name))
 
                     shared_opts_backup.set_shared_opts_core(key_samples, outdir_path_samples_new)
-                    shared_opts_backup.set_shared_opts_core(key_grids, outdir_path_grids_new)
-                    shared_opts_backup.set_shared_opts_core(key_init, outdir_path_init_new)
+
+                    _output_to_root_task(key_grids)
+                    _output_to_root_task("outdir_init_images")
+                    _output_to_root_task("ad_save_images_dir")
 
                     shared_opts_backup.set_shared_opts_core("grid_only_if_multiple", True)
                     shared_opts_backup.set_shared_opts_core("grid_prevent_empty_spots", True)
