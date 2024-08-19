@@ -106,8 +106,8 @@ def detect_control_net(root: gr.Blocks, submit: gr.Button):
 
     dependencies: List[dict] = [
         x
-        for x in root.dependencies
-        if x["trigger"] == "click" and submit._id in x["targets"]
+        for x in root.default_config.get_config().get("dependencies")
+        if x["targets"][0][1] == "click" and submit._id == x["targets"][0][0]
     ]
     for d in dependencies:
         if len(d["outputs"]) == 1:

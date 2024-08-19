@@ -77,12 +77,12 @@ class Txt2ImgApiTaskArgs(StableDiffusionTxt2ImgProcessingAPI):
     #         props.pop("send_images", None)
     #         props.pop("save_images", None)
     
-    def schema_extra(schema: Dict[str, Any]) -> None:
+    def my_schema_extra(schema: Dict[str, Any]) -> None:
             props = schema.get("properties", {})
             props.pop("send_images", None)
             props.pop("save_images", None)
-            return props
-    model_config = ConfigDict(props=schema_extra(schema.get("properties", {})))
+            # return props
+    model_config = ConfigDict(json_schema_extra=my_schema_extra,)
     
 
 
@@ -104,14 +104,20 @@ class Img2ImgApiTaskArgs(StableDiffusionImg2ImgProcessingAPI):
         description="The callback URL to send the result to.",
     )
 
-    # TODO[pydantic]: The `Config` class inherits from another class, please create the `model_config` manually.
-    # Check https://docs.pydantic.dev/dev-v2/migration/#changes-to-config for more information.
-    class Config(StableDiffusionImg2ImgProcessingAPI.__config__):
-        @staticmethod
-        def schema_extra(schema: Dict[str, Any], model) -> None:
+    def my_schema_extra(schema: Dict[str, Any]) -> None:
             props = schema.get("properties", {})
             props.pop("send_images", None)
             props.pop("save_images", None)
+    model_config = ConfigDict(json_schema_extra=my_schema_extra,)
+
+    # TODO[pydantic]: The `Config` class inherits from another class, please create the `model_config` manually.
+    # Check https://docs.pydantic.dev/dev-v2/migration/#changes-to-config for more information.
+    # class Config(StableDiffusionImg2ImgProcessingAPI.__config__):
+    #     @staticmethod
+    #     def schema_extra(schema: Dict[str, Any], model) -> None:
+    #         props = schema.get("properties", {})
+    #         props.pop("send_images", None)
+    #         props.pop("save_images", None)
     
 
 
@@ -124,9 +130,13 @@ class QueueStatusResponse(BaseModel):
     pending_tasks: List[TaskModel] = Field(title="Pending Tasks", description="The pending tasks in the queue")
     total_pending_tasks: int = Field(title="Queue length", description="The total pending tasks in the queue")
     paused: bool = Field(title="Paused", description="Whether the queue is paused")
+    # def my_schema_extra(schema: Dict[str, Any]) -> None:
+    #         props = schema.get("properties", {})
+    #         props.pop("send_images", None)
+    #         props.pop("save_images", None)
     # TODO[pydantic]: The following keys were removed: `json_encoders`.
     # Check https://docs.pydantic.dev/dev-v2/migration/#changes-to-config for more information.
-    model_config = ConfigDict(props=schema.get("properties", {}), json_encoders={datetime: lambda dt: int(dt.timestamp() * 1e3)})
+    model_config = ConfigDict(json_encoders={datetime: lambda dt: int(dt.timestamp() * 1e3)})
 
 
 class HistoryResponse(BaseModel):

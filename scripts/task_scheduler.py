@@ -144,10 +144,21 @@ class Script(scripts.Script):
 
     def bind_enqueue_button(self, root: gr.Blocks):
         generate = self.generate_button
+        # print (root)
         is_img2img = self.is_img2img
+        # config = root.get_config()
+        def_dependencies = root.default_config.get_config().get("dependencies")
+        # print (def_dependencies["targets"])
+        # print (generate._id)
+        # for x in def_dependencies:
+        #     if generate._id == x["targets"][0][0]:
+        #         print (x["id"])
+        #         print (x["targets"])
         dependencies: List[dict] = [
-            x for x in root.dependencies if x["trigger"] == "click" and generate._id in x["targets"]
+             x for x in def_dependencies if x["targets"][0][1] == "click" and generate._id == x["targets"][0][0]
         ]
+
+        # print (dependencies)
 
         dependency: dict = None
         cnet_dependency: dict = None
@@ -163,11 +174,30 @@ class Script(scripts.Script):
             elif len(d["outputs"]) == 4:
                 dependency = d
 
+        # print (dependency)
+
         with root:
             if self.checkpoint_dropdown is not None:
                 self.checkpoint_dropdown.change(fn=self.on_checkpoint_changed, inputs=[self.checkpoint_dropdown])
 
-            fn_block = next(fn for fn in root.fns if compare_components_with_ids(fn.inputs, dependency["inputs"]))
+            # __it = iter(root.fns)
+            # next(__it)
+            # print (root.fns)
+            fn_block = None
+            for key in root.fns:
+                # print (key)
+                # print (root.fns[key])
+                if compare_components_with_ids(root.fns[key].inputs, dependency["inputs"]) == True:
+                    fn_block = root.fns[key]
+                    break
+
+            # print (fn_block)
+    # def compare_components_with_ids(components: List[Block], ids: List[int]):
+    # return len(components) == len(ids) and all(
+    #     component._id == _id for component, _id in zip(components, ids)
+    # )
+
+            # fn_block = next(fn for fn in root.fns if compare_components_with_ids(fn.inputs, dependency["inputs"]))
             fn = self.wrap_register_ui_task()
             inputs = fn_block.inputs.copy()
             inputs.insert(0, self.checkpoint_dropdown)

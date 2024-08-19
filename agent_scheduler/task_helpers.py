@@ -253,10 +253,19 @@ def map_ui_task_args_list_to_named_args(args: List, is_img2img: bool):
     named_args = dict(zip(arg_names, args[0 : len(arg_names)]))
     script_args = args[len(arg_names) :]
 
+    # for arg in named_args:
+    #     print (arg)
+    #     print (named_args[arg])
+
     override_settings_texts: List[str] = named_args.get("override_settings_texts", [])
+    if override_settings_texts == None:
+        override_settings_texts = []
+    print (override_settings_texts)
     # add clip_skip if not exist in args (vlad fork has this arg)
     if named_args.get("clip_skip", None) is None:
-        clip_skip = next((s for s in override_settings_texts if s.startswith("Clip skip:")), None)
+        clip_skip = None
+        if override_settings_texts != None:
+            clip_skip = next((s for s in override_settings_texts if s.startswith("Clip skip:")), None)
         if clip_skip is None and hasattr(shared.opts, "CLIP_stop_at_last_layers"):
             override_settings_texts.append(f"Clip skip: {shared.opts.CLIP_stop_at_last_layers}")
 
