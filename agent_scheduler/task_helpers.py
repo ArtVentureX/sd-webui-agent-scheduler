@@ -253,10 +253,6 @@ def map_ui_task_args_list_to_named_args(args: List, is_img2img: bool):
     named_args = dict(zip(arg_names, args[0 : len(arg_names)]))
     script_args = args[len(arg_names) :]
 
-    # for arg in named_args:
-    #     print (arg)
-    #     print (named_args[arg])
-
     override_settings_texts: List[str] = named_args.get("override_settings_texts", [])
     if override_settings_texts == None:
         override_settings_texts = []
