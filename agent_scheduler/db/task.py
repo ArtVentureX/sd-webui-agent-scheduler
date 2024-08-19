@@ -55,6 +55,8 @@ class Task(TaskModel):
         priority = kwargs.pop("priority", int(datetime.now(timezone.utc).timestamp() * 1000))
         super().__init__(priority=priority, **kwargs)
 
+    # TODO[pydantic]: The `Config` class inherits from another class, please create the `model_config` manually.
+    # Check https://docs.pydantic.dev/dev-v2/migration/#changes-to-config for more information.
     class Config(TaskModel.__config__):
         exclude = ["script_params"]
 

@@ -762,6 +762,7 @@ def on_ui_settings():
 
 
 def on_app_started(block: gr.Blocks, app):
+    log.error("on_app_started()")
     global task_runner
     task_runner = get_instance(block)
     task_runner.execute_pending_tasks_threading()
