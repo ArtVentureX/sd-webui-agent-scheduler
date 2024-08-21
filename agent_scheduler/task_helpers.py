@@ -232,8 +232,7 @@ def map_controlnet_args_to_api_task_args(args: Dict):
                 if v.startswith("http://") or v.startswith("https://"):
                     args[k] = load_image_from_url(v)
                 else:
-                    # raw base64 image
-                    args[k] = {"image": v}
+                    args[k] = v
                     continue
             args[k] = {
                 "image": encode_image_to_base64(v["image"]),
