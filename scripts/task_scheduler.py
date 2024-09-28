@@ -759,6 +759,16 @@ def on_ui_settings():
             section=section,
         ),
     )
+    shared.opts.add_option(
+        "queue_completion_action_reset",
+        shared.OptionInfo(
+            "No",
+            "Reset 'action after queue completion' to 'Do nothing' after one execution",
+            gr.Radio,
+            {"choices": ["No", "Yes"],},
+            section=section,
+        ),
+    )
 
 
 def on_app_started(block: gr.Blocks, app):

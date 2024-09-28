@@ -544,6 +544,12 @@ class TaskRunner:
         if action == "Do nothing":
             return
 
+        reset_action = getattr(shared.opts, "queue_completion_action_reset", "No")
+        if reset_action == "Yes":
+            log.info(f"[AgentScheduler] Resetting queue_completion_action to 'Do nothing'")
+            setattr(shared.opts, "queue_completion_action", "Do nothing")
+            shared.opts.save(shared.config_filename)
+
         command = None
         if action == "Shut down":
             log.info("[AgentScheduler] Shutting down...")
