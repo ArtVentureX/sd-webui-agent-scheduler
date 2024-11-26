@@ -22,6 +22,7 @@ from modules.api.models import (
     StableDiffusionTxt2ImgProcessingAPI,
     StableDiffusionImg2ImgProcessingAPI,
 )
+from modules.devices import torch_gc
 
 from .db import TaskStatus, Task, task_manager
 from .helpers import (
@@ -715,6 +716,10 @@ class TaskRunner:
     def __run_callbacks(self, name: str, *args, **kwargs):
         for callback in self.script_callbacks[name]:
             callback(*args, **kwargs)
+
+        if name == "task_finished" or name == "task_started":
+            log.info(f"[AgentScheduler] {name} torch_gc...")
+            torch_gc()
 
 
 def get_instance(block) -> TaskRunner:
