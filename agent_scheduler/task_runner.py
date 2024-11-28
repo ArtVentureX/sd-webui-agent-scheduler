@@ -714,12 +714,17 @@ class TaskRunner:
         self.script_callbacks["task_cleared"].append(callback)
 
     def __run_callbacks(self, name: str, *args, **kwargs):
+        # print(f"[AgentScheduler] __run_callbacks {name}...")
+
         for callback in self.script_callbacks[name]:
             callback(*args, **kwargs)
 
         if name == "task_finished" or name == "task_started":
-            log.info(f"[AgentScheduler] {name} torch_gc...")
-            torch_gc()
+            print(f"[AgentScheduler] {name} torch_gc...")
+            try:
+                torch_gc()
+            except Exception as e:
+                print(e)
 
 
 def get_instance(block) -> TaskRunner:
