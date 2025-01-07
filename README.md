@@ -1,6 +1,6 @@
 # Agent Scheduler
 
-Introducing AgentScheduler, an A1111/Vladmandic Stable Diffusion Web UI extension to power up your image generation workflow!
+Introducing AgentScheduler, an Automatic1111/Vladmandic Stable Diffusion Web UI extension to power up your image generation workflow!
 
 ## Table of Content
 
@@ -238,12 +238,6 @@ Please update the extension, it should be fixed already. If not, please fire an 
 
 For other errors, feel free to fire a new [Github issue](https://github.com/ArtVentureX/sd-webui-agent-scheduler/issues/new/choose).
 
-## Road Map
-
-To list possible feature upgrades for this extension
-
-- Connect multiple SD webui nodes to run task.
-- Sync with GenAI Management Platform **ArtVenture**
 
 ## Contributing
 
@@ -261,38 +255,54 @@ The author(s) of this project are not responsible for any damages or legal issue
 
 ---
 
-## CRAFTED BY THE PEOPLE BUILDING **ARTVENTURE**, [**ATHERLABS**](https://atherlabs.com/) & [**SIPHER ODYSSEY**](http://playsipher.com/)
+## CRAFTED BY THE PEOPLE BUILDING [**SIPHER//AGI**](https://sipheragi.com), [**PROTOGAIA**](https://protogaia.com), [**ATHERLABS**](https://atherlabs.com/) & [**SIPHER ODYSSEY**](http://playsipher.com/)
 
-### About ArtVenture (coming soon™️)
+### About ProtoGAIA
 
-ArtVenture offers powerful collaboration features for Generative AI Image workflows. It is designed to help designers and creative professionals of all levels collaborate more efficiently, unleash their creativity, and have full transparency and tracking over the creation process.
+ProtoGAIA offers powerful collaboration features for Generative AI Image workflows. It is designed to help designers and creative professionals of all levels collaborate more efficiently, unleash their creativity, and have full transparency and tracking over the creation process.
 
-![ArtVenture Teaser](https://user-images.githubusercontent.com/90659883/236376930-831ac345-e979-4ec5-bece-49e4bc497b79.png)
+![alt text](<CleanShot 2025-01-07 at 21.56.46@2x.png>)
 
-![ArtVenture Teaser 2](https://user-images.githubusercontent.com/90659883/236376933-babe9d36-f42f-4c1c-b59a-08be572a1f4c.png)
+![alt text](<CleanShot 2025-01-07 at 21.57.08@2x.png>)
 
-### Current Features
+![alt text](<CleanShot 2025-01-07 at 21.59.38@2x.png>)
 
-ArtVenture offers the following key features:
+![alt text](<CleanShot 2025-01-07 at 21.58.44@2x.png>)
 
-- Seamless Access: available on desktop and mobile
-- Multiplayer & Collaborative UX. Strong collaboration features, such as real-time commenting and feedback, version control, and image/file/project sharing.
-- Powerful semantic search capabilities.
-- Building on shoulders of Giants, leveraging A1111/Vladnmandic and other pioneers, provide collaboration process from Idea (Sketch/Thoughts/Business Request) to Final Results(Images/Copywriting Post/TaskCompleted) in 1 platform
-- Automation tooling for certain repeated tasks
-- Secure and transparent, leveraging hasing and metadata to track the origin and history of models, loras, images to allow for tracability and ease of collaboration.
-- Personalize UX for both beginner and experienced users to quickly remix existing SD images by editing prompts and negative prompts, selecting new training models and output quality as desired.
+![alt text](<CleanShot 2025-01-07 at 21.57.49@2x.png>)
+
+### Current protoGAIA Features
+
+Like any open project that seeks to bring the powerful of Generative AI to the masses, ProtoGAIA offers the following key features:
+
+✅ Seamless Access: available on desktop and mobile
+✅ Powerful Macro Abilities that allowing the chaining of tasks, which is then packaged as Macro Command ready for AI Agent Automation
+✅ Multiplayer & Collaborative UX. Strong collaboration features, such as real-time commenting and feedback, version control, and image/file/project sharing.
+✅ Rooms Chat for lively discussion between users and running Generative AI workflows right in the chat
+✅ Custom Models Management including Lora, Diffusion Models, Controlnet Models and more
+✅ Powerful semantic search capabilities
+✅ Powerful AI driven chat box that can trigger quick Generative AI tasks and workflows
+✅ Building on shoulders of Giants, leveraging A1111/Vladnmandic and other pioneers, provide collaboration process from Idea to Final Results in 1 platform
+✅ Automation tooling for certain repeated tasks
+✅ Secure and transparent, leveraging hasing and metadata to track the origin and history of models, loras, images to allow for tracability and ease of collaboration.
+✅ Personalize UIUX for both beginner and experienced users to quickly remix existing SD images by editing prompts and negative prompts, selecting new training models and output quality as desired.
+✅ Provenance Tracking for all models, loras, images to allow for tracability and ease of collaboration.
+✅ Custom UIUX for both beginner and experienced users to quickly remix existing SD images by editing prompts and negative prompts, selecting new training models and output quality as desired.
+✅ Articles and Tutorials for learning Generative AI
+✅ Voting System for best generative AI images, models, recipes, macros etc.
+✅ Open sharing of generative AI images, models, recipes, macros etc via the Global Explore tab
 
 ### Target Audience
 
-ArtVenture is designed for the following target audiences:
+ProtoGAIA is designed for the following target audiences:
 
-- Casual Creators
+- Creators
 - Small Design Teams or Freelancers
-- Design Agencies & Studios
+- Design Agencies & Game Studios
+- AI Agents
 
 ## 🎉 Stay Tuned for Updates
 
 We hope you find this extension to be useful. We will be adding new features and improvements over time as we enhance this extension to support our creative workflows.
 
-To stay up-to-date with the latest news and updates, be sure to follow us on GitHub and Twitter (coming soon™️). We welcome your feedback and suggestions, and are excited to hear how AgentScheduler can help you streamline your workflow and unleash your creativity!
+To stay up-to-date with the latest news and updates, be sure to follow us on GitHub and Twitter. We welcome your feedback and suggestions, and are excited to hear how AgentScheduler can help you streamline your workflow and unleash your creativity!
