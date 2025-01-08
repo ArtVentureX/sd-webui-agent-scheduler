@@ -102,11 +102,27 @@ const sharedGridOptions: GridOptions<Task> = {
       maxWidth: 240,
       pinned: 'left',
       rowDrag: true,
-      valueGetter: ({ data }: ValueGetterParams<Task, string>) => data?.name ?? data?.id,
+      valueGetter({ data }) {
+        let list = [
+          data?.updated_at,
+          data?.created_at,
+        ]
+          .filter(value => value)
+          .map(value => value != null ? new Date(value).toLocaleString(document.documentElement.lang) : '')
+
+        // @ts-ignore
+        list.unshift(data?.name ?? data?.id)
+
+        return list.join('\n')
+      },
       cellClass: ({ data }: CellClassParams<Task, string>) => {
         if (data == null) return;
 
-        return ['cursor-pointer', `task-${data.status}`];
+        return [
+          'cursor-pointer',
+          `task-${data.status}`,
+          'cell-pre',
+        ];
       },
     },
     {
@@ -132,7 +148,12 @@ const sharedGridOptions: GridOptions<Task> = {
           maxWidth: 400,
           autoHeight: true,
           wrapText: true,
-          cellClass: 'wrap-cell',
+          cellClass: [
+            'wrap-cell',
+            'ag-selectable',
+            'cell-prompts',
+            'cell-pre',
+          ],
         },
         {
           field: 'params.negative_prompt',
@@ -142,7 +163,12 @@ const sharedGridOptions: GridOptions<Task> = {
           maxWidth: 400,
           autoHeight: true,
           wrapText: true,
-          cellClass: 'wrap-cell',
+          cellClass: [
+            'wrap-cell',
+            'ag-selectable',
+            'cell-prompts',
+            'cell-pre',
+          ],
         },
         {
           field: 'params.checkpoint',
@@ -218,22 +244,6 @@ const sharedGridOptions: GridOptions<Task> = {
         },
       ],
     },
-    {
-      field: 'created_at',
-      headerName: 'Queued At',
-      minWidth: 180,
-      editable: false,
-      valueFormatter: ({ value }: ValueFormatterParams<Task, number>) =>
-        value != null ? new Date(value).toLocaleString(document.documentElement.lang) : '',
-    },
-    {
-      field: 'updated_at',
-      headerName: 'Updated At',
-      minWidth: 180,
-      editable: false,
-      valueFormatter: ({ value }: ValueFormatterParams<Task, number>) =>
-        value != null ? new Date(value).toLocaleString(document.documentElement.lang) : '',
-    },
   ],
 
   getRowId: ({ data }) => data.id,
@@ -243,6 +253,9 @@ const sharedGridOptions: GridOptions<Task> = {
   paginationAutoPageSize: true,
   suppressCopyRowsToClipboard: true,
   enableBrowserTooltips: true,
+  rowClass: [
+    'my-ag-row-root',
+  ]
 };
 
 function initSearchInput(selector: string) {
