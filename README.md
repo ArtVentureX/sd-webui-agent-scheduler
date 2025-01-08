@@ -276,20 +276,35 @@ ProtoGAIA offers powerful collaboration features for Generative AI Image workflo
 Like any open project that seeks to bring the powerful of Generative AI to the masses, ProtoGAIA offers the following key features:
 
 ✅ Seamless Access: available on desktop and mobile
+
 ✅ Powerful Macro Abilities that allowing the chaining of tasks, which is then packaged as Macro Command ready for AI Agent Automation
-✅ Multiplayer & Collaborative UX. Strong collaboration features, such as real-time commenting and feedback, version control, and image/file/project sharing.
+
+✅ Multiplayer & Collaborative UX. Strong collaboration features, such as real-time commenting and feedback, version control, and image/file/project sharing
+
 ✅ Rooms Chat for lively discussion between users and running Generative AI workflows right in the chat
+
 ✅ Custom Models Management including Lora, Diffusion Models, Controlnet Models and more
+
 ✅ Powerful semantic search capabilities
+
 ✅ Powerful AI driven chat box that can trigger quick Generative AI tasks and workflows
+
 ✅ Building on shoulders of Giants, leveraging A1111/Vladnmandic and other pioneers, provide collaboration process from Idea to Final Results in 1 platform
+
 ✅ Automation tooling for certain repeated tasks
-✅ Secure and transparent, leveraging hasing and metadata to track the origin and history of models, loras, images to allow for tracability and ease of collaboration.
-✅ Personalize UIUX for both beginner and experienced users to quickly remix existing SD images by editing prompts and negative prompts, selecting new training models and output quality as desired.
-✅ Provenance Tracking for all models, loras, images to allow for tracability and ease of collaboration.
-✅ Custom UIUX for both beginner and experienced users to quickly remix existing SD images by editing prompts and negative prompts, selecting new training models and output quality as desired.
+
+✅ Secure and transparent, leveraging hasing and metadata to track the origin and history of models, loras, images to allow for tracability and ease of collaboration
+
+✅ Personalize UIUX for both beginner and experienced users to quickly remix existing SD images by editing prompts and negative prompts, selecting new training models and output quality as desired
+
+✅ Provenance Tracking for all models, loras, images to allow for tracability and ease of collaboration
+
+✅ Custom UIUX for both beginner and experienced users to quickly remix existing SD images by editing prompts and negative prompts, selecting new training models and output quality as desired
+
 ✅ Articles and Tutorials for learning Generative AI
-✅ Voting System for best generative AI images, models, recipes, macros etc.
+
+✅ Voting System for best generative AI images, models, recipes, macros etc
+
 ✅ Open sharing of generative AI images, models, recipes, macros etc via the Global Explore tab
 
 ### Target Audience
