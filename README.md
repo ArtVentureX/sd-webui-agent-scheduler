@@ -261,16 +261,6 @@ The author(s) of this project are not responsible for any damages or legal issue
 
 ProtoGAIA offers powerful collaboration features for Generative AI Image workflows. It is designed to help designers and creative professionals of all levels collaborate more efficiently, unleash their creativity, and have full transparency and tracking over the creation process.
 
-![alt text](<CleanShot 2025-01-07 at 21.56.46@2x.png>)
-
-![alt text](<CleanShot 2025-01-07 at 21.57.08@2x.png>)
-
-![alt text](<CleanShot 2025-01-07 at 21.59.38@2x.png>)
-
-![alt text](<CleanShot 2025-01-07 at 21.58.44@2x.png>)
-
-![alt text](<CleanShot 2025-01-07 at 21.57.49@2x.png>)
-
 ### Current protoGAIA Features
 
 Like any open project that seeks to bring the powerful of Generative AI to the masses, ProtoGAIA offers the following key features:
