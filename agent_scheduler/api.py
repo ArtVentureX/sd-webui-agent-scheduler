@@ -55,6 +55,13 @@ def api_callback(callback_url: str, task_id: str, status: TaskStatus, images: li
         data={"task_id": task_id, "status": status.value},
         files=files,
     )
+def api_callback_raw(callback_url: str, task_id: str, status: TaskStatus, images: list, info: str):
+
+    return requests.post(
+        callback_url,
+        timeout=50,
+        json={"task_id": task_id, "status": status.value, "images": images, "info": info},
+    )
 
 
 def on_task_finished(
@@ -67,14 +74,26 @@ def on_task_finished(
     # handle api task callback
     if not task.api_task_callback:
         return
-
-    upload = lambda: api_callback(
-        task.api_task_callback,
-        task_id=task_id,
-        status=status,
-        images=result["images"],
-    )
-
+    if shared.cmd_opts.agent_scheduler_api_raw:
+        images = [
+                base64.b64encode(open(image, "rb").read()).decode("utf-8") 
+                for image in result["images"] 
+                if os.path.isfile(image)
+            ]
+        upload = lambda: api_callback_raw(
+            task.api_task_callback,
+            task_id=task_id,
+            status=status,
+            images=images,
+            info=result["geninfo"],
+        )
+    else:
+        upload = lambda: api_callback(
+            task.api_task_callback,
+            task_id=task_id,
+            status=status,
+            images=result["images"],
+        )
     request_with_retry(upload)
 
 
@@ -471,16 +490,23 @@ def regsiter_apis(app: App, task_runner: TaskRunner):
                 headers={"Content-Disposition": f"attachment; filename=results-{id}.zip"},
             )
         else:
-            data = [
-                {
-                    "image": encode_image_to_base64(Image.open(image)),
-                    "infotext": infotexts[i],
-                }
-                for i, image in enumerate(result["images"])
-                if Path(image).is_file()
-            ]
-
-            return {"success": True, "data": data}
+            if shared.cmd_opts.agent_scheduler_api_raw:
+                images = [
+                    base64.b64encode(open(image, "rb").read()).decode("utf-8")
+                    for image in result["images"]
+                    if Path(image).is_file()
+                ]
+                return {"images": images, "info": json.dumps(geninfo)}
+            else:
+                data = [
+                    {
+                        "image": encode_image_to_base64(Image.open(image)),
+                        "infotext": infotexts[i],
+                    }
+                    for i, image in enumerate(result["images"])
+                    if Path(image).is_file()
+                ]
+                return {"success": True, "data": data}
 
     @app.post("/agent-scheduler/v1/pause", dependencies=deps, deprecated=True)
     @app.post("/agent-scheduler/v1/queue/pause", dependencies=deps)

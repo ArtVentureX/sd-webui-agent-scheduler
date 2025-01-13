@@ -5,3 +5,9 @@ def preload(parser):
         help="sqlite file to use for the database connection. It can be abs or relative path(from base path) default: task_scheduler.sqlite3",
         default="task_scheduler.sqlite3",
     )
+    parser.add_argument(
+        "--agent-scheduler-api-raw",
+        action='store_true',
+        help="api return raw sd data"
+    )
+
