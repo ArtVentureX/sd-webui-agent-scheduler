@@ -227,11 +227,8 @@ def map_controlnet_args_to_api_task_args(args: Dict):
         args = args.__dict__
 
     for k, v in args.items():
-        if k == "image" and v is not None:
-            args[k] = {
-                "image": encode_image_to_base64(v["image"]),
-                "mask": encode_image_to_base64(v["mask"]) if v.get("mask", None) is not None else None,
-            }
+        if (k == "image" or k == "mask") and v is not None:
+            args[k] = encode_image_to_base64(v)
         if isinstance(v, Enum):
             args[k] = v.value
 
