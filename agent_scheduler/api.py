@@ -51,7 +51,7 @@ def api_callback(callback_url: str, task_id: str, status: TaskStatus, images: li
 
     return requests.post(
         callback_url,
-        timeout=5,
+        timeout=60,
         data={"task_id": task_id, "status": status.value},
         files=files,
     )

@@ -228,6 +228,12 @@ def map_controlnet_args_to_api_task_args(args: Dict):
 
     for k, v in args.items():
         if k == "image" and v is not None:
+            if isinstance(v, str):
+                if v.startswith("http://") or v.startswith("https://"):
+                    args[k] = load_image_from_url(v)
+                else:
+                    args[k] = v
+                    continue
             args[k] = {
                 "image": encode_image_to_base64(v["image"]),
                 "mask": encode_image_to_base64(v["mask"]) if v.get("mask", None) is not None else None,
