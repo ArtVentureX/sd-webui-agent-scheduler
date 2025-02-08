@@ -22,6 +22,7 @@ from modules.api.models import (
     StableDiffusionTxt2ImgProcessingAPI,
     StableDiffusionImg2ImgProcessingAPI,
 )
+from modules.devices import torch_gc
 
 from .db import TaskStatus, Task, task_manager
 from .helpers import (
@@ -43,7 +44,8 @@ from .task_helpers import (
     map_ui_task_args_list_to_named_args,
     map_named_args_to_ui_task_args_list,
 )
-
+from .shared_opts_backup import SharedOptsBackup
+from pathlib import Path
 
 class OutOfMemoryError(Exception):
     def __init__(self, message="CUDA out of memory") -> None:
@@ -67,12 +69,14 @@ class ParsedTaskArgs(BaseModel):
 class TaskRunner:
     instance = None
 
-    def __init__(self, UiControlNetUnit=None):
+    def __init__(self, UiControlNetUnit=None, block: gr.Blocks=None):
         self.UiControlNetUnit = UiControlNetUnit
 
         self.__total_pending_tasks: int = 0
         self.__current_thread: threading.Thread = None
         self.__api = Api(FastAPI(), queue_lock)
+
+        self.__block = block
 
         self.__saved_images_path: List[str] = []
         script_callbacks.on_image_saved(self.__on_image_saved)
@@ -332,6 +336,7 @@ class TaskRunner:
             if progress.current_task is None:
                 task_id = task.id
                 is_img2img = task.type == "img2img"
+                # gr.Error(f"[AgentScheduler] Executing task {task_id}")
                 log.info(f"[AgentScheduler] Executing task {task_id}")
 
                 task_args = self.parse_task_args(task)
@@ -345,20 +350,88 @@ class TaskRunner:
                 self.__saved_images_path = []
                 self.__run_callbacks("task_started", task_id, **task_meta)
 
-                # enable image saving
-                samples_save = shared.opts.samples_save
-                shared.opts.samples_save = True
+                shared_opts_backup = SharedOptsBackup(shared.opts)
+
+                shared_opts_backup.set_shared_opts(samples_save=True, grid_save=True)
+
+                def change_output_dir():
+                    if is_img2img:
+                        key_samples = "outdir_img2img_samples"
+                        key_grids = "outdir_img2img_grids"
+                    else:
+                        key_samples = "outdir_txt2img_samples"
+                        key_grids = "outdir_txt2img_grids"
+
+                    outdir_path_samples_old = Path(shared_opts_backup.get_backup_value(key_samples))
+
+                    outdir_path_root_top = outdir_path_samples_old.joinpath('..')
+                    outdir_path_root = outdir_path_root_top.joinpath('agent-scheduler')
+
+                    outdir_path_root_task = outdir_path_root
+
+                    save_to_dirs = False
+                    if save_to_dirs:
+                        directories_filename_pattern_new = "[datetime<%Y-%m-%d_%H-%M-%S>]_" + str(task_id)
+
+                        shared_opts_backup.set_shared_opts_core("directories_filename_pattern",
+                                                                directories_filename_pattern_new)
+                    else:
+                        outdir_label = time.strftime("%Y-%m-%d/%H-%M-%S") + '_' + str(task_id)
+
+                        outdir_path_root_task = outdir_path_root.joinpath(outdir_label)
+
+                    outdir_path_samples_new = outdir_path_root_task.joinpath(outdir_path_samples_old.name)
+
+                    def _output_to_root_task(key: str):
+                        name = Path(shared_opts_backup.get_backup_value(key)).name
+                        shared_opts_backup.set_shared_opts_core(key, outdir_path_root_task.joinpath(name))
+
+                    shared_opts_backup.set_shared_opts_core(key_samples, outdir_path_samples_new)
+
+                    _output_to_root_task(key_grids)
+                    _output_to_root_task("outdir_init_images")
+                    _output_to_root_task("ad_save_images_dir")
+
+                    shared_opts_backup.set_shared_opts_core("grid_only_if_multiple", True)
+                    shared_opts_backup.set_shared_opts_core("grid_prevent_empty_spots", True)
+
+                    shared_opts_backup.set_shared_opts_core("save_to_dirs", save_to_dirs)
+                    shared_opts_backup.set_shared_opts_core("grid_save_to_dirs", save_to_dirs)
+
+                    control_net_detectedmap_dir = Path("..").joinpath("detected_maps")
+
+                    shared_opts_backup.set_shared_opts_core("control_net_detectedmap_dir", control_net_detectedmap_dir)
+                    shared_opts_backup.set_shared_opts_core("control_net_detectmap_autosaving", True)
+
+                    shared_opts_backup.set_shared_opts_core("save_mask", True)
+                    shared_opts_backup.set_shared_opts_core("save_mask_composite", True)
+
+                    shared_opts_backup.set_shared_opts_core("dp_write_prompts_to_file", False)
+
+                    shared_opts_backup.set_shared_opts_core("enable_pnginfo", True)
+                    shared_opts_backup.set_shared_opts_core("save_txt", True)
+
+                    shared_opts_backup.set_shared_opts_core("save_images_before_highres_fix", True)
+
+                    shared_opts_backup.set_shared_opts_core("save_init_img", is_img2img)
+
+                    if is_img2img:
+                        shared_opts_backup.set_shared_opts_core("ad_save_previews", True)
+                        shared_opts_backup.set_shared_opts_core("ad_save_images_before", True)
+
+                change_output_dir()
 
                 res = self.__execute_task(task_id, is_img2img, task_args)
 
-                # disable image saving
-                shared.opts.samples_save = samples_save
+                shared_opts_backup.restore_shared_opts()
 
                 if not res or isinstance(res, Exception):
                     if isinstance(res, OutOfMemoryError):
+                        gr.Error(f"[AgentScheduler] Task {task_id} failed: CUDA OOM. Queue will be paused.")
                         log.error(f"[AgentScheduler] Task {task_id} failed: CUDA OOM. Queue will be paused.")
                         shared.opts.queue_paused = True
                     else:
+                        gr.Error(f"[AgentScheduler] Task {task_id} failed: {res}")
                         log.error(f"[AgentScheduler] Task {task_id} failed: {res}")
                         log.debug(traceback.format_exc())
 
@@ -401,6 +474,7 @@ class TaskRunner:
                             result=result,
                             **task_meta,
                         )
+                        # gr.Info(f"[AgentScheduler] Task {task_id} finished")
 
                 self.__saved_images_path = []
             else:
@@ -416,10 +490,12 @@ class TaskRunner:
 
     def execute_pending_tasks_threading(self):
         if self.paused:
+            gr.Warning("[AgentScheduler] Runner is paused")
             log.info("[AgentScheduler] Runner is paused")
             return
 
         if self.is_executing_task:
+            # gr.Warning("[AgentScheduler] Runner already started")
             log.info("[AgentScheduler] Runner already started")
             return
 
@@ -465,6 +541,8 @@ class TaskRunner:
                     res = OutOfMemoryError()
                 else:
                     res = result[1]
+
+
             except Exception as e:
                 res = e
             finally:
@@ -581,6 +659,26 @@ class TaskRunner:
         elif action == "Stop webui":
             log.info("[AgentScheduler] Stopping webui...")
             _exit(0)
+        elif action == "Restart webui":
+            log.info("[AgentScheduler] Restarting webui...")
+            with self.__block:
+                gr.HTML("""
+    <script type="text/javascript">
+    console.info(`Restart webui...after 5sec`);
+    
+    var requestPing = function() {
+        requestGet("./internal/ping", {}, function(data) {
+            location.reload();
+        }, function() {
+            console.info(`Waiting webui start...`);
+            setTimeout(requestPing, 500);
+        });
+    };
+    
+    setTimeout(requestPing, 5000);
+    </script>
+                """)
+            shared.state.request_restart()
 
         if command:
             subprocess.Popen(command)
@@ -616,8 +714,17 @@ class TaskRunner:
         self.script_callbacks["task_cleared"].append(callback)
 
     def __run_callbacks(self, name: str, *args, **kwargs):
+        # print(f"[AgentScheduler] __run_callbacks {name}...")
+
         for callback in self.script_callbacks[name]:
             callback(*args, **kwargs)
+
+        if name == "task_finished" or name == "task_started":
+            print(f"[AgentScheduler] {name} torch_gc...")
+            try:
+                torch_gc()
+            except Exception as e:
+                print(e)
 
 
 def get_instance(block) -> TaskRunner:
@@ -625,7 +732,7 @@ def get_instance(block) -> TaskRunner:
         if block is not None:
             txt2img_submit_button = get_component_by_elem_id(block, "txt2img_generate")
             UiControlNetUnit = detect_control_net(block, txt2img_submit_button)
-            TaskRunner(UiControlNetUnit)
+            TaskRunner(UiControlNetUnit, block)
         else:
             TaskRunner()
 

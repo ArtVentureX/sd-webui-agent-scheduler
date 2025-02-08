@@ -38,10 +38,10 @@ queue_with_every_checkpoints = "$$_queue_with_all_checkpoints_$$"
 ui_placement_as_tab = "As a tab"
 ui_placement_append_to_main = "Append to main UI"
 
-placement_under_generate = "Under Generate button"
+placement_under_generate = "Near Generate button"
 placement_between_prompt_and_generate = "Between Prompt and Generate button"
 
-completion_action_choices = ["Do nothing", "Shut down", "Restart", "Sleep", "Hibernate", "Stop webui"]
+completion_action_choices = ["Do nothing", "Shut down", "Restart", "Sleep", "Hibernate", "Stop webui", "Restart webui"]
 
 task_filter_choices = ["All", "Bookmarked", "Done", "Failed", "Interrupted"]
 
@@ -89,33 +89,54 @@ class Script(scripts.Script):
         self.checkpoint_override = checkpoint
 
     def after_component(self, component, **_kwargs):
-        generate_id = "txt2img_generate" if self.is_txt2img else "img2img_generate"
-        generate_box = "txt2img_generate_box" if self.is_txt2img else "img2img_generate_box"
-        actions_column_id = "txt2img_actions_column" if self.is_txt2img else "img2img_actions_column"
-        neg_id = "txt2img_neg_prompt" if self.is_txt2img else "img2img_neg_prompt"
-        toprow_id = "txt2img_toprow" if self.is_txt2img else "img2img_toprow"
+        id_part = "img2img" if self.is_img2img else "txt2img"
+
+        enqueue_wrapper = f"{id_part}_enqueue_wrapper"
+        generate_id = f"{id_part}_generate"
+
+        compact_prompt_box = getattr(shared.opts, "compact_prompt_box", False)
+        queue_button_placement = getattr(shared.opts, "queue_button_placement", placement_under_generate)
+
+        component_elem_id = _kwargs.get('elem_id')
+
+        if component_elem_id == generate_id:
+            self.generate_button = component
+
+        if self.enqueue_row is not None:
+            return
+        elif component_elem_id is None or component_elem_id == enqueue_wrapper:
+            return
+
+        generate_box = f"{id_part}_generate_box"
+        actions_column_id = f"{id_part}_actions_column"
+        results_id = f"{id_part}_results"
+        neg_id = f"{id_part}_neg_prompt"
+        toprow_id = f"{id_part}_toprow"
+
+        bool_placement_between_prompt_and_generate = queue_button_placement == placement_between_prompt_and_generate
 
         def add_enqueue_row(elem_id):
-            parent = component.parent
+            parent = component if elem_id is None or component.elem_id == elem_id else component.parent
             while parent is not None:
-                if parent.elem_id == elem_id:
+                if parent.elem_id is None or elem_id is None or parent.elem_id == elem_id:
                     self.add_enqueue_button()
-                    component.parent.children.pop()
-                    parent.add(self.enqueue_row)
+                    if component.parent != parent:
+                        component.parent.children.pop()
+                        parent.add(self.enqueue_row)
                     break
                 parent = parent.parent
 
-        if component.elem_id == generate_id:
-            self.generate_button = component
-            if getattr(shared.opts, "compact_prompt_box", False):
-                add_enqueue_row(generate_box)
-            else:
-                if getattr(shared.opts, "queue_button_placement", placement_under_generate) == placement_under_generate:
+        if component_elem_id == generate_id:
+            if not compact_prompt_box:
+                if not bool_placement_between_prompt_and_generate:
                     add_enqueue_row(actions_column_id)
-        elif component.elem_id == neg_id:
-            if not getattr(shared.opts, "compact_prompt_box", False):
-                if getattr(shared.opts, "queue_button_placement", placement_under_generate) == placement_between_prompt_and_generate:
+        elif component_elem_id == neg_id:
+            if not compact_prompt_box:
+                if bool_placement_between_prompt_and_generate:
                     add_enqueue_row(toprow_id)
+        elif component_elem_id == results_id:
+            if compact_prompt_box and not bool_placement_between_prompt_and_generate:
+                add_enqueue_row(results_id)
 
     def on_app_started(self, block):
         if self.generate_button is not None:
@@ -222,6 +243,9 @@ class Script(scripts.Script):
 
             for i, c in enumerate(checkpoint):
                 t_id = task_id if i == 0 else f"{task_id}.{i}"
+
+                # gr.Info(f"[AgentScheduler] Add new Task {t_id} {task_name or ''}")
+
                 task_runner.register_ui_task(
                     t_id,
                     self.is_img2img,
